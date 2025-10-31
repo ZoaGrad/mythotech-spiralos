@@ -20,3 +20,18 @@ python3 scarcoin_bridge_api.py
 ```
 
 *"Where coherence becomes currency"* 🜂
+
+## SpiralOS v1.3-alpha — Empathy Market Integration
+
+- **Dual-token economy** (ScarCoin + EMP)
+- **Holo-Economy deployment** complete
+- **Repository**: https://github.com/ZoaGrad/mythotech-spiralos  
+- **VaultNode**: ΔΩ.123.0  
+- **Tag**: ΔΩ.123.0-empathy-init  
+
+### Economic Model
+
+**ScarCoin**: Thermodynamic value (Proof-of-Ache)  
+**EMP**: Relational value (Proof-of-Being-Seen)
+
+See `DEPLOYMENT_SUMMARY.md` for complete details.
