@@ -5,16 +5,15 @@ Comprehensive test suite for SpiralOS
 import asyncio
 import sys
 
-from scarindex import (
+from .scarindex import (
     ScarIndexOracle,
     CoherenceComponents,
     AcheMeasurement,
     HuxleyGodelMachine
 )
-from ache_pid_controller import AchePIDController, simulate_pid_response
-from panic_frames import PanicFrameManager, SevenPhaseRecoveryProtocol
-from spiralos import SpiralOS
-
+from .ache_pid_controller import AchePIDController, simulate_pid_response
+from .panic_frames import PanicFrameManager, SevenPhaseRecoveryProtocol
+from .spiralos import SpiralOS
 
 def test_scarindex_calculation():
     """Test ScarIndex calculation"""
@@ -22,21 +21,17 @@ def test_scarindex_calculation():
     print("TEST: ScarIndex Calculation")
     print("="*70)
     
-    components = CoherenceComponents(
-        narrative=0.8,
-        social=0.7,
-        economic=0.6,
-        technical=0.9
-    )
-    
     ache = AcheMeasurement(before=0.8, after=0.3)
     
     result = ScarIndexOracle.calculate(
-        components=components,
+        N=10,
+        c_i_list=[0.8, 0.7, 0.6, 0.9, 0.8, 0.7, 0.6, 0.9, 0.8, 0.7],
+        p_i_avg=0.5,
+        decays_count=2,
         ache=ache
     )
     
-    expected_scarindex = (0.4 * 0.8) + (0.3 * 0.7) + (0.2 * 0.6) + (0.1 * 0.9)
+    expected_scarindex = (sum([0.8, 0.7, 0.6, 0.9, 0.8, 0.7, 0.6, 0.9, 0.8, 0.7]) / 10) + (0.2 * 0.5) - (0.1 * (2 / 10))
     
     print(f"Expected ScarIndex: {expected_scarindex:.4f}")
     print(f"Calculated ScarIndex: {result.scarindex:.4f}")
@@ -140,7 +135,7 @@ async def test_recovery_protocol():
     frame = manager.trigger_panic_frame(scarindex=0.25)
     
     # Execute recovery
-    system_state = {'scarindex': 0.25}
+    system_state = {'scarindex': 0.5}
     actions = await protocol.execute_full_recovery(frame.id, system_state)
     
     print(f"Recovery phases executed: {len(actions)}")

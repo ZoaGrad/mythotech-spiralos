@@ -18,27 +18,27 @@ from typing import Dict, Optional, List
 import asyncio
 from datetime import datetime
 
-from scarindex import (
+from .scarindex import (
     ScarIndexOracle,
     CoherenceComponents,
     AcheMeasurement
 )
-from panic_frames import (
+from .panic_frames import (
     PanicFrameManager,
     SevenPhaseRecoveryProtocol
 )
-from soc_pid_controller import SOCPIDController
-from holonic_muapp_stack import (
+from .soc_pid_controller import SOCPIDController
+from .holonic_muapp_stack import (
     HolonicMicroAppStack,
     HolonType,
     Residue
 )
-from f2_judges import (
+from .f2_judges import (
     JudicialSystem,
     JudgmentType,
     JudgePriority
 )
-from supabase_integration import SpiralOSBackend
+from .supabase_integration import SpiralOSBackend
 
 
 class SpiralOSv1_1:

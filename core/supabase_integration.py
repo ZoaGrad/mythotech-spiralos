@@ -15,9 +15,9 @@ from datetime import datetime
 import asyncio
 import httpx
 
-from scarindex import ScarIndexResult, CoherenceComponents, AcheMeasurement
-from panic_frames import PanicFrameEvent
-from ache_pid_controller import PIDState
+from .scarindex import ScarIndexResult, CoherenceComponents, AcheMeasurement, ScarIndexOracle
+from .panic_frames import PanicFrameEvent, PanicFrameManager
+from .ache_pid_controller import PIDState
 
 
 class SupabaseClient:
@@ -359,15 +359,17 @@ class SpiralOSBackend:
         )
         
         # 2. Calculate and store ScarIndex
-        from scarindex import ScarIndexOracle
-        
         ache_measurement = AcheMeasurement(
             before=ache_level,
             after=ache_level * 0.5  # Simplified transmutation
         )
         
+        c_i_list = [coherence_components.narrative, coherence_components.social, coherence_components.economic, coherence_components.technical]
         scarindex_result = ScarIndexOracle.calculate(
-            components=coherence_components,
+            N=len(c_i_list),
+            c_i_list=c_i_list,
+            p_i_avg=sum(c_i_list) / len(c_i_list),
+            decays_count=0,
             ache=ache_measurement
         )
         
@@ -401,8 +403,6 @@ class SpiralOSBackend:
         )
         
         # 5. Check for Panic Frame trigger
-        from panic_frames import PanicFrameManager
-        
         panic_manager = PanicFrameManager()
         if panic_manager.should_trigger(scarindex_result.scarindex):
             panic_frame = panic_manager.trigger_panic_frame(

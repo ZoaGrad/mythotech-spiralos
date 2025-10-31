@@ -46,20 +46,28 @@ class ResonanceEvent:
     peer_validations: int = 0
     consensus_reached: bool = False
     
-    def calculate_resonance_surplus(self) -> Decimal:
+    def calculate_resonance_surplus(self, attestors=0, pair_k=0) -> Decimal:
         """
-        Calculate Resonance Surplus (ρ_Σ)
-        
-        ρ_Σ = (semantic_alignment + emotional_resonance + contextual_depth) / 3
-        
-        Returns:
-            Resonance Surplus value (0-1)
+        Calculates Resonance Surplus (rho_sigma) using Geometric Mean (Rec. 1.1)
+        and applies pair-wise decay (Rec. A6) to suppress low-effort signaling.
         """
-        return (
-            self.semantic_alignment +
-            self.emotional_resonance +
-            self.contextual_depth
-        ) / Decimal('3')
+        # Constants from v2.1 VaultNode
+        TAU_RHO_DECAY = 0.80
+        RHO_MINT_THRESHOLD = 0.50
+
+        if attestors < 2 or self.semantic_alignment < Decimal('0.001'):
+             return Decimal('0.0') # AMM Oracle failure or min threshold not met
+
+        # I1: Geometric Mean for balanced contribution (penalizes zero-scores)
+        base_rho = (self.semantic_alignment * self.emotional_resonance * self.contextual_depth) ** (Decimal('1')/Decimal('3'))
+
+        # A6: Apply pair-wise decay (tau_rho^k)
+        marginal_rho = base_rho * (Decimal(str(TAU_RHO_DECAY)) ** pair_k)
+
+        if marginal_rho < Decimal(str(RHO_MINT_THRESHOLD)):
+            return Decimal('0.0')
+
+        return marginal_rho
     
     def to_dict(self) -> Dict:
         return {
@@ -252,7 +260,7 @@ class EmpathyMarket:
             True if validation passed
         """
         # Check minimum resonance surplus
-        resonance_surplus = event.calculate_resonance_surplus()
+        resonance_surplus = event.calculate_resonance_surplus(len(peer_validations), 2)
         if resonance_surplus < self.min_resonance_surplus:
             return False
         
@@ -286,7 +294,7 @@ class EmpathyMarket:
             return None
         
         # Calculate EMP value
-        resonance_surplus = resonance_event.calculate_resonance_surplus()
+        resonance_surplus = resonance_event.calculate_resonance_surplus(len(peer_validations), 2)
         emp_value = resonance_surplus * self.multiplier
         
         # Create token
@@ -352,6 +360,36 @@ class EmpathyMarket:
         }
 
 
+# Constants for w_i calculation
+DWELL_MAX_CYCLES = 20
+DIVERSITY_PENALTY_WEIGHT = 0.5
+
+def compute_influence_factor(agent_state):
+    """
+    Calculates the orthogonal influence factor (w_i) based on sustained relational merit.
+    (Rec. 1.2: Decoupling from pure c_i)
+    """
+    time_in_tier = agent_state['time_in_tier']
+    verified_pobs = agent_state['verified_pobs_count']
+    total_interactions = agent_state['total_interactions']
+
+    # Orthogonal Term 1: Sustained Tier Merit (capped at 20 cycles)
+    time_factor = min(time_in_tier, DWELL_MAX_CYCLES) / DWELL_MAX_CYCLES
+
+    # Orthogonal Term 2: Relational Diversity/History
+    history_factor = verified_pobs / max(1, total_interactions) # Avoid division by zero
+
+    # Diversity Adjustment (using cosine similarity of interaction vectors)
+    # Penalizes agents who only interact with similar profiles (high cos_sim)
+    cos_sim_avg = agent_state.get('relational_cos_sim_avg', 0.8) # Placeholder for graph metric
+    diversity_adjust = 1.0 - cos_sim_avg # Diversity is high if cos_sim is low (close to 0)
+
+    # w_i is a weighted average of orthogonal factors
+    w_i = (0.5 * time_factor) + (0.5 * history_factor * diversity_adjust)
+
+    return min(w_i, 1.0) # Cap at 1.0
+
+
 # Example usage
 def example_empathy_market():
     """Example of Empathy Market"""
@@ -383,7 +421,7 @@ def example_empathy_market():
         contextual_depth=Decimal('0.75')
     )
     
-    resonance_surplus = event.calculate_resonance_surplus()
+    resonance_surplus = event.calculate_resonance_surplus(2, 2)
     print(f"Speaker: {event.speaker_id}")
     print(f"Listener: {event.listener_id}")
     print(f"Semantic Alignment: {event.semantic_alignment}")
