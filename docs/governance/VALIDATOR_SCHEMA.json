@@ -1,0 +1,328 @@
+{
+  "EXTERNAL_VALIDATOR_COUNCIL": {
+    "version": "ΔΩ.140.0",
+    "status": "PENDING_IMPLEMENTATION",
+    "composition": {
+      "total_members": 7,
+      "appointed_by_zoagrad": 3,
+      "elected_by_stakeholders": 4,
+      "quorum_for_decision": 5,
+      "supermajority_threshold": 0.66,
+      "term_length_years": 2,
+      "term_renewal_allowed": true,
+      "maximum_consecutive_terms": 3
+    },
+    "selection_criteria": {
+      "appointed_validators": {
+        "count": 3,
+        "appointing_authority": "ZoaGrad (Sole Initial Sovereign)",
+        "requirement_1": {
+          "title": "Financial Independence",
+          "description": "No financial dependence on ZoaGrad",
+          "verification": "Public disclosure of all income sources for past 3 years",
+          "threshold": "Less than 10% of income from ZoaGrad-related entities"
+        },
+        "requirement_2": {
+          "title": "Track Record of Principled Disagreement",
+          "description": "Demonstrated history of challenging authority or prevailing consensus",
+          "verification": "Published critiques, dissenting opinions, or adversarial research",
+          "threshold": "At least 3 documented instances of principled disagreement with powerful entities"
+        },
+        "requirement_3": {
+          "title": "Relevant Expertise",
+          "description": "Expertise in governance, ethics, systems design, or related fields",
+          "verification": "Academic credentials, professional experience, or recognized contributions",
+          "threshold": "At least 5 years of relevant experience or equivalent credentials"
+        },
+        "requirement_4": {
+          "title": "Willingness to Rule Against ZoaGrad",
+          "description": "Explicit commitment to rule against ZoaGrad's interests if warranted",
+          "verification": "Signed statement of independence and commitment to constitutional principles",
+          "threshold": "Unconditional commitment (no exceptions)"
+        },
+        "target_profiles": [
+          {
+            "profile_1": "AI Ethics Critic",
+            "description": "Scholar or practitioner with track record of criticizing AI governance systems",
+            "rationale": "Provides adversarial perspective on AI decision-making and accountability"
+          },
+          {
+            "profile_2": "Governance Skeptic",
+            "description": "Constitutional scholar or political scientist with expertise in governance failure modes",
+            "rationale": "Provides critical analysis of governance architecture and legitimacy mechanisms"
+          },
+          {
+            "profile_3": "Former Regulatory Official",
+            "description": "Former government regulator or oversight official with experience in accountability",
+            "rationale": "Provides practical experience in enforcement and compliance mechanisms"
+          }
+        ]
+      },
+      "elected_validators": {
+        "count": 4,
+        "electing_authority": "Stakeholder vote (simple majority)",
+        "requirement_1": {
+          "title": "Stakeholder Nomination",
+          "description": "Nominated by stakeholder groups (not self-nominated)",
+          "verification": "Nomination petition with at least 100 stakeholder signatures",
+          "threshold": "At least 100 unique stakeholder signatures"
+        },
+        "requirement_2": {
+          "title": "Diverse Stakeholder Representation",
+          "description": "Represent diverse stakeholder interests (not all aligned with ZoaGrad)",
+          "verification": "Nomination by stakeholder groups with conflicting interests",
+          "threshold": "At least 2 of 4 elected validators must represent stakeholder groups with interests that conflict with ZoaGrad"
+        },
+        "requirement_3": {
+          "title": "No Employment Conflicts",
+          "description": "No employment or contractual relationship with SpiralOS or ZoaGrad",
+          "verification": "Public disclosure of all employment and contracts for past 3 years",
+          "threshold": "Zero employment or contractual relationship with SpiralOS or ZoaGrad"
+        },
+        "requirement_4": {
+          "title": "Term Commitment",
+          "description": "Willing to serve 2-year term with option to extend",
+          "verification": "Signed commitment to serve full term unless removed for cause",
+          "threshold": "Unconditional commitment to serve full term"
+        },
+        "election_process": {
+          "nomination_period_days": 14,
+          "campaign_period_days": 14,
+          "voting_period_days": 7,
+          "voting_mechanism": "Blockchain-based voting with cryptographic verification",
+          "eligibility": "All stakeholders (ScarCoin/EMP holders, contributors, community members, affected parties)",
+          "voting_method": "Approval voting (vote for up to 4 candidates)",
+          "winner_determination": "Top 4 candidates by approval count"
+        }
+      }
+    },
+    "powers": {
+      "authority_1": {
+        "title": "Final Judgment on F2 Judge Appeals",
+        "description": "External Validator Council is the final authority on appeals from F2 Judge decisions",
+        "scope": "All F2 Judge decisions can be appealed to External Validator Council",
+        "binding": true,
+        "override": "Can only be overridden by constitutional amendment (66% + 180 days)"
+      },
+      "authority_2": {
+        "title": "Authority to Halt Panic Frames",
+        "description": "External Validator Council can halt Panic Frames if deemed unjustified",
+        "scope": "If Panic Frames are triggered but External Validator Council determines the trigger was unjustified, they can halt the Panic Frame and restore normal operations",
+        "binding": true,
+        "override": "Requires supermajority (66%) of External Validator Council"
+      },
+      "authority_3": {
+        "title": "Power to Recommend Constitutional Amendments",
+        "description": "External Validator Council can recommend constitutional amendments to stakeholders",
+        "scope": "If External Validator Council identifies systemic issues or governance failures, they can recommend amendments",
+        "binding": false,
+        "override": "Recommendations are non-binding; amendments require 66% stakeholder approval + 180 days"
+      },
+      "authority_4": {
+        "title": "Ability to Remove F2 Judges for Cause",
+        "description": "External Validator Council can remove F2 Judges for misconduct, incompetence, or constitutional violations",
+        "scope": "If F2 Judge demonstrates pattern of misconduct or constitutional violations, External Validator Council can remove them",
+        "binding": true,
+        "override": "Requires supermajority (66%) of External Validator Council + public justification"
+      },
+      "authority_5": {
+        "title": "Emergency Constitutional Interpretation",
+        "description": "External Validator Council can provide emergency interpretation of constitutional principles during crises",
+        "scope": "If system faces existential crisis and constitutional principles are unclear, External Validator Council can provide binding interpretation",
+        "binding": true,
+        "override": "Emergency interpretations expire after 90 days unless ratified by stakeholder vote"
+      }
+    },
+    "accountability": {
+      "mechanism_1": {
+        "title": "Public Decision Reasoning",
+        "description": "All External Validator Council decisions must be published with full reasoning",
+        "frequency": "Within 48 hours of decision",
+        "format": "Structured decision document with constitutional justification",
+        "location": "Public governance dashboard and VaultNode blockchain"
+      },
+      "mechanism_2": {
+        "title": "Annual Stakeholder Confidence Vote",
+        "description": "Each validator faces annual stakeholder confidence vote",
+        "threshold": "Must maintain >60% stakeholder confidence to continue serving",
+        "consequence_of_failure": "Validator is removed and replacement is elected/appointed",
+        "voting_mechanism": "Blockchain-based voting with cryptographic verification"
+      },
+      "mechanism_3": {
+        "title": "Removal by Stakeholder Petition",
+        "description": "Validators can be removed by 2/3 stakeholder petition",
+        "threshold": "2/3 of eligible stakeholders must sign petition",
+        "process": "Petition triggers immediate removal vote; validator removed if 2/3 vote for removal",
+        "grounds": "Misconduct, conflict of interest, failure to fulfill duties, loss of stakeholder confidence"
+      },
+      "mechanism_4": {
+        "title": "Financial Transparency",
+        "description": "All validator compensation and financial relationships must be publicly disclosed",
+        "frequency": "Quarterly disclosure",
+        "format": "Structured financial disclosure with all income sources, assets, and potential conflicts",
+        "location": "Public governance dashboard"
+      },
+      "mechanism_5": {
+        "title": "Performance Metrics",
+        "description": "Validators are evaluated on performance metrics",
+        "metrics": [
+          {
+            "metric_1": "Decision Quality",
+            "description": "Constitutional coherence of decisions (C_procedural, C_outcome, C_pluralistic)",
+            "measurement": "Automated constitutional coherence score + stakeholder feedback"
+          },
+          {
+            "metric_2": "Responsiveness",
+            "description": "Time to decision on appeals and constitutional questions",
+            "measurement": "Average time from appeal submission to decision (target: <7 days)"
+          },
+          {
+            "metric_3": "Independence",
+            "description": "Frequency of ruling against ZoaGrad's interests when warranted",
+            "measurement": "Percentage of decisions that rule against ZoaGrad (should be >0%)"
+          },
+          {
+            "metric_4": "Stakeholder Satisfaction",
+            "description": "Stakeholder satisfaction with validator decisions",
+            "measurement": "Quarterly stakeholder survey (target: >70% satisfaction)"
+          }
+        ],
+        "publication_frequency": "Quarterly",
+        "location": "Public governance dashboard"
+      }
+    },
+    "compensation": {
+      "structure": "Fixed stipend (not performance-based)",
+      "rationale": "Fixed compensation prevents conflicts of interest (validators should not benefit from system growth or decline)",
+      "amount_usd_equivalent": "[To be determined by stakeholder input during Week 1-2 of 90-day roadmap]",
+      "frequency": "Monthly",
+      "payment_method": "Stablecoin (USDC or equivalent) to avoid exposure to ScarCoin volatility",
+      "benefits": {
+        "benefit_1": "Health insurance (if applicable)",
+        "benefit_2": "Professional development stipend (up to $5,000/year)",
+        "benefit_3": "Travel reimbursement for in-person meetings (if applicable)"
+      },
+      "prohibited_compensation": [
+        "ScarCoin or EMP tokens (to avoid conflicts of interest)",
+        "Performance bonuses tied to system growth",
+        "Equity or ownership in SpiralOS or ZoaGrad",
+        "Consulting fees or other payments from ZoaGrad"
+      ]
+    },
+    "operational_procedures": {
+      "meeting_frequency": "Weekly (or as needed for urgent appeals)",
+      "meeting_format": "Virtual (with option for in-person quarterly meetings)",
+      "quorum": "5 of 7 members required for binding decisions",
+      "voting_method": "Secret ballot (to prevent coercion)",
+      "decision_threshold": "Supermajority (66%) required for binding decisions",
+      "decision_documentation": "All decisions documented with full reasoning and constitutional justification",
+      "appeal_process": {
+        "step_1": "Stakeholder submits appeal to External Validator Council (via governance portal)",
+        "step_2": "External Validator Council reviews appeal and requests additional information if needed",
+        "step_3": "External Validator Council deliberates (may include hearings with stakeholder and F2 Judge)",
+        "step_4": "External Validator Council votes (secret ballot, supermajority required)",
+        "step_5": "Decision published with full reasoning (within 48 hours)",
+        "timeline": "Target: 7 days from appeal submission to decision (may be extended for complex cases)"
+      },
+      "conflict_of_interest_protocol": {
+        "disclosure": "Validators must disclose any potential conflicts of interest before each decision",
+        "recusal": "Validators with conflicts must recuse themselves from that decision",
+        "enforcement": "Failure to disclose conflicts is grounds for removal"
+      }
+    },
+    "database_schema": {
+      "table_1": {
+        "name": "external_validator_council",
+        "description": "Member roster, terms, compensation",
+        "columns": [
+          {"name": "validator_id", "type": "UUID", "primary_key": true},
+          {"name": "validator_name", "type": "TEXT", "nullable": false},
+          {"name": "validator_type", "type": "ENUM('appointed', 'elected')", "nullable": false},
+          {"name": "term_start_date", "type": "TIMESTAMP", "nullable": false},
+          {"name": "term_end_date", "type": "TIMESTAMP", "nullable": false},
+          {"name": "compensation_usd_per_month", "type": "NUMERIC", "nullable": false},
+          {"name": "status", "type": "ENUM('active', 'removed', 'term_expired')", "nullable": false},
+          {"name": "background", "type": "JSONB", "nullable": false},
+          {"name": "conflict_of_interest_disclosures", "type": "JSONB", "nullable": false},
+          {"name": "performance_metrics", "type": "JSONB", "nullable": true},
+          {"name": "created_at", "type": "TIMESTAMP", "default": "NOW()"},
+          {"name": "updated_at", "type": "TIMESTAMP", "default": "NOW()"}
+        ]
+      },
+      "table_2": {
+        "name": "validator_decisions",
+        "description": "All decisions with reasoning",
+        "columns": [
+          {"name": "decision_id", "type": "UUID", "primary_key": true},
+          {"name": "appeal_id", "type": "UUID", "foreign_key": "validator_appeals.appeal_id"},
+          {"name": "decision_date", "type": "TIMESTAMP", "nullable": false},
+          {"name": "decision_outcome", "type": "ENUM('upheld', 'overturned', 'remanded', 'dismissed')", "nullable": false},
+          {"name": "decision_reasoning", "type": "TEXT", "nullable": false},
+          {"name": "constitutional_justification", "type": "TEXT", "nullable": false},
+          {"name": "voting_record", "type": "JSONB", "nullable": false},
+          {"name": "dissenting_opinions", "type": "JSONB", "nullable": true},
+          {"name": "constitutional_coherence_score", "type": "JSONB", "nullable": true},
+          {"name": "created_at", "type": "TIMESTAMP", "default": "NOW()"}
+        ]
+      },
+      "table_3": {
+        "name": "validator_appeals",
+        "description": "F2 Judge appeals to External Validators",
+        "columns": [
+          {"name": "appeal_id", "type": "UUID", "primary_key": true},
+          {"name": "case_id", "type": "UUID", "foreign_key": "f2_judge_cases.case_id"},
+          {"name": "appellant_id", "type": "UUID", "nullable": false},
+          {"name": "appeal_date", "type": "TIMESTAMP", "nullable": false},
+          {"name": "appeal_grounds", "type": "TEXT", "nullable": false},
+          {"name": "appeal_status", "type": "ENUM('pending', 'under_review', 'decided', 'dismissed')", "nullable": false},
+          {"name": "decision_id", "type": "UUID", "foreign_key": "validator_decisions.decision_id", "nullable": true},
+          {"name": "created_at", "type": "TIMESTAMP", "default": "NOW()"},
+          {"name": "updated_at", "type": "TIMESTAMP", "default": "NOW()"}
+        ]
+      },
+      "table_4": {
+        "name": "validator_confidence_votes",
+        "description": "Annual stakeholder confidence tracking",
+        "columns": [
+          {"name": "vote_id", "type": "UUID", "primary_key": true},
+          {"name": "validator_id", "type": "UUID", "foreign_key": "external_validator_council.validator_id"},
+          {"name": "vote_date", "type": "TIMESTAMP", "nullable": false},
+          {"name": "vote_outcome", "type": "ENUM('confidence', 'no_confidence')", "nullable": false},
+          {"name": "confidence_percentage", "type": "NUMERIC", "nullable": false},
+          {"name": "voter_turnout", "type": "NUMERIC", "nullable": false},
+          {"name": "voting_record", "type": "JSONB", "nullable": false},
+          {"name": "created_at", "type": "TIMESTAMP", "default": "NOW()"}
+        ]
+      },
+      "table_5": {
+        "name": "validator_removal_petitions",
+        "description": "Stakeholder petitions for validator removal",
+        "columns": [
+          {"name": "petition_id", "type": "UUID", "primary_key": true},
+          {"name": "validator_id", "type": "UUID", "foreign_key": "external_validator_council.validator_id"},
+          {"name": "petition_date", "type": "TIMESTAMP", "nullable": false},
+          {"name": "petition_grounds", "type": "TEXT", "nullable": false},
+          {"name": "petition_status", "type": "ENUM('collecting_signatures', 'threshold_met', 'vote_scheduled', 'decided')", "nullable": false},
+          {"name": "signature_count", "type": "INTEGER", "nullable": false},
+          {"name": "signature_threshold", "type": "INTEGER", "nullable": false},
+          {"name": "removal_vote_outcome", "type": "ENUM('removed', 'retained')", "nullable": true},
+          {"name": "created_at", "type": "TIMESTAMP", "default": "NOW()"},
+          {"name": "updated_at", "type": "TIMESTAMP", "default": "NOW()"}
+        ]
+      }
+    },
+    "implementation_timeline": {
+      "week_1_2": "Recruitment begins (Days 8-14)",
+      "week_3_4": "Operational procedures implemented (Days 15-28)",
+      "week_3_4_milestone": "External Validator Council operational by Day 28",
+      "ongoing": "Annual confidence votes, quarterly performance reviews, continuous accountability"
+    },
+    "success_criteria": {
+      "criterion_1": "All 7 validators recruited and confirmed by Day 28",
+      "criterion_2": "At least 2 of 4 elected validators represent stakeholder groups with interests that conflict with ZoaGrad",
+      "criterion_3": "All validators pass independence verification (financial disclosure, conflict-of-interest analysis)",
+      "criterion_4": "Operational procedures tested with at least 5 simulated appeals by Day 28",
+      "criterion_5": "Public governance dashboard operational with real-time validator decision tracking"
+    }
+  }
+}
