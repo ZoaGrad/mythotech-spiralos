@@ -14,6 +14,7 @@ import hashlib
 import json
 from datetime import datetime
 import uuid
+from .panic_frames import log_event, trigger_panic_frames
 
 
 @dataclass
@@ -114,7 +115,10 @@ class ScarIndexOracle:
     @classmethod
     def calculate(
         cls,
-        components: CoherenceComponents,
+        N: int,
+        c_i_list: list,
+        p_i_avg: float,
+        decays_count: int,
         ache: AcheMeasurement,
         cmp_lineage: Optional[float] = None,
         metadata: Optional[Dict] = None
@@ -132,12 +136,7 @@ class ScarIndexOracle:
             ScarIndexResult with complete calculation
         """
         # Calculate weighted composite score
-        scarindex = (
-            cls.WEIGHTS['narrative'] * components.narrative +
-            cls.WEIGHTS['social'] * components.social +
-            cls.WEIGHTS['economic'] * components.economic +
-            cls.WEIGHTS['technical'] * components.technical
-        )
+        scarindex = compute_global_coherence(N, c_i_list, p_i_avg, decays_count)
         
         # Validate transmutation
         is_valid = ache.is_valid_transmutation
@@ -146,7 +145,12 @@ class ScarIndexOracle:
         result = ScarIndexResult(
             id=str(uuid.uuid4()),
             timestamp=datetime.utcnow(),
-            components=components,
+            components=CoherenceComponents(
+                narrative=0.0,
+                social=0.0,
+                economic=0.0,
+                technical=0.0
+            ),
             scarindex=scarindex,
             ache=ache,
             is_valid=is_valid,
@@ -334,22 +338,69 @@ class ARIAGraphOfThought:
         }
 
 
+# Constants from v2.1 VaultNode
+COHERENCE_TARGET_CT = 0.67
+P_I_WEIGHT = 0.2
+DECAY_PENALTY_WEIGHT = 0.1
+
+def compute_global_coherence(N, c_i_list, p_i_avg, decays_count):
+    """
+    Computes the final auditable Global Coherence metric (C_t).
+    Formula: C_t = (1/N) Σ c_i + 0.2 * \bar{p_i} - 0.1 * (decays/N)
+    """
+    # Term 1: Operational Coherence (Average individual efficacy)
+    operational_coherence = sum(c_i_list) / N
+
+    # Term 2: Audit Momentum (Weighted average promotion probability)
+    audit_momentum = P_I_WEIGHT * p_i_avg
+
+    # Term 3: Drag Penalty (Decay/Entropy)
+    drag_penalty = DECAY_PENALTY_WEIGHT * (decays_count / N)
+
+    C_t = operational_coherence + audit_momentum - drag_penalty
+
+    # Check Invariant: Must hold C_t >= 0.67
+    if C_t < COHERENCE_TARGET_CT:
+        log_event('CRITICAL', f'C_t breach: {C_t:.3f} < {COHERENCE_TARGET_CT}')
+        trigger_panic_frames()
+
+    return C_t
+
+# Constants from v2.1 VaultNode
+RECIPROCAL_PENALTY_GAMMA = 0.15
+COLLUSION_DENSITY_THRESHOLD = 0.60
+
+def apply_arbitrage_penalty(agent, rho_attempt, is_reciprocal_pair, cluster_density):
+    """
+    Applies the gamma_recip penalty when collusion is detected (A7 control).
+    This penalty is an increase in Residual Ache (A_i).
+    """
+    # Check 1: Must be reciprocal and attempting high density
+    if is_reciprocal_pair and cluster_density >= COLLUSION_DENSITY_THRESHOLD:
+        # Check 2: Must fail external quorum (q_out < 0.30 logic implicitly handles this)
+
+        # A7: Penalty is based on the attempted merit (rho_attempt)
+        ache_increase = RECIPROCAL_PENALTY_GAMMA * rho_attempt
+
+        agent.A_i += ache_increase
+        log_event('FLAG_A7_ARBITRAGE', f'Agent {agent.id} penalized {ache_increase:.3f} Ache.')
+
+        # This drag will now be reflected in the next cycle's p_i calculation
+        return True
+    return False
+
 if __name__ == '__main__':
     # Example usage
-    components = CoherenceComponents(
-        narrative=0.8,
-        social=0.7,
-        economic=0.6,
-        technical=0.9
-    )
-    
     ache = AcheMeasurement(
         before=0.8,
         after=0.3
     )
     
     result = ScarIndexOracle.calculate(
-        components=components,
+        N=10,
+        c_i_list=[0.8, 0.7, 0.6, 0.9, 0.8, 0.7, 0.6, 0.9, 0.8, 0.7],
+        p_i_avg=0.5,
+        decays_count=2,
         ache=ache,
         cmp_lineage=1.5,
         metadata={'source': 'example'}
