@@ -202,7 +202,7 @@ Provide a JSON response with:
                 start = output_text.find('{')
                 if start != -1:
                     brace_count = 0
-                    end = start
+                    end = -1
                     for i in range(start, len(output_text)):
                         if output_text[i] == '{':
                             brace_count += 1
@@ -212,7 +212,7 @@ Provide a JSON response with:
                                 end = i + 1
                                 break
                     
-                    if brace_count == 0:
+                    if end != -1 and brace_count == 0:
                         try:
                             output = json.loads(output_text[start:end])
                         except json.JSONDecodeError:
