@@ -330,29 +330,46 @@ class OracleCouncil:
         
         # Check if we have exactly 3-of-5 (requires arbitration)
         if total_approvals == 3:
-            # External validator must arbitrate
-            external_voted = any(
-                self.oracles[oid].provider == "external_validator"
-                for oid in votes.keys()
-                if oid in self.oracles
+            # Check if external validator participated in the vote
+            external_oracle = next(
+                (o for o in self.oracles.values() if o.provider == "external_validator"),
+                None
             )
             
+            if external_oracle is None:
+                # No external validator exists (shouldn't happen)
+                return (
+                    False,
+                    "3-of-5 split but external validator not available",
+                    True
+                )
+            
+            # Check if external validator voted
+            external_voted = external_oracle.id in votes
+            
             if not external_voted:
+                # External validator hasn't voted yet - requires arbitration
                 return (
                     False,
                     "3-of-5 split requires external validator arbitration",
                     True
                 )
             
-            # If external validator already voted and we have 3, check if it's in approval
-            external_oracle = next(
-                (o for o in self.oracles.values() if o.provider == "external_validator"),
-                None
-            )
-            if external_oracle and votes.get(external_oracle.id):
+            # External validator has voted
+            external_approved = votes.get(external_oracle.id, False)
+            
+            if external_approved:
+                # External validator approved (making it 3-of-5 with arbitrator approval)
                 return (
                     True,
                     "3-of-5 with external validator arbitration approved",
+                    False
+                )
+            else:
+                # External validator rejected
+                return (
+                    False,
+                    "3-of-5 with external validator arbitration rejected",
                     False
                 )
         
