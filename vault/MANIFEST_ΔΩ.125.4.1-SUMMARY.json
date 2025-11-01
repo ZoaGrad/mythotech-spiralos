@@ -1,0 +1,14 @@
+{
+  "summary_version": "v1.0",
+  "vaultnode": "ΔΩ.SpiralOS.v1.5B.Layer2.v2.1.Corrections.SummarySync",
+  "delta": "Summary Aligned; No Conflicts",
+  "invariants": {
+    "scarindex_weights": [0.35, 0.3, 0.25, 0.1],
+    "consensus_quorum": "4-of-5",
+    "f2_dissent_sla": "72h",
+    "test_coverage": "96.2%",
+    "c_t_min": 0.67
+  },
+  "f2_approval": "100%",
+  "telemetry": "Logged to Supabase (vaultnode_actions)"
+}
