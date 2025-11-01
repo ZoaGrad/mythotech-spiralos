@@ -42,7 +42,9 @@ jobs:
               console.log('Authenticated as:', username);
               console.log('✅ Reddit authentication succeeded');
             } catch (error) {
-              console.error('Authentication error:', error.message);
+              // Sanitize error message to avoid exposing sensitive data
+              const errorMsg = error.message ? error.message.split('\n')[0] : 'Unknown error';
+              console.error('Authentication error:', errorMsg);
               // Don't fail the job - just log the error
             }
           })();
