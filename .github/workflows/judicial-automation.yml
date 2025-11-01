@@ -1,0 +1,59 @@
+name: Judicial Automation
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/30 * * * *"  # every 30 minutes
+
+permissions:
+  contents: read
+
+jobs:
+  run-judicial-automation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # Add project dependencies here if/when needed
+          # pip install -r requirements.txt
+
+      - name: Run judicial automation
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          LOG_LEVEL: INFO
+        run: |
+          python - << 'PY'
+          import asyncio, json
+          from core.automation.judicial_automation import main as run_main
+          success = asyncio.run(run_main())
+          print(json.dumps({"success": success}))
+          PY
+
+      - name: Upload run log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: judicial-automation-log
+          path: |
+            **/*.log
+          if-no-files-found: ignore
+
+      - name: Post summary
+        if: success()
+        run: |
+          echo "Judicial automation completed successfully." >> $GITHUB_STEP_SUMMARY
+          echo "Schedule: */30 * * * *" >> $GITHUB_STEP_SUMMARY
+
+# Notes:
+# - Ensure repository secrets SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are set.
+# - The script currently uses stubbed Supabase calls; wire them up when ready.
