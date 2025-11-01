@@ -1,4 +1,5 @@
 """Status Report Automation.
+
 Generates a consolidated status report from Supabase data including:
 - Judge workloads and availability
 - Case assignment stats
@@ -18,7 +19,7 @@ import logging
 import sys
 from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional
-from supabase import create_client, Client
+from supabase import create_client
 
 # Configure logging
 logging.basicConfig(
@@ -26,6 +27,7 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 log = logging.getLogger(__name__)
+
 
 class StatusReportGenerator:
     """Generates consolidated status reports from Supabase data."""
@@ -42,7 +44,7 @@ class StatusReportGenerator:
             sys.exit(1)
         
         try:
-            self.supabase: Client = create_client(
+            self.supabase = create_client(
                 self.supabase_url,
                 self.supabase_key
             )
@@ -249,6 +251,7 @@ class StatusReportGenerator:
         
         return report
 
+
 def main(out_path: Optional[str] = None) -> int:
     """Main entry point for status report generation.
     
@@ -277,6 +280,7 @@ def main(out_path: Optional[str] = None) -> int:
     except Exception as e:
         log.exception('Status report generation failed')
         return 1
+
 
 if __name__ == '__main__':
     import argparse
