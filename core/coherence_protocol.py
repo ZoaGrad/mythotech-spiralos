@@ -163,19 +163,32 @@ Provide a JSON response with:
             if self.anthropic_client is None:
                 raise ValueError("Anthropic client not initialized. Install anthropic package and set ANTHROPIC_API_KEY.")
             
+            # For Anthropic, we need to explicitly request JSON in the prompt
+            anthropic_user_prompt = user_prompt + "\n\nIMPORTANT: Respond ONLY with valid JSON. Do not include any explanation or text outside the JSON object."
+            
             response = self.anthropic_client.messages.create(
                 model=provider.value,
                 max_tokens=1024,
                 temperature=0.1,
                 system=system_prompt,
                 messages=[
-                    {"role": "user", "content": user_prompt}
+                    {"role": "user", "content": anthropic_user_prompt}
                 ]
             )
             
-            # Parse the Anthropic response
+            # Parse the Anthropic response with error handling
             output_text = response.content[0].text
-            output = json.loads(output_text)
+            try:
+                output = json.loads(output_text)
+            except json.JSONDecodeError as e:
+                # If JSON parsing fails, try to extract JSON from the response
+                # This handles cases where the model includes extra text
+                import re
+                json_match = re.search(r'\{.*\}', output_text, re.DOTALL)
+                if json_match:
+                    output = json.loads(json_match.group())
+                else:
+                    raise ValueError(f"Failed to parse JSON from Anthropic response: {output_text[:200]}...") from e
         else:
             # Use OpenAI API for all other providers
             response = self.openai_client.chat.completions.create(
