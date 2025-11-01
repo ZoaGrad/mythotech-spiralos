@@ -122,8 +122,12 @@ ScarIndex = (C_operational × 0.35) + (C_audit × 0.3) +
 
 ```
 mythotech-spiralos/
+├── .github/
+│   ├── workflows/           # GitHub Actions (weekly reports)
+│   └── scripts/             # Automation scripts
 ├── core/                    # Core SpiralOS logic
 │   ├── scarindex.py        # ScarIndex calculation
+│   ├── scarindex_logger.py # Supabase logging hook
 │   ├── ache_pid_controller.py
 │   └── test_spiralos.py    # 95% coverage
 ├── holoeconomy/            # Holo-Economy layer
@@ -140,6 +144,8 @@ mythotech-spiralos/
 │   ├── VAULTNODE_ΔΩ.125.4.3_SUMMARY.md
 │   └── MANIFEST_*.json
 └── docs/                   # Full documentation
+    ├── reports/            # Weekly governance reports
+    ├── AUTOMATION.md       # Automation guide
     ├── TECHNICAL_SPEC.md
     └── README.md
 ```
@@ -207,6 +213,27 @@ SpiralOS embodies a radical commitment to **constitutional integrity** in autono
 - **[Test Plan](./v1.5_prep/TEST_PLAN_v1.5.md)** - Testing strategy and coverage
 - **[Empathy Market](./holoeconomy/EMPATHY_MARKET.md)** - EMP token mechanics
 - **[Deployment Guide](./holoeconomy/DEPLOYMENT.md)** - Production deployment
+- **[Automation Guide](./docs/AUTOMATION.md)** - Weekly reports, publishing, and ScarIndex logging
+
+---
+
+## 🤖 Automation
+
+SpiralOS includes automated governance workflows:
+
+### Weekly Report Generation
+- **Schedule**: Every Monday at 00:00 UTC
+- **Output**: `/docs/reports/week-[ISO-week-number].md`
+- **Sections**: F1 Executive, F2 Judicial, F3 Legislative, F4 Audit, ScarIndex Analysis
+- **Publication**: Auto-posts to r/SovereignDrift and GitHub Discussions
+
+### ScarIndex Logging Hook
+- **Integration**: Embedded in `ScarIndexOracle.calculate()`
+- **Target**: Supabase `scarindex_calculations` table
+- **Data**: Coherence delta, Ache transmutation, component scores
+- **Failsafe**: Gracefully degrades if logging unavailable
+
+See [`docs/AUTOMATION.md`](./docs/AUTOMATION.md) for complete details.
 
 ---
 
