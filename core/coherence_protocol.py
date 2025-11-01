@@ -12,16 +12,29 @@ Component Flow:
 4. Ledger Anchor: Final verified state commits to Smart Contracts (C2) and Supabase (C6)
 """
 
-from dataclasses import dataclass
-from typing import List, Dict, Optional, Tuple
-from enum import Enum
+# Standard library imports
+import asyncio
 import hashlib
 import json
-from datetime import datetime
-import uuid
-import asyncio
-from openai import OpenAI
 import os
+import uuid
+from dataclasses import dataclass
+from datetime import datetime
+from enum import Enum
+from typing import List, Dict, Optional, Tuple
+
+# Third-party imports
+from openai import OpenAI
+
+# Optional third-party imports
+try:
+    from anthropic import Anthropic
+    ANTHROPIC_AVAILABLE = True
+except ImportError:
+    ANTHROPIC_AVAILABLE = False
+
+# Constants
+ANTHROPIC_JSON_INSTRUCTION = "\n\nIMPORTANT: Respond ONLY with valid JSON. Do not include any explanation or text outside the JSON object."
 
 
 class LLMProvider(Enum):
@@ -113,18 +126,16 @@ class DistributedCoherenceProtocol:
         self.total_providers = total_providers
         self.openai_client = OpenAI()  # API key pre-configured in environment
         
-        # Initialize Anthropic client if API key is available
-        try:
-            # Import anthropic only if needed to avoid hard dependency
-            from anthropic import Anthropic
-            self.anthropic_client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
-        except ImportError:
-            # If anthropic package not installed, set to None
-            # Claude Sonnet 4 will fail gracefully if selected
-            self.anthropic_client = None
-        except (TypeError, ValueError):
-            # If API key not set or invalid, set to None
-            # Claude Sonnet 4 will fail gracefully if selected
+        # Initialize Anthropic client if available and API key is set
+        if ANTHROPIC_AVAILABLE:
+            try:
+                self.anthropic_client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+            except (TypeError, ValueError):
+                # If API key not set or invalid, set to None
+                # Claude Sonnet 4 will fail gracefully if selected
+                self.anthropic_client = None
+        else:
+            # Anthropic package not installed
             self.anthropic_client = None
     
     async def analyze_ache_with_provider(
@@ -168,7 +179,7 @@ Provide a JSON response with:
                 raise ValueError("Anthropic client not initialized. Install anthropic package and set ANTHROPIC_API_KEY.")
             
             # For Anthropic, we need to explicitly request JSON in the prompt
-            anthropic_user_prompt = user_prompt + "\n\nIMPORTANT: Respond ONLY with valid JSON. Do not include any explanation or text outside the JSON object."
+            anthropic_user_prompt = user_prompt + ANTHROPIC_JSON_INSTRUCTION
             
             response = self.anthropic_client.messages.create(
                 model=provider.value,

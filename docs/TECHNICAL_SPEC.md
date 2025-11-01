@@ -89,7 +89,7 @@ def get_status(scarindex: float) -> str:
 
 **Consensus Protocol**:
 ```
-1. Query N providers (default: 3, supports up to 4)
+1. Available providers: 4 (default uses first 3)
    - gpt-4.1-mini
    - gpt-4.1-nano
    - gemini-2.5-flash

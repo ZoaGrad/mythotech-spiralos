@@ -58,8 +58,9 @@ scarindex = (0.4 * c_narrative) + (0.3 * c_social) + (0.2 * c_economic) + (0.1 *
 ```
 
 ### Consensus Protocol
-- Default: 4 LLM providers (gpt-4.1-mini, gpt-4.1-nano, gemini-2.5-flash, claude-sonnet-4)
-- Requires 2-of-3 consensus for validity (configurable threshold)
+- Available providers: 4 LLM providers (gpt-4.1-mini, gpt-4.1-nano, gemini-2.5-flash, claude-sonnet-4)
+- Default configuration: uses first 3 providers
+- Consensus threshold: 2-of-N (configurable, default 2-of-3)
 - Fail gracefully if consensus not achieved
 
 ### PID Controller Tuning
