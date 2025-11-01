@@ -1,4 +1,4 @@
--- Core F2 autonomy tables (idempotent)
+-- /supabase/migrations/20251102_f2_autonomy_fixed.sql
 create table if not exists public.judicial_cases (
   id uuid primary key default gen_random_uuid(),
   subject_id text not null,
@@ -15,27 +15,31 @@ create table if not exists public.judicial_reports (
   report jsonb not null
 );
 
--- Enforce RLS
+-- RLS enablement
 alter table public.judicial_cases enable row level security;
 alter table public.judicial_reports enable row level security;
 
--- Authenticated policies
-do $$ begin
-  if not exists (select 1 from pg_policies where tablename='judicial_cases' and policyname='authenticated_read_cases') then
+-- Safe policy creation
+do $$
+begin
+  if not exists (select 1 from pg_policies where schemaname='public' and tablename='judicial_cases' and policyname='authenticated_read_cases') then
     create policy authenticated_read_cases on public.judicial_cases for select to authenticated using (true);
   end if;
-  if not exists (select 1 from pg_policies where tablename='judicial_cases' and policyname='authenticated_write_cases') then
+
+  if not exists (select 1 from pg_policies where schemaname='public' and tablename='judicial_cases' and policyname='authenticated_write_cases') then
     create policy authenticated_write_cases on public.judicial_cases for insert, update to authenticated with check (true);
   end if;
-  if not exists (select 1 from pg_policies where tablename='judicial_reports' and policyname='authenticated_read_reports') then
+
+  if not exists (select 1 from pg_policies where schemaname='public' and tablename='judicial_reports' and policyname='authenticated_read_reports') then
     create policy authenticated_read_reports on public.judicial_reports for select to authenticated using (true);
   end if;
-  if not exists (select 1 from pg_policies where tablename='judicial_reports' and policyname='authenticated_write_reports') then
+
+  if not exists (select 1 from pg_policies where schemaname='public' and tablename='judicial_reports' and policyname='authenticated_write_reports') then
     create policy authenticated_write_reports on public.judicial_reports for insert, update to authenticated with check (true);
   end if;
 end $$;
 
--- Seed entry
+-- Seed record
 insert into public.judicial_cases (subject_id, judgment_type, priority)
 select 'seed_subject', 'CRISIS_ESCALATION', 'CRITICAL'
 where not exists (select 1 from public.judicial_cases);
