@@ -1,5 +1,4 @@
 """Judicial Automation Module.
-
 This module automates the assignment of judges to cases based on:
 - Judge availability and schedules
 - Case complexity and type
@@ -14,7 +13,6 @@ Environment Variables:
     SUPABASE_KEY: Supabase API key
     LOG_LEVEL: Logging level (default: INFO)
 """
-
 import os
 import json
 import logging
@@ -23,6 +21,8 @@ from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass, asdict
 from enum import Enum
 import asyncio
+from supabase import create_client, Client
+import sys
 
 # Configure logging
 logging.basicConfig(
@@ -30,7 +30,6 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
-
 
 class CaseType(Enum):
     """Enumeration of case types."""
@@ -40,309 +39,291 @@ class CaseType(Enum):
     COMMERCIAL = "commercial"
     ADMINISTRATIVE = "administrative"
 
-
-class CaseComplexity(Enum):
-    """Enumeration of case complexity levels."""
-    LOW = 1
-    MEDIUM = 2
-    HIGH = 3
-    CRITICAL = 4
-
-
 class JudgeStatus(Enum):
-    """Enumeration of judge availability status."""
+    """Enumeration of judge availability statuses."""
     AVAILABLE = "available"
     UNAVAILABLE = "unavailable"
     ON_LEAVE = "on_leave"
     RETIRED = "retired"
 
-
 @dataclass
 class Judge:
-    """Data class representing a judge.
-    
-    Attributes:
-        id: Unique judge identifier
-        name: Judge full name
-        experience_years: Years of legal experience
-        specialties: List of case types the judge specializes in
-        status: Current availability status
-        workload: Current number of active cases
-        max_workload: Maximum cases can handle
-        f2_score: F2 Judge evaluation score (0-100)
-    """
+    """Judge record data class."""
     id: str
     name: str
-    experience_years: int
-    specialties: List[str]
-    status: JudgeStatus
-    workload: int
-    max_workload: int
+    status: str
+    specialization: List[str]
+    current_workload: int
     f2_score: float
-    
-    def is_available(self) -> bool:
-        """Check if judge is available for new cases."""
-        return (self.status == JudgeStatus.AVAILABLE and 
-                self.workload < self.max_workload)
-    
-    def get_availability_percentage(self) -> float:
-        """Get judge's current availability percentage."""
-        if self.max_workload == 0:
-            return 0.0
-        return ((self.max_workload - self.workload) / self.max_workload) * 100
-
+    availability_start: Optional[str] = None
+    availability_end: Optional[str] = None
 
 @dataclass
 class Case:
-    """Data class representing a case.
-    
-    Attributes:
-        id: Unique case identifier
-        case_type: Type of case (CaseType enum)
-        complexity: Complexity level (CaseComplexity enum)
-        filing_date: Date case was filed
-        status: Current case status
-        assigned_judge_id: ID of assigned judge (None if unassigned)
-    """
+    """Case record data class."""
     id: str
-    case_type: CaseType
-    complexity: CaseComplexity
-    filing_date: datetime
-    status: str
+    case_number: str
+    case_type: str
+    complexity: int
+    filing_date: str
     assigned_judge_id: Optional[str] = None
+    status: str = "pending"
 
+class JudicialAutomation:
+    """Main judicial automation engine."""
 
-class JudgeAssignmentEngine:
-    """Engine for automated judge assignment to cases."""
-    
-    def __init__(self, supabase_url: str, supabase_key: str):
-        """Initialize the assignment engine.
+    def __init__(self):
+        """Initialize Supabase client and validation."""
+        self.supabase_url = os.getenv('SUPABASE_URL')
+        self.supabase_key = os.getenv('SUPABASE_KEY')
         
-        Args:
-            supabase_url: Supabase project URL
-            supabase_key: Supabase API key
-        """
-        self.supabase_url = supabase_url
-        self.supabase_key = supabase_key
-        self.judges: List[Judge] = []
-        self.cases: List[Case] = []
-        logger.info("JudgeAssignmentEngine initialized")
-    
-    async def load_judges(self) -> List[Judge]:
-        """Load judges from Supabase.
+        if not self.supabase_url or not self.supabase_key:
+            logger.error(
+                'SUPABASE_URL and SUPABASE_KEY environment variables are required.'
+            )
+            sys.exit(1)
         
-        Table: judges
-        Required columns: id, name, experience_years, specialties, status, 
-                         workload, max_workload, f2_score
+        try:
+            self.supabase: Client = create_client(
+                self.supabase_url,
+                self.supabase_key
+            )
+            logger.info('Supabase client initialized successfully')
+        except Exception as e:
+            logger.error(f'Failed to initialize Supabase client: {e}')
+            sys.exit(1)
+
+    async def fetch_available_judges(self) -> List[Judge]:
+        """Fetch all available judges from Supabase.
         
         Returns:
-            List of Judge objects
+            List of Judge objects with available judges
         """
         try:
-            logger.info("Loading judges from Supabase...")
-            # Placeholder for Supabase query
-            # In production, this would query the 'judges' table
-            # SELECT * FROM judges WHERE status != 'retired'
-            self.judges = []
-            logger.info(f"Loaded {len(self.judges)} judges")
-            return self.judges
+            response = self.supabase.table('judges').select(
+                'id, name, status, specialization, current_workload, f2_score, availability_start, availability_end'
+            ).eq('status', 'available').execute()
+            
+            judges = []
+            for judge_data in response.data:
+                judge = Judge(
+                    id=judge_data['id'],
+                    name=judge_data['name'],
+                    status=judge_data['status'],
+                    specialization=judge_data.get('specialization', []),
+                    current_workload=judge_data.get('current_workload', 0),
+                    f2_score=judge_data.get('f2_score', 0.0),
+                    availability_start=judge_data.get('availability_start'),
+                    availability_end=judge_data.get('availability_end')
+                )
+                judges.append(judge)
+            
+            logger.info(f'Fetched {len(judges)} available judges')
+            return judges
         except Exception as e:
-            logger.error(f"Error loading judges: {str(e)}")
-            raise
-    
-    async def load_unassigned_cases(self) -> List[Case]:
-        """Load unassigned cases from Supabase.
-        
-        Table: cases
-        Required columns: id, case_type, complexity, filing_date, status, 
-                         assigned_judge_id
+            logger.error(f'Error fetching available judges: {e}')
+            return []
+
+    async def fetch_pending_cases(self) -> List[Case]:
+        """Fetch all pending cases from Supabase.
         
         Returns:
-            List of unassigned Case objects
+            List of Case objects with pending cases
         """
         try:
-            logger.info("Loading unassigned cases from Supabase...")
-            # Placeholder for Supabase query
-            # SELECT * FROM cases WHERE assigned_judge_id IS NULL AND status != 'closed'
-            self.cases = []
-            logger.info(f"Loaded {len(self.cases)} unassigned cases")
-            return self.cases
+            response = self.supabase.table('cases').select(
+                'id, case_number, case_type, complexity, filing_date, assigned_judge_id, status'
+            ).eq('status', 'pending').execute()
+            
+            cases = []
+            for case_data in response.data:
+                case = Case(
+                    id=case_data['id'],
+                    case_number=case_data['case_number'],
+                    case_type=case_data['case_type'],
+                    complexity=case_data.get('complexity', 1),
+                    filing_date=case_data['filing_date'],
+                    assigned_judge_id=case_data.get('assigned_judge_id'),
+                    status=case_data.get('status', 'pending')
+                )
+                cases.append(case)
+            
+            logger.info(f'Fetched {len(cases)} pending cases')
+            return cases
         except Exception as e:
-            logger.error(f"Error loading unassigned cases: {str(e)}")
-            raise
-    
-    def calculate_assignment_score(self, judge: Judge, case: Case) -> float:
-        """Calculate score for assigning judge to case.
+            logger.error(f'Error fetching pending cases: {e}')
+            return []
+
+    def calculate_judge_score(self, judge: Judge, case: Case) -> float:
+        """Calculate suitability score for judge-case assignment.
         
-        Score is based on:
-        - Judge specialization match (40%)
-        - Workload balance (30%)
-        - Experience level (20%)
-        - F2 Judge score (10%)
+        Scoring criteria:
+        - F2 Judge score (40%): Inherent judge quality
+        - Workload balance (30%): Lower workload is better
+        - Specialization match (20%): Match case type to judge specialization
+        - Availability (10%): Current availability status
         
         Args:
             judge: Judge object
             case: Case object
             
         Returns:
-            Assignment score (0-100)
+            Composite suitability score (0-100)
         """
         score = 0.0
         
-        # Specialization match (40%)
-        specialty_score = 0.0
-        if case.case_type.value in judge.specialties:
-            specialty_score = 100.0
-        elif len(judge.specialties) > 0:
-            specialty_score = 50.0  # Partial credit for general experience
+        # F2 Score component (40%)
+        f2_component = (judge.f2_score / 100.0) * 40.0
+        score += f2_component
         
-        score += specialty_score * 0.40
+        # Workload balance component (30%)
+        # Assuming max workload of 20 cases
+        workload_ratio = judge.current_workload / 20.0
+        workload_component = (1.0 - workload_ratio) * 30.0
+        score += max(0, workload_component)
         
-        # Workload balance (30%)
-        workload_score = judge.get_availability_percentage()
-        score += workload_score * 0.30
+        # Specialization match component (20%)
+        specialization_match = 0.0
+        if case.case_type in judge.specialization:
+            specialization_match = 20.0
+        elif len(judge.specialization) > 0:
+            specialization_match = 10.0  # Partial credit for general judges
+        score += specialization_match
         
-        # Experience level (20%)
-        experience_score = min((judge.experience_years / 30) * 100, 100)
-        score += experience_score * 0.20
+        # Availability component (10%)
+        if judge.status == 'available':
+            score += 10.0
         
-        # F2 Judge score (10%)
-        score += judge.f2_score * 0.10
-        
-        return score
-    
-    def find_best_judge_for_case(self, case: Case) -> Optional[Judge]:
-        """Find the best judge for a specific case.
+        return min(score, 100.0)
+
+    async def assign_cases_to_judges(self, judges: List[Judge], cases: List[Case]) -> Dict[str, str]:
+        """Assign cases to judges using optimal matching algorithm.
         
         Args:
-            case: Case object
+            judges: List of available judges
+            cases: List of pending cases
             
         Returns:
-            Best matching Judge object or None if no suitable judge found
+            Dictionary mapping case_id to assigned judge_id
         """
-        available_judges = [j for j in self.judges if j.is_available()]
-        
-        if not available_judges:
-            logger.warning(f"No available judges for case {case.id}")
-            return None
-        
-        # Calculate scores for all available judges
-        judge_scores = [(judge, self.calculate_assignment_score(judge, case)) 
-                       for judge in available_judges]
-        
-        # Sort by score (descending)
-        judge_scores.sort(key=lambda x: x[1], reverse=True)
-        
-        best_judge = judge_scores[0][0]
-        best_score = judge_scores[0][1]
-        
-        logger.info(f"Best judge for case {case.id}: {best_judge.name} "
-                   f"(score: {best_score:.2f})")
-        
-        return best_judge
-    
-    async def assign_judges_to_cases(self) -> Dict[str, str]:
-        """Assign judges to unassigned cases.
-        
-        Returns:
-            Dictionary mapping case IDs to assigned judge IDs
-        """
-        logger.info("Starting judicial assignment process...")
-        
-        await self.load_judges()
-        await self.load_unassigned_cases()
-        
         assignments = {}
         
-        for case in self.cases:
-            best_judge = self.find_best_judge_for_case(case)
+        if not judges or not cases:
+            logger.warning('Insufficient judges or cases for assignment')
+            return assignments
+        
+        # Sort judges by F2 score and workload
+        sorted_judges = sorted(
+            judges,
+            key=lambda j: (-j.f2_score, j.current_workload)
+        )
+        
+        # Sort cases by complexity (harder cases first)
+        sorted_cases = sorted(cases, key=lambda c: -c.complexity)
+        
+        # Assign cases to judges
+        for case in sorted_cases:
+            best_judge = None
+            best_score = -1
             
-            if best_judge:
+            for judge in sorted_judges:
+                score = self.calculate_judge_score(judge, case)
+                if score > best_score:
+                    best_score = score
+                    best_judge = judge
+            
+            if best_judge and best_score > 0:
                 assignments[case.id] = best_judge.id
-                # Update judge workload
-                best_judge.workload += 1
-                logger.info(f"Assigned judge {best_judge.name} to case {case.id}")
+                # Update judge's workload
+                best_judge.current_workload += 1
+                logger.info(
+                    f'Assigned case {case.case_number} '
+                    f'(complexity: {case.complexity}) '
+                    f'to judge {best_judge.name} '
+                    f'(score: {best_score:.2f})'
+                )
             else:
-                logger.warning(f"Could not assign judge to case {case.id}")
+                logger.warning(f'Could not find suitable judge for case {case.case_number}')
         
-        # Update assignments in Supabase
-        await self.update_case_assignments(assignments)
-        
-        logger.info(f"Assignment process completed. Assigned {len(assignments)} cases.")
         return assignments
-    
-    async def update_case_assignments(self, assignments: Dict[str, str]) -> bool:
-        """Update case assignments in Supabase.
-        
-        Table: cases
-        Updates: assigned_judge_id column for each case
+
+    async def persist_assignments(self, assignments: Dict[str, str]) -> bool:
+        """Persist judge assignments to Supabase.
         
         Args:
-            assignments: Dictionary mapping case IDs to judge IDs
+            assignments: Dictionary mapping case_id to judge_id
             
         Returns:
-            True if update successful, False otherwise
+            True if successful, False otherwise
         """
         try:
-            logger.info(f"Updating {len(assignments)} case assignments in Supabase...")
-            # Placeholder for Supabase update
-            # for case_id, judge_id in assignments.items():
-            #     UPDATE cases SET assigned_judge_id = judge_id WHERE id = case_id
-            logger.info("Case assignments updated successfully")
+            for case_id, judge_id in assignments.items():
+                # Update case with assigned judge
+                self.supabase.table('cases').update({
+                    'assigned_judge_id': judge_id,
+                    'status': 'assigned',
+                    'updated_at': datetime.utcnow().isoformat()
+                }).eq('id', case_id).execute()
+                
+                # Update judge workload
+                judge_response = self.supabase.table('judges').select(
+                    'current_workload'
+                ).eq('id', judge_id).execute()
+                
+                if judge_response.data:
+                    current_workload = judge_response.data[0]['current_workload']
+                    self.supabase.table('judges').update({
+                        'current_workload': current_workload + 1,
+                        'updated_at': datetime.utcnow().isoformat()
+                    }).eq('id', judge_id).execute()
+            
+            logger.info(f'Persisted {len(assignments)} case assignments')
             return True
         except Exception as e:
-            logger.error(f"Error updating case assignments: {str(e)}")
+            logger.error(f'Error persisting assignments: {e}')
             return False
-    
-    async def generate_assignment_report(self, assignments: Dict[str, str]) -> Dict:
-        """Generate a report of the assignment process.
-        
-        Returns:
-            Dictionary containing assignment statistics and details
-        """
-        report = {
-            "timestamp": datetime.now().isoformat(),
-            "total_cases_assigned": len(assignments),
-            "total_judges": len(self.judges),
-            "available_judges": len([j for j in self.judges if j.is_available()]),
-            "assignments": assignments,
-            "judge_workload_summary": {
-                judge.id: {
-                    "name": judge.name,
-                    "workload": judge.workload,
-                    "max_workload": judge.max_workload,
-                    "availability_percent": judge.get_availability_percentage()
-                }
-                for judge in self.judges
-            }
-        }
-        return report
 
+    async def run(self):
+        """Execute the main judicial automation workflow."""
+        try:
+            logger.info('Starting judicial automation workflow...')
+            
+            # Fetch available judges and pending cases
+            judges = await self.fetch_available_judges()
+            cases = await self.fetch_pending_cases()
+            
+            if not judges:
+                logger.warning('No available judges found')
+                return
+            
+            if not cases:
+                logger.info('No pending cases found')
+                return
+            
+            # Assign cases to judges
+            assignments = await self.assign_cases_to_judges(judges, cases)
+            
+            # Persist assignments
+            if assignments:
+                success = await self.persist_assignments(assignments)
+                if success:
+                    logger.info(
+                        f'Successfully completed judicial automation. '
+                        f'Assigned {len(assignments)} cases to judges.'
+                    )
+                else:
+                    logger.error('Failed to persist assignments')
+            else:
+                logger.warning('No assignments generated')
+                
+        except Exception as e:
+            logger.error(f'Error during judicial automation: {e}')
+            raise
 
 async def main():
-    """Main entry point for judicial automation."""
-    try:
-        supabase_url = os.getenv('SUPABASE_URL')
-        supabase_key = os.getenv('SUPABASE_KEY')
-        
-        if not supabase_url or not supabase_key:
-            logger.error("Missing required environment variables: "
-                        "SUPABASE_URL, SUPABASE_KEY")
-            return False
-        
-        engine = JudgeAssignmentEngine(supabase_url, supabase_key)
-        assignments = await engine.assign_judges_to_cases()
-        report = await engine.generate_assignment_report(assignments)
-        
-        logger.info(f"Judicial automation completed: {json.dumps(report, indent=2)}")
-        return True
-        
-    except Exception as e:
-        logger.error(f"Judicial automation failed: {str(e)}")
-        return False
+    """Entry point for the judicial automation module."""
+    automation = JudicialAutomation()
+    await automation.run()
 
-
-if __name__ == "__main__":
-    import sys
-    success = asyncio.run(main())
-    sys.exit(0 if success else 1)
+if __name__ == '__main__':
+    asyncio.run(main())
