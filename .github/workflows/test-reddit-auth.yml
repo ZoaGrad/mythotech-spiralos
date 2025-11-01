@@ -37,7 +37,7 @@ jobs:
 
               // Test authentication by getting the authenticated user
               const me = await reddit.getMe();
-              const username = await me.name;
+              const username = me.name;
 
               console.log('Authenticated as:', username);
               console.log('✅ Reddit authentication succeeded');
