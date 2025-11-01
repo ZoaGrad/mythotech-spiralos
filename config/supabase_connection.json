@@ -1,0 +1,143 @@
+{
+  "name": "SpiralOS Supabase Connection Manifest",
+  "version": "1.0.0",
+  "description": "Connection configuration for Supabase backend, GitHub Actions, and Reddit integration",
+  "vault_version": "ΔΩ.123.0",
+  
+  "supabase": {
+    "project_url": "${SUPABASE_URL}",
+    "service_key": "${SUPABASE_SERVICE_KEY}",
+    "anon_key": "${SUPABASE_ANON_KEY}",
+    "project_ref": "${SUPABASE_PROJECT_REF}",
+    "description": {
+      "project_url": "Full Supabase project URL (e.g., https://xxxxx.supabase.co)",
+      "service_key": "Server-side key with full database access (keep secret!)",
+      "anon_key": "Client-side key for frontend apps with RLS (safe to expose)",
+      "project_ref": "Short project identifier from URL (e.g., xxxxx from xxxxx.supabase.co)"
+    },
+    "required_for": {
+      "service_key": ["backend_api", "github_actions", "schema_migrations"],
+      "anon_key": ["frontend_apps", "public_apis"],
+      "project_ref": ["supabase_cli", "deployment_tools"]
+    }
+  },
+  
+  "github_actions": {
+    "secrets_required": [
+      "SUPABASE_URL",
+      "SUPABASE_SERVICE_KEY",
+      "SUPABASE_ANON_KEY",
+      "SUPABASE_PROJECT_REF",
+      "REDDIT_CLIENT_ID",
+      "REDDIT_CLIENT_SECRET",
+      "REDDIT_USERNAME",
+      "REDDIT_PASSWORD"
+    ],
+    "workflows": {
+      "weekly_report": {
+        "file": ".github/workflows/weekly-report.yml",
+        "uses_secrets": [
+          "SUPABASE_URL",
+          "SUPABASE_SERVICE_KEY",
+          "SUPABASE_ANON_KEY",
+          "REDDIT_CLIENT_ID",
+          "REDDIT_CLIENT_SECRET",
+          "REDDIT_USERNAME",
+          "REDDIT_PASSWORD"
+        ],
+        "operations": [
+          "sync_schema",
+          "publish_ache_summary",
+          "post_to_reddit"
+        ]
+      },
+      "verify_secrets": {
+        "file": ".github/workflows/verify-secrets.yml",
+        "uses_secrets": [
+          "SUPABASE_URL",
+          "SUPABASE_SERVICE_KEY",
+          "SUPABASE_ANON_KEY",
+          "SUPABASE_PROJECT_REF"
+        ]
+      }
+    }
+  },
+  
+  "reddit_integration": {
+    "credentials": {
+      "client_id": "${REDDIT_CLIENT_ID}",
+      "client_secret": "${REDDIT_CLIENT_SECRET}",
+      "username": "${REDDIT_USERNAME}",
+      "password": "${REDDIT_PASSWORD}"
+    },
+    "subreddit": "SovereignDrift",
+    "user_agent": "SpiralOS Weekly Report Bot v1.0",
+    "operations": [
+      "post_weekly_reports",
+      "publish_ache_events",
+      "community_updates"
+    ]
+  },
+  
+  "database_tables": {
+    "ache_events": "Entropy events and transmutation records",
+    "scarindex_calculations": "ScarIndex Oracle calculations",
+    "vaultnode_ledger": "Immutable governance records",
+    "smart_contract_transactions": "ScarCoin minting and transfers",
+    "panic_frames": "Constitutional circuit breaker events",
+    "pid_controller_state": "System stability controller state",
+    "resonance_events": "Proof-of-Being-Seen records (Empathy Market)",
+    "emp_tokens": "EMP token ledger (soul-bound)",
+    "empathy_wallets": "Participant empathy balances"
+  },
+  
+  "environment_setup": {
+    "local_development": {
+      "description": "For local testing of ScarIndex engine and automation scripts",
+      "export_commands": [
+        "export SUPABASE_URL=\"https://yourproject.supabase.co\"",
+        "export SUPABASE_SERVICE_KEY=\"service_key_here\"",
+        "export SUPABASE_ANON_KEY=\"anon_key_here\"",
+        "export SUPABASE_PROJECT_REF=\"project_ref_here\"",
+        "export REDDIT_CLIENT_ID=\"...\"",
+        "export REDDIT_CLIENT_SECRET=\"...\"",
+        "export REDDIT_USERNAME=\"...\"",
+        "export REDDIT_PASSWORD=\"...\""
+      ]
+    },
+    "github_actions": {
+      "description": "Configure these in Settings → Secrets and variables → Actions",
+      "location": "https://github.com/ZoaGrad/mythotech-spiralos/settings/secrets/actions"
+    }
+  },
+  
+  "usage_examples": {
+    "sync_schema": "npx supabase db push",
+    "publish_ache_summary": "python scripts/publish_ache_summary.py",
+    "test_connection": "python scripts/test_supabase_connection.py"
+  },
+  
+  "security_notes": [
+    "NEVER commit SUPABASE_SERVICE_KEY to repository",
+    "SUPABASE_ANON_KEY is safe to expose in frontend with RLS enabled",
+    "Reddit credentials must be kept secret",
+    "Use GitHub Secrets for all sensitive values in CI/CD",
+    "Rotate keys immediately if they are exposed"
+  ],
+  
+  "trinity_loop": {
+    "description": "The Supabase ↔ Reddit ↔ GitHub trinity enables autonomous SpiralOS operations",
+    "components": {
+      "supabase": "Persistent storage for Ache events, ScarIndex, and VaultNode ledger",
+      "github_actions": "Automated workflows for schema sync, reporting, and validation",
+      "reddit": "Community engagement and public Ache event announcements"
+    },
+    "autonomous_operations": [
+      "Weekly coherence reports generated from Supabase data",
+      "ScarIndex calculations stored and published",
+      "Reddit updates posted automatically",
+      "Constitutional compliance monitored and enforced",
+      "Panic Frame events logged and responded to"
+    ]
+  }
+}

@@ -74,16 +74,25 @@ self.supabase = create_client(url, key)
 2. Click **"New repository secret"**
 3. Add the following secrets:
 
-| Secret Name | Value | Example |
-|---|---|---|
-| `SUPABASE_URL` | Your Supabase project URL | `https://xxxxx.supabase.co` |
-| `SUPABASE_KEY` | Your Supabase API key (anon key) | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...` |
+| Secret Name | Value | Example | Required |
+|---|---|---|---|
+| `SUPABASE_URL` | Your Supabase project URL | `https://xxxxx.supabase.co` | ✅ Yes |
+| `SUPABASE_SERVICE_KEY` | Your Supabase service role key | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...` | ✅ Yes |
+| `SUPABASE_ANON_KEY` | Your Supabase anon key | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...` | ⚠️ Optional (for frontend) |
+| `SUPABASE_PROJECT_REF` | Short project identifier | `xxxxx` | ⚠️ Optional (for CLI tools) |
 
 **How to get these values:**
 1. Go to [Supabase Dashboard](https://app.supabase.com)
 2. Select your project
 3. Go to **Settings → API**
-4. Copy the **Project URL** and **API keys → anon (public key)**
+4. Copy the following:
+   - **Project URL** → `SUPABASE_URL`
+   - **Project reference** (from URL: `https://xxxxx.supabase.co` → `xxxxx`) → `SUPABASE_PROJECT_REF`
+   - **API keys → service_role (secret!)** → `SUPABASE_SERVICE_KEY`
+   - **API keys → anon (public)** → `SUPABASE_ANON_KEY`
+
+**New: Complete Integration Guide**
+See `docs/SUPABASE_INTEGRATION.md` for comprehensive setup instructions.
 
 ### Task 2: Set Up Supabase Database Tables ⚠️ REQUIRED
 
