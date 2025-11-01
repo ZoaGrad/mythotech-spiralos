@@ -5,9 +5,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-// Configuration constants
-const MAX_FILES_CHANGED_THRESHOLD = 20  // Normalize ache calculation to this maximum
-const MIN_COMMIT_MESSAGE_LENGTH = 50    // Minimum for good message quality
+// Configuration constants - adjust these for production tuning
+const MAX_FILES_CHANGED_THRESHOLD = parseInt(Deno.env.get('ACHE_MAX_FILES') || '20')
+const MIN_COMMIT_MESSAGE_LENGTH = parseInt(Deno.env.get('ACHE_MIN_MESSAGE_LENGTH') || '50')
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

@@ -125,7 +125,8 @@ BEGIN
     ASSERT calc.scarindex > 0 AND calc.scarindex <= 1.0, 'ScarIndex should be in [0,1]';
     ASSERT calc.is_valid = TRUE, 'Calculation should be marked valid';
     
-    -- Check weighted calculation (0.3*0.8 + 0.25*0.7 + 0.25*0.6 + 0.2*0.9) * guidance
+    -- Check weighted calculation using ΔΩ.126.0 constitutional weights:
+    -- (0.3*0.8 + 0.25*0.7 + 0.25*0.6 + 0.2*0.9) * guidance
     -- = (0.24 + 0.175 + 0.15 + 0.18) * guidance = 0.745 * guidance
     -- With default guidance ~1.0, should be around 0.745
     ASSERT calc.scarindex >= 0.5 AND calc.scarindex <= 0.9, 'ScarIndex should be reasonable';

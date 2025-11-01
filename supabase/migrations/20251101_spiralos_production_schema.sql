@@ -482,7 +482,11 @@ CREATE OR REPLACE FUNCTION public.update_pid_controller(
 RETURNS VOID AS $$
 DECLARE
     pid RECORD;
-    dt CONSTANT DECIMAL(10, 6) := 1.0; -- 1 event = 1 unit time
+    -- Time step constant: 1 event = 1 unit time
+    -- This represents the event-driven nature of the system where each
+    -- ScarIndex calculation triggers a PID update. The value of 1.0 normalizes
+    -- the error accumulation rate to one unit per event.
+    dt CONSTANT DECIMAL(10, 6) := 1.0;
     error DECIMAL(10, 6);
     integral_new DECIMAL(10, 6);
     derivative DECIMAL(10, 6);
@@ -562,7 +566,14 @@ BEGIN
     c_e := public.economic_coherence(ev.content);
     c_t := public.technical_coherence(ev.content);
     
-    -- Apply PID guidance
+    -- Apply PID guidance to weighted ScarIndex calculation
+    -- Constitutional weights (ΔΩ.126.0 - IMMUTABLE, F2-Protected):
+    --   Narrative:  0.30 (30%)
+    --   Social:     0.25 (25%)
+    --   Economic:   0.25 (25%)
+    --   Technical:  0.20 (20%)
+    --   ──────────────────
+    --   Total:      1.00 (100%)
     guidance := pid.guidance_scale;
     scarindex_val := (0.3 * c_n + 0.25 * c_s + 0.25 * c_e + 0.2 * c_t) * guidance;
     scarindex_val := public.clamp_to_unit(scarindex_val);
