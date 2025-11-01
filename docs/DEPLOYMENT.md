@@ -27,7 +27,12 @@ This guide provides step-by-step instructions for deploying SpiralOS in producti
      - gpt-4.1-nano
      - gemini-2.5-flash (via OpenAI-compatible endpoint)
 
-3. **GitHub Repository** (optional, for VaultNode audit trail)
+3. **Anthropic API Access**
+   - Sign up at https://console.anthropic.com
+   - Generate an API key
+   - Ensure you have access to Claude Sonnet 4 (claude-sonnet-4)
+
+4. **GitHub Repository** (optional, for VaultNode audit trail)
    - Create a repository for audit logs
    - Generate a personal access token with repo permissions
 
@@ -62,6 +67,9 @@ Create a `.env` file in the project root:
 ```bash
 # OpenAI API Configuration
 OPENAI_API_KEY=sk-your-api-key-here
+
+# Anthropic API Configuration
+ANTHROPIC_API_KEY=sk-ant-your-api-key-here
 
 # Supabase Configuration
 SUPABASE_PROJECT_ID=your-project-id
