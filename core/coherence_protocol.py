@@ -17,7 +17,6 @@ from typing import List, Dict, Optional, Tuple
 from enum import Enum
 import hashlib
 import json
-import re
 from datetime import datetime
 import uuid
 import asyncio
@@ -123,7 +122,7 @@ class DistributedCoherenceProtocol:
             # If anthropic package not installed, set to None
             # Claude Sonnet 4 will fail gracefully if selected
             self.anthropic_client = None
-        except (TypeError, ValueError) as e:
+        except (TypeError, ValueError):
             # If API key not set or invalid, set to None
             # Claude Sonnet 4 will fail gracefully if selected
             self.anthropic_client = None
@@ -188,11 +187,29 @@ Provide a JSON response with:
             except json.JSONDecodeError as e:
                 # If JSON parsing fails, try to extract JSON from the response
                 # This handles cases where the model includes extra text
-                json_match = re.search(r'\{.*\}', output_text, re.DOTALL)
-                if json_match:
-                    output = json.loads(json_match.group())
+                # Look for first complete JSON object using balanced braces
+                start = output_text.find('{')
+                if start != -1:
+                    brace_count = 0
+                    end = start
+                    for i in range(start, len(output_text)):
+                        if output_text[i] == '{':
+                            brace_count += 1
+                        elif output_text[i] == '}':
+                            brace_count -= 1
+                            if brace_count == 0:
+                                end = i + 1
+                                break
+                    
+                    if brace_count == 0:
+                        try:
+                            output = json.loads(output_text[start:end])
+                        except json.JSONDecodeError:
+                            raise ValueError("Failed to parse JSON from Anthropic response. Response format invalid.") from e
+                    else:
+                        raise ValueError("Failed to parse JSON from Anthropic response. Unbalanced braces.") from e
                 else:
-                    raise ValueError(f"Failed to parse JSON from Anthropic response: {output_text[:200]}...") from e
+                    raise ValueError("Failed to parse JSON from Anthropic response. No JSON object found.") from e
         else:
             # Use OpenAI API for all other providers
             response = self.openai_client.chat.completions.create(
