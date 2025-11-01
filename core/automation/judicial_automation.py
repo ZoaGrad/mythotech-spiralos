@@ -21,7 +21,7 @@ from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass, asdict
 from enum import Enum
 import asyncio
-from supabase import create_client, Client
+from supabase import create_client
 import sys
 
 # Configure logging
@@ -84,7 +84,7 @@ class JudicialAutomation:
             sys.exit(1)
         
         try:
-            self.supabase: Client = create_client(
+            self.supabase = create_client(
                 self.supabase_url,
                 self.supabase_key
             )
