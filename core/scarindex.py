@@ -16,6 +16,13 @@ from datetime import datetime
 import uuid
 from .panic_frames import log_event, trigger_panic_frames
 
+# Import logging module at top level to avoid repeated imports
+try:
+    from .scarindex_logger import log_scarindex_result
+    LOGGING_AVAILABLE = True
+except ImportError:
+    LOGGING_AVAILABLE = False
+
 
 @dataclass
 class CoherenceComponents:
@@ -155,7 +162,10 @@ class ScarIndexOracle:
         Calculate ScarIndex from coherence components and Ache measurements
         
         Args:
-            components: Multi-dimensional coherence measurements
+            N: Number of agents
+            c_i_list: List of individual coherence scores
+            p_i_avg: Average promotion probability
+            decays_count: Number of decay events
             ache: Before/after Ache measurements
             cmp_lineage: Optional Clade-Metaproductivity score
             metadata: Optional additional metadata
@@ -170,15 +180,19 @@ class ScarIndexOracle:
         # Validate transmutation
         is_valid = ache.is_valid_transmutation
         
-        # Create result
+        # Calculate component averages (distributed across 4 dimensions)
+        # Using the v2.1 formula decomposition
+        avg_c_i = sum(c_i_list) / N if N > 0 else 0
+        
+        # Create result with calculated components
         result = ScarIndexResult(
             id=str(uuid.uuid4()),
             timestamp=datetime.utcnow(),
             components=CoherenceComponents(
-                operational=0.0,
-                audit=0.0,
-                constitutional=0.0,
-                symbolic=0.0
+                operational=avg_c_i,           # Average individual efficacy
+                audit=p_i_avg,                 # Promotion probability
+                constitutional=max(0, 1 - (decays_count / N)) if N > 0 else 0,  # Inverse of decay rate
+                symbolic=scarindex             # Overall coherence
             ),
             scarindex=scarindex,
             ache=ache,
@@ -188,14 +202,14 @@ class ScarIndexOracle:
         )
         
         # Log to Supabase if enabled
-        if enable_logging:
+        if enable_logging and LOGGING_AVAILABLE:
             try:
-                from .scarindex_logger import log_scarindex_result
                 log_scarindex_result(result)
             except Exception as e:
                 # Don't fail calculation if logging fails
                 log_event('WARNING', f'ScarIndex logging failed: {e}')
         
+        return result
         return result
     
     @classmethod

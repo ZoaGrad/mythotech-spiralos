@@ -194,14 +194,8 @@ def create_github_discussion(title: str, body: str) -> bool:
         }
         """
         
-        variables = {
-            "repositoryId": repo_id,
-            "categoryId": category_id,
-            "title": title,
-            "body": body
-        }
-        
-        # Create discussion
+        # Create discussion using gh CLI with proper parameter passing
+        # -F flags properly escape and pass parameters to prevent injection
         result = subprocess.run(
             ['gh', 'api', 'graphql', '-f', f'query={mutation}',
              '-F', f'repositoryId={repo_id}',

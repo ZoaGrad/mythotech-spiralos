@@ -62,7 +62,8 @@ class ScarIndexLogger:
         ache_before: float,
         ache_after: float,
         components: Optional[Dict[str, float]] = None,
-        metadata: Optional[Dict] = None
+        metadata: Optional[Dict] = None,
+        timestamp: Optional[str] = None
     ) -> bool:
         """
         Log a ScarIndex calculation to Supabase
@@ -74,6 +75,7 @@ class ScarIndexLogger:
             ache_after: Ache level after transmutation
             components: Optional coherence component scores
             metadata: Optional additional metadata
+            timestamp: Optional timestamp (ISO format), defaults to current time
             
         Returns:
             True if successfully logged, False otherwise
@@ -88,8 +90,8 @@ class ScarIndexLogger:
                 'coherence_delta': coherence_delta,
                 'ache_before': ache_before,
                 'ache_after': ache_after,
-                'is_valid': coherence_delta > 0,  # Valid if coherence increased
-                'timestamp': datetime.now(timezone.utc).isoformat(),
+                'is_valid': ache_after < ache_before,  # Valid if Ache decreased (coherence increased)
+                'timestamp': timestamp or datetime.now(timezone.utc).isoformat(),
                 'components': components or {},
                 'metadata': metadata or {}
             }
@@ -129,14 +131,15 @@ class ScarIndexLogger:
             # Calculate coherence delta
             coherence_delta = result.ache.coherence_gain
             
-            # Log the calculation
+            # Log the calculation with original timestamp
             return self.log_calculation(
                 scarindex=result.scarindex,
                 coherence_delta=coherence_delta,
                 ache_before=result.ache.before,
                 ache_after=result.ache.after,
                 components=components,
-                metadata=result.metadata
+                metadata=result.metadata,
+                timestamp=result.timestamp.isoformat()
             )
             
         except Exception as e:
