@@ -17,6 +17,9 @@ cd holoeconomy && python3 test_holoeconomy.py
 
 # Start API
 python3 scarcoin_bridge_api.py
+
+# Check system summary
+python3 summary_cli.py --quick
 ```
 
 *"Where coherence becomes currency"* 🜂
@@ -25,6 +28,7 @@ python3 scarcoin_bridge_api.py
 
 - **Dual-token economy** (ScarCoin + EMP)
 - **Holo-Economy deployment** complete
+- **System Summary** feature for unified monitoring
 - **Repository**: https://github.com/ZoaGrad/mythotech-spiralos  
 - **VaultNode**: ΔΩ.123.0  
 - **Tag**: ΔΩ.123.0-empathy-init  
@@ -34,4 +38,22 @@ python3 scarcoin_bridge_api.py
 **ScarCoin**: Thermodynamic value (Proof-of-Ache)  
 **EMP**: Relational value (Proof-of-Being-Seen)
 
-See `DEPLOYMENT_SUMMARY.md` for complete details.
+### System Monitoring
+
+View comprehensive system status:
+```bash
+# Quick status
+python3 holoeconomy/summary_cli.py --quick
+
+# Full summary
+python3 holoeconomy/summary_cli.py
+
+# Health metrics
+python3 holoeconomy/summary_cli.py --health
+```
+
+API endpoints:
+- `GET /api/v1/summary` - Full system summary
+- `GET /api/v1/summary/quick` - Quick status line
+
+See `DEPLOYMENT_SUMMARY.md` and `docs/SYSTEM_SUMMARY.md` for complete details.

@@ -17,6 +17,7 @@ import uuid
 
 from scarcoin import ScarCoinMintingEngine, ScarCoin, ProofOfAche, Wallet
 from vaultnode import VaultNode, VaultEvent
+from system_summary import SystemSummary
 
 
 # Pydantic models for API
@@ -90,6 +91,12 @@ minting_engine = ScarCoinMintingEngine(
 )
 
 vaultnode = VaultNode(vault_id="ΔΩ.122.0")
+
+# Initialize system summary
+system_summary = SystemSummary(
+    minting_engine=minting_engine,
+    vaultnode=vaultnode
+)
 
 
 # Health check
@@ -304,6 +311,30 @@ async def get_proof(transmutation_id: str):
     return proof.to_dict()
 
 
+# System Summary endpoint
+@app.get("/api/v1/summary")
+async def get_system_summary():
+    """
+    Get comprehensive system summary
+    
+    Returns aggregated status from all SpiralOS components:
+    - Core system status
+    - ScarCoin economy metrics
+    - Empathy Market activity
+    - VaultNode blockchain health
+    """
+    return system_summary.get_summary()
+
+
+@app.get("/api/v1/summary/quick")
+async def get_quick_summary():
+    """Get quick one-line system status"""
+    return {
+        "status": system_summary.get_quick_status(),
+        "timestamp": datetime.utcnow().isoformat()
+    }
+
+
 # Root endpoint
 @app.get("/")
 async def root():
@@ -315,6 +346,10 @@ async def root():
         "description": "Holo-Economy API for Proof-of-Ache minting and VaultNode blockchain",
         "endpoints": {
             "health": "/health",
+            "summary": {
+                "full": "GET /api/v1/summary",
+                "quick": "GET /api/v1/summary/quick"
+            },
             "scarcoin": {
                 "mint": "POST /api/v1/scarcoin/mint",
                 "balance": "GET /api/v1/scarcoin/balance/{wallet_address}",
