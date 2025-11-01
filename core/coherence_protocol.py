@@ -28,6 +28,7 @@ class LLMProvider(Enum):
     GPT_4_1_MINI = "gpt-4.1-mini"
     GPT_4_1_NANO = "gpt-4.1-nano"
     GEMINI_2_5_FLASH = "gemini-2.5-flash"
+    CLAUDE_SONNET_4 = "claude-sonnet-4"
 
 
 @dataclass
@@ -193,7 +194,8 @@ viability, and technical soundness."""
         providers = [
             LLMProvider.GPT_4_1_MINI,
             LLMProvider.GPT_4_1_NANO,
-            LLMProvider.GEMINI_2_5_FLASH
+            LLMProvider.GEMINI_2_5_FLASH,
+            LLMProvider.CLAUDE_SONNET_4
         ][:self.total_providers]
         
         # Query all providers in parallel

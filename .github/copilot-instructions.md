@@ -58,8 +58,8 @@ scarindex = (0.4 * c_narrative) + (0.3 * c_social) + (0.2 * c_economic) + (0.1 *
 ```
 
 ### Consensus Protocol
-- Default: 3 LLM providers (gpt-4.1-mini, gpt-4.1-nano, gemini-2.5-flash)
-- Requires 2-of-3 consensus for validity
+- Default: 4 LLM providers (gpt-4.1-mini, gpt-4.1-nano, gemini-2.5-flash, claude-sonnet-4)
+- Requires 2-of-3 consensus for validity (configurable threshold)
 - Fail gracefully if consensus not achieved
 
 ### PID Controller Tuning
@@ -94,6 +94,7 @@ pip3 install fastapi uvicorn pydantic
 
 # Development setup
 export OPENAI_API_KEY="sk-..."
+export ANTHROPIC_API_KEY="sk-ant-..."
 export SUPABASE_PROJECT_ID="..."
 ```
 

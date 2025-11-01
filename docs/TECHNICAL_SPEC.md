@@ -89,10 +89,11 @@ def get_status(scarindex: float) -> str:
 
 **Consensus Protocol**:
 ```
-1. Query N providers (default: 3)
+1. Query N providers (default: 3, supports up to 4)
    - gpt-4.1-mini
    - gpt-4.1-nano
    - gemini-2.5-flash
+   - claude-sonnet-4
 
 2. Each provider generates:
    - Coherence scores (C_narrative, C_social, C_economic, C_technical)
