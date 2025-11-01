@@ -14,19 +14,20 @@ import hashlib
 import json
 from datetime import datetime
 import uuid
+from .panic_frames import log_event, trigger_panic_frames
 
 
 @dataclass
 class CoherenceComponents:
-    """Multi-dimensional coherence measurements"""
-    narrative: float  # C_narrative: 0-1 scale
-    social: float     # C_social: 0-1 scale
-    economic: float   # C_economic: 0-1 scale
-    technical: float  # C_technical: 0-1 scale
+    """Multi-dimensional coherence measurements (constitutional weights)"""
+    operational: float      # Operational coherence: 0-1 scale (weight: 0.35)
+    audit: float           # Audit momentum: 0-1 scale (weight: 0.3)
+    constitutional: float  # Constitutional compliance: 0-1 scale (weight: 0.25)
+    symbolic: float        # Symbolic integrity: 0-1 scale (weight: 0.1)
     
     def __post_init__(self):
         """Validate all components are in valid range"""
-        for field in ['narrative', 'social', 'economic', 'technical']:
+        for field in ['operational', 'audit', 'constitutional', 'symbolic']:
             value = getattr(self, field)
             if not 0 <= value <= 1:
                 raise ValueError(f"{field} must be between 0 and 1, got {value}")
@@ -76,10 +77,10 @@ class ScarIndexResult:
         return {
             'id': self.id,
             'created_at': self.timestamp.isoformat(),
-            'c_narrative': self.components.narrative,
-            'c_social': self.components.social,
-            'c_economic': self.components.economic,
-            'c_technical': self.components.technical,
+            'c_operational': self.components.operational,
+            'c_audit': self.components.audit,
+            'c_constitutional': self.components.constitutional,
+            'c_symbolic': self.components.symbolic,
             'scarindex': self.scarindex,
             'ache_before': self.ache.before,
             'ache_after': self.ache.after,
@@ -93,28 +94,58 @@ class ScarIndexOracle:
     """
     The Coherence Oracle (B6) - Supreme regulator of SpiralOS
     
-    Calculates system coherence as a weighted composite score:
-    ScarIndex = (0.4 * C_narrative) + (0.3 * C_social) + (0.2 * C_economic) + (0.1 * C_technical)
+    Calculates system coherence as a weighted composite score using constitutional weights:
+    ScarIndex = (0.35 * operational) + (0.3 * audit) + (0.25 * constitutional) + (0.1 * symbolic)
+    
+    Constitutional Requirement: Sum of weights MUST equal 1.0
+    ScarIndex < 0.67 → triggers PanicFrameManager review
     
     The weighting reflects the relative importance of each dimension in maintaining
     system coherence and enabling anti-fragile growth.
     """
     
-    # Weighting coefficients for coherence dimensions
+    # Constitutional weighting coefficients (CRITICAL: sum must = 1.0)
     WEIGHTS = {
-        'narrative': 0.4,
-        'social': 0.3,
-        'economic': 0.2,
-        'technical': 0.1
+        'operational': 0.35,      # Formerly 'narrative'
+        'audit': 0.3,             # Formerly 'social'
+        'constitutional': 0.25,   # Formerly 'economic'
+        'symbolic': 0.1           # Formerly 'technical'
     }
     
-    # Critical threshold for Panic Frame activation
-    PANIC_THRESHOLD = 0.3
+    # Critical threshold for Panic Frame activation (constitutional requirement)
+    PANIC_THRESHOLD = 0.67
+    
+    @classmethod
+    def validate_weights(cls) -> bool:
+        """
+        Constitutional validation: Verify that weight sum equals 1.0
+        
+        This is a critical constitutional requirement that must never be violated.
+        
+        Returns:
+            True if weights sum to 1.0 (within floating point tolerance)
+        
+        Raises:
+            ValueError if weights do not sum to 1.0
+        """
+        weight_sum = sum(cls.WEIGHTS.values())
+        tolerance = 1e-10
+        
+        if abs(weight_sum - 1.0) > tolerance:
+            raise ValueError(
+                f"CONSTITUTIONAL VIOLATION: ScarIndex weights must sum to 1.0, "
+                f"got {weight_sum:.15f}. Current weights: {cls.WEIGHTS}"
+            )
+        
+        return True
     
     @classmethod
     def calculate(
         cls,
-        components: CoherenceComponents,
+        N: int,
+        c_i_list: list,
+        p_i_avg: float,
+        decays_count: int,
         ache: AcheMeasurement,
         cmp_lineage: Optional[float] = None,
         metadata: Optional[Dict] = None
@@ -132,12 +163,7 @@ class ScarIndexOracle:
             ScarIndexResult with complete calculation
         """
         # Calculate weighted composite score
-        scarindex = (
-            cls.WEIGHTS['narrative'] * components.narrative +
-            cls.WEIGHTS['social'] * components.social +
-            cls.WEIGHTS['economic'] * components.economic +
-            cls.WEIGHTS['technical'] * components.technical
-        )
+        scarindex = compute_global_coherence(N, c_i_list, p_i_avg, decays_count)
         
         # Validate transmutation
         is_valid = ache.is_valid_transmutation
@@ -146,7 +172,12 @@ class ScarIndexOracle:
         result = ScarIndexResult(
             id=str(uuid.uuid4()),
             timestamp=datetime.utcnow(),
-            components=components,
+            components=CoherenceComponents(
+                operational=0.0,
+                audit=0.0,
+                constitutional=0.0,
+                symbolic=0.0
+            ),
             scarindex=scarindex,
             ache=ache,
             is_valid=is_valid,
@@ -191,17 +222,19 @@ class ScarIndexOracle:
         """
         Determine system coherence status from ScarIndex value
         
+        Constitutional requirement: ScarIndex < 0.67 triggers review
+        
         Returns:
-            'CRITICAL' if < 0.3 (Panic Frame territory)
-            'WARNING' if < 0.5
-            'STABLE' if < 0.7
-            'OPTIMAL' if >= 0.7
+            'CRITICAL' if < 0.5 (Severe coherence failure)
+            'WARNING' if < 0.67 (Below constitutional threshold)
+            'STABLE' if < 0.8
+            'OPTIMAL' if >= 0.8
         """
-        if scarindex < 0.3:
+        if scarindex < 0.5:
             return 'CRITICAL'
-        elif scarindex < 0.5:
+        elif scarindex < 0.67:
             return 'WARNING'
-        elif scarindex < 0.7:
+        elif scarindex < 0.8:
             return 'STABLE'
         else:
             return 'OPTIMAL'
@@ -334,22 +367,69 @@ class ARIAGraphOfThought:
         }
 
 
+# Constants from v2.1 VaultNode
+COHERENCE_TARGET_CT = 0.67
+P_I_WEIGHT = 0.2
+DECAY_PENALTY_WEIGHT = 0.1
+
+def compute_global_coherence(N, c_i_list, p_i_avg, decays_count):
+    """
+    Computes the final auditable Global Coherence metric (C_t).
+    Formula: C_t = (1/N) Σ c_i + 0.2 * \bar{p_i} - 0.1 * (decays/N)
+    """
+    # Term 1: Operational Coherence (Average individual efficacy)
+    operational_coherence = sum(c_i_list) / N
+
+    # Term 2: Audit Momentum (Weighted average promotion probability)
+    audit_momentum = P_I_WEIGHT * p_i_avg
+
+    # Term 3: Drag Penalty (Decay/Entropy)
+    drag_penalty = DECAY_PENALTY_WEIGHT * (decays_count / N)
+
+    C_t = operational_coherence + audit_momentum - drag_penalty
+
+    # Check Invariant: Must hold C_t >= 0.67
+    if C_t < COHERENCE_TARGET_CT:
+        log_event('CRITICAL', f'C_t breach: {C_t:.3f} < {COHERENCE_TARGET_CT}')
+        trigger_panic_frames()
+
+    return C_t
+
+# Constants from v2.1 VaultNode
+RECIPROCAL_PENALTY_GAMMA = 0.15
+COLLUSION_DENSITY_THRESHOLD = 0.60
+
+def apply_arbitrage_penalty(agent, rho_attempt, is_reciprocal_pair, cluster_density):
+    """
+    Applies the gamma_recip penalty when collusion is detected (A7 control).
+    This penalty is an increase in Residual Ache (A_i).
+    """
+    # Check 1: Must be reciprocal and attempting high density
+    if is_reciprocal_pair and cluster_density >= COLLUSION_DENSITY_THRESHOLD:
+        # Check 2: Must fail external quorum (q_out < 0.30 logic implicitly handles this)
+
+        # A7: Penalty is based on the attempted merit (rho_attempt)
+        ache_increase = RECIPROCAL_PENALTY_GAMMA * rho_attempt
+
+        agent.A_i += ache_increase
+        log_event('FLAG_A7_ARBITRAGE', f'Agent {agent.id} penalized {ache_increase:.3f} Ache.')
+
+        # This drag will now be reflected in the next cycle's p_i calculation
+        return True
+    return False
+
 if __name__ == '__main__':
     # Example usage
-    components = CoherenceComponents(
-        narrative=0.8,
-        social=0.7,
-        economic=0.6,
-        technical=0.9
-    )
-    
     ache = AcheMeasurement(
         before=0.8,
         after=0.3
     )
     
     result = ScarIndexOracle.calculate(
-        components=components,
+        N=10,
+        c_i_list=[0.8, 0.7, 0.6, 0.9, 0.8, 0.7, 0.6, 0.9, 0.8, 0.7],
+        p_i_avg=0.5,
+        decays_count=2,
         ache=ache,
         cmp_lineage=1.5,
         metadata={'source': 'example'}

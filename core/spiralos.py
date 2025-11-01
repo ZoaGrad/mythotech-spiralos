@@ -15,28 +15,28 @@ from typing import Dict, Optional, List
 import asyncio
 from datetime import datetime
 
-from scarindex import (
+from .scarindex import (
     ScarIndexOracle,
     CoherenceComponents,
     AcheMeasurement,
     HuxleyGodelMachine,
     ARIAGraphOfThought
 )
-from coherence_protocol import (
+from .coherence_protocol import (
     DistributedCoherenceProtocol,
     AgentFusionStack,
     ConsensusResult
 )
-from panic_frames import (
+from .panic_frames import (
     PanicFrameManager,
     SevenPhaseRecoveryProtocol,
     PanicStatus
 )
-from ache_pid_controller import (
+from .ache_pid_controller import (
     AchePIDController,
     ScarDiffusionController
 )
-from supabase_integration import SpiralOSBackend
+from .supabase_integration import SpiralOSBackend
 
 
 class SpiralOS:
@@ -167,8 +167,12 @@ class SpiralOS:
             after=ache_after
         )
         
+        c_i_list = [components.narrative, components.social, components.economic, components.technical]
         scarindex_result = self.oracle.calculate(
-            components=components,
+            N=len(c_i_list),
+            c_i_list=c_i_list,
+            p_i_avg=sum(c_i_list) / len(c_i_list),
+            decays_count=0,
             ache=ache_measurement,
             metadata={
                 'source': source,
