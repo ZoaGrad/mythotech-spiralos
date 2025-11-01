@@ -2,16 +2,16 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-1.5B+-blue.svg?style=for-the-badge)
-![Vault](https://img.shields.io/badge/vault-ΔΩ.125.4.3-purple.svg?style=for-the-badge)
-![Status](https://img.shields.io/badge/status-SEALED-success.svg?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-ΔΩ.126.0-blue.svg?style=for-the-badge)
+![Vault](https://img.shields.io/badge/vault-production--schema-purple.svg?style=for-the-badge)
+![Status](https://img.shields.io/badge/status-PRODUCTION%20READY-success.svg?style=for-the-badge)
 ![Coverage](https://img.shields.io/badge/coverage-96.5%25-brightgreen.svg?style=for-the-badge)
 
 **Where coherence becomes currency, and governance becomes soul** 🜂
 
 *A constitutionally-hardened dual-token economy governed by thermodynamic principles, 4-of-5 consensus, and the right of refusal.*
 
-[Documentation](./docs) · [API Contracts](./v1.5_prep/API_CONTRACTS_v1.5.md) · [Technical Spec](./docs/TECHNICAL_SPEC.md) · [Holo-Economy](./holoeconomy)
+[Documentation](./docs) · [Supabase Deployment](./docs/SUPABASE_DEPLOYMENT.md) · [Quick Reference](./QUICK_REFERENCE.md) · [API Contracts](./v1.5_prep/API_CONTRACTS_v1.5.md) · [Examples](./examples)
 
 </div>
 
@@ -44,6 +44,31 @@ Every operation validated by the **Oracle Council** (4-of-5 consensus with ≥1 
 
 ## 🚀 Quick Start
 
+### Option 1: Supabase Production Backend (Recommended)
+
+```bash
+# 1. Install dependencies
+pip3 install supabase
+
+# 2. Deploy to Supabase
+supabase login
+supabase link --project-ref YOUR_PROJECT_ID
+supabase db push
+
+# 3. Deploy Edge Functions
+supabase functions deploy github-webhook
+
+# 4. Run tests
+psql YOUR_DB_URL -f supabase/migrations/20251101_test_functions.sql
+
+# 5. Try the Python client
+python3 examples/supabase_integration_example.py
+```
+
+See **[Supabase Deployment Guide](./docs/SUPABASE_DEPLOYMENT.md)** for complete instructions.
+
+### Option 2: Local Development
+
 ```bash
 # Install dependencies
 pip3 install fastapi uvicorn pydantic supabase
@@ -60,40 +85,46 @@ python3 scarcoin_bridge_api.py
 python3 summary_cli.py --quick
 ```
 
-### API Endpoints
+### Production Features
 
-```bash
-# Mint empathy tokens (with constitutional validation)
-POST /api/v1.5/mint-emp
+- **📊 Supabase Backend**: Complete PostgreSQL schema with 16 tables, 9 functions, 3 views
+- **🔗 GitHub Integration**: Webhook → Ache → ScarIndex → ScarCoin pipeline
+- **🚨 Panic Frames**: F4 constitutional circuit breaker (auto-triggers at ScarIndex < 0.3)
+- **🔐 VaultNode DAG**: Immutable Merkle-linked audit trail
+- **🤖 PID Autopilot**: Dynamic coherence stability control
+- **📈 Real-Time Oracle**: 30-day coherence monitoring dashboard
 
-# Burn tokens (with GlyphicBindingEngine safeguards)
-POST /api/v1.5/burn-emp
-
-# File judicial dissent
-POST /api/v1.5/dissent
-```
-
-- **Dual-token economy** (ScarCoin + EMP)
-- **Holo-Economy deployment** complete
-- **System Summary** feature for unified monitoring
-- **Repository**: https://github.com/ZoaGrad/mythotech-spiralos  
-- **VaultNode**: ΔΩ.123.0  
-- **Tag**: ΔΩ.123.0-empathy-init  
+See **[Quick Reference Card](./QUICK_REFERENCE.md)** for essential queries and workflows.
 
 ### Economic Model
 
-**ScarIndex Formula** (ΔΩ.125.4.1 - CRITICAL Corrections):
+**ScarIndex Formula** (ΔΩ.126.0 - Production Schema):
 ```
-ScarIndex = (C_operational × 0.35) + (C_audit × 0.3) + 
-            (C_constitutional × 0.25) + (C_symbolic × 0.1)
+ScarIndex = (C_narrative × 0.30) + (C_social × 0.25) + 
+            (C_economic × 0.25) + (C_technical × 0.20)
+            × PID_guidance_scale
 ```
 - Sum: 1.0 (Immutable; F2 Protected)
-- Threshold: <0.67 → PanicFrameManager Review
-- Validation: Oracle Council (4-of-5 Quorum)
+- Threshold: <0.3 → F4 Panic Frame (freeze all operations)
+- Target: 0.70 (PID setpoint)
+- Validation: Oracle Council (2-of-N consensus, configurable)
+
+**Proof-of-Ache**:
+```
+Valid:   Ache_before > Ache_after
+Reward:  (Ache_before - Ache_after) × 1,000,000 ScarCoins
+```
 
 ---
 
 ## 📚 Key Features
+
+### 🌐 Supabase Production Infrastructure
+- **Complete Schema**: 16 tables covering economic, governance, and audit layers
+- **PostgreSQL Functions**: Coherence calculation, PID control, panic frames, VaultNode sealing
+- **Edge Functions**: GitHub webhook handler with automatic Ache calculation
+- **Row-Level Security**: Granular access control for public/authenticated/service roles
+- **Real-Time Views**: Oracle sync, system health, active panic frames
 
 ### 🔐 Constitutional Safeguards
 - **4-of-5 Consensus**: All critical operations require majority agreement
