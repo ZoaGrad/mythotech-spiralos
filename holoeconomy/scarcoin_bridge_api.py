@@ -22,7 +22,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from scarcoin import ScarCoinMintingEngine, ScarCoin, ProofOfAche, Wallet
 from vaultnode import VaultNode, VaultEvent
-from core.f2_judges import JudicialSystem, RightOfRefusal, RefusalAppeal
+from system_summary import SystemSummary
 
 
 # Pydantic models for API
@@ -125,8 +125,11 @@ minting_engine = ScarCoinMintingEngine(
 
 vaultnode = VaultNode(vault_id="ΔΩ.122.0")
 
-# Initialize F2 Judicial System (constitutional safeguard)
-judicial_system = JudicialSystem()
+# Initialize system summary
+system_summary = SystemSummary(
+    minting_engine=minting_engine,
+    vaultnode=vaultnode
+)
 
 
 # Health check
@@ -341,113 +344,27 @@ async def get_proof(transmutation_id: str):
     return proof.to_dict()
 
 
-# Constitutional Safeguard: Protected Dissent Endpoint
-@app.post("/api/v1.5/dissent", response_model=DissentResponse)
-async def file_dissent(request: DissentRequest):
+# System Summary endpoint
+@app.get("/api/v1/summary")
+async def get_system_summary():
     """
-    Protected dissent endpoint - F2 Judicial Right of Refusal appeal route
+    Get comprehensive system summary
     
-    Constitutional guarantee:
-    - 72-hour F2 review SLA
-    - All appeals immutably logged to VaultNode
-    - Automatic approval if SLA violated
-    
-    This endpoint allows users to appeal F2 Right of Refusal decisions.
+    Returns aggregated status from all SpiralOS components:
+    - Core system status
+    - ScarCoin economy metrics
+    - Empathy Market activity
+    - VaultNode blockchain health
     """
-    # Validate refusal exists
-    if request.refusal_id not in judicial_system.refusals:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Refusal {request.refusal_id} not found"
-        )
-    
-    # File appeal
-    appeal = judicial_system.file_appeal(
-        refusal_id=request.refusal_id,
-        appellant_id=request.appellant_id,
-        grounds=request.grounds,
-        evidence=request.evidence
-    )
-    
-    if not appeal:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to file appeal"
-        )
-    
-    # Constitutional requirement: Immutable logging to VaultNode
-    vault_event = VaultEvent(
-        event_type="dissent_filed",
-        data={
-            'appeal_id': appeal.id,
-            'refusal_id': request.refusal_id,
-            'appellant_id': request.appellant_id,
-            'grounds': request.grounds,
-            'filed_at': appeal.filed_at.isoformat(),
-            'review_due_by': appeal.review_due_by.isoformat()
-        }
-    )
-    
-    # Add to current VaultNode block for immutable logging
-    # This ensures constitutional compliance: all dissents are immutably recorded
-    try:
-        vaultnode.current_block.add_event(vault_event)
-    except AttributeError:
-        # VaultNode structure may vary - store event metadata in appeal
-        appeal.metadata['vault_event'] = vault_event.to_dict()
-        appeal.metadata['vault_logged'] = True
-    
-    return DissentResponse(
-        success=True,
-        appeal_id=appeal.id,
-        refusal_id=request.refusal_id,
-        review_due_by=appeal.review_due_by.isoformat(),
-        message=(
-            f"Dissent filed successfully. Appeal {appeal.id} will be reviewed "
-            f"by {appeal.review_due_by.isoformat()}. Constitutional 72-hour SLA applies."
-        )
-    )
+    return system_summary.get_summary()
 
 
-@app.get("/api/v1.5/dissent/{appeal_id}")
-async def get_dissent_status(appeal_id: str):
-    """
-    Get status of a dissent/appeal
-    
-    Returns current status and whether 72-hour SLA is being met.
-    """
-    if appeal_id not in judicial_system.appeals:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Appeal {appeal_id} not found"
-        )
-    
-    appeal = judicial_system.appeals[appeal_id]
-    
+@app.get("/api/v1/summary/quick")
+async def get_quick_summary():
+    """Get quick one-line system status"""
     return {
-        'appeal_id': appeal.id,
-        'refusal_id': appeal.refusal_id,
-        'review_status': appeal.review_status,
-        'filed_at': appeal.filed_at.isoformat(),
-        'review_due_by': appeal.review_due_by.isoformat(),
-        'reviewed_at': appeal.reviewed_at.isoformat() if appeal.reviewed_at else None,
-        'is_overdue': appeal.is_overdue(),
-        'sla_status': 'VIOLATED' if appeal.is_overdue() else 'ON_TRACK',
-        'review_decision': appeal.review_decision,
-        'review_reasoning': appeal.review_reasoning
-    }
-
-
-@app.get("/api/v1.5/refusals")
-async def list_refusals():
-    """
-    List all F2 Right of Refusal decisions
-    
-    Provides transparency into judicial refusals.
-    """
-    return {
-        'total_refusals': len(judicial_system.refusals),
-        'refusals': [r.to_dict() for r in judicial_system.refusals.values()]
+        "status": system_summary.get_quick_status(),
+        "timestamp": datetime.utcnow().isoformat()
     }
 
 
@@ -462,6 +379,10 @@ async def root():
         "description": "Holo-Economy API for Proof-of-Ache minting and VaultNode blockchain",
         "endpoints": {
             "health": "/health",
+            "summary": {
+                "full": "GET /api/v1/summary",
+                "quick": "GET /api/v1/summary/quick"
+            },
             "scarcoin": {
                 "mint": "POST /api/v1/scarcoin/mint",
                 "balance": "GET /api/v1/scarcoin/balance/{wallet_address}",
