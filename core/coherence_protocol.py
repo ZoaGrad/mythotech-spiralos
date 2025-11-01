@@ -12,15 +12,29 @@ Component Flow:
 4. Ledger Anchor: Final verified state commits to Smart Contracts (C2) and Supabase (C6)
 """
 
-from dataclasses import dataclass
-from typing import List, Dict, Optional, Tuple
-from enum import Enum
+# Standard library imports
+import asyncio
 import hashlib
 import json
-from datetime import datetime
+import os
 import uuid
-import asyncio
+from dataclasses import dataclass
+from datetime import datetime
+from enum import Enum
+from typing import List, Dict, Optional, Tuple
+
+# Third-party imports
 from openai import OpenAI
+
+# Optional third-party imports
+try:
+    from anthropic import Anthropic
+    ANTHROPIC_AVAILABLE = True
+except ImportError:
+    ANTHROPIC_AVAILABLE = False
+
+# Constants
+ANTHROPIC_JSON_INSTRUCTION = "\n\nIMPORTANT: Respond ONLY with valid JSON. Do not include any explanation or text outside the JSON object."
 
 
 class LLMProvider(Enum):
@@ -28,6 +42,7 @@ class LLMProvider(Enum):
     GPT_4_1_MINI = "gpt-4.1-mini"
     GPT_4_1_NANO = "gpt-4.1-nano"
     GEMINI_2_5_FLASH = "gemini-2.5-flash"
+    CLAUDE_SONNET_4 = "claude-sonnet-4"
 
 
 @dataclass
@@ -109,7 +124,19 @@ class DistributedCoherenceProtocol:
         """
         self.consensus_threshold = consensus_threshold
         self.total_providers = total_providers
-        self.client = OpenAI()  # API key pre-configured in environment
+        self.openai_client = OpenAI()  # API key pre-configured in environment
+        
+        # Initialize Anthropic client if available and API key is set
+        if ANTHROPIC_AVAILABLE:
+            try:
+                self.anthropic_client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+            except (TypeError, ValueError):
+                # If API key not set or invalid, set to None
+                # Claude Sonnet 4 will fail gracefully if selected
+                self.anthropic_client = None
+        else:
+            # Anthropic package not installed
+            self.anthropic_client = None
     
     async def analyze_ache_with_provider(
         self,
@@ -145,19 +172,69 @@ Provide a JSON response with:
 - reasoning: Brief explanation of the scores
 """
         
-        # Call the LLM
-        response = self.client.chat.completions.create(
-            model=provider.value,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
-            temperature=0.1,  # Low temperature for consistency
-            response_format={"type": "json_object"}
-        )
-        
-        # Parse the response
-        output = json.loads(response.choices[0].message.content)
+        # Call the appropriate LLM based on provider
+        if provider == LLMProvider.CLAUDE_SONNET_4:
+            # Use Anthropic API
+            if self.anthropic_client is None:
+                raise ValueError("Anthropic client not initialized. Install anthropic package and set ANTHROPIC_API_KEY.")
+            
+            # For Anthropic, we need to explicitly request JSON in the prompt
+            anthropic_user_prompt = user_prompt + ANTHROPIC_JSON_INSTRUCTION
+            
+            response = self.anthropic_client.messages.create(
+                model=provider.value,
+                max_tokens=1024,
+                temperature=0.1,
+                system=system_prompt,
+                messages=[
+                    {"role": "user", "content": anthropic_user_prompt}
+                ]
+            )
+            
+            # Parse the Anthropic response with error handling
+            output_text = response.content[0].text
+            try:
+                output = json.loads(output_text)
+            except json.JSONDecodeError as e:
+                # If JSON parsing fails, try to extract JSON from the response
+                # This handles cases where the model includes extra text
+                # Look for first complete JSON object using balanced braces
+                start = output_text.find('{')
+                if start != -1:
+                    brace_count = 0
+                    end = -1
+                    for i in range(start, len(output_text)):
+                        if output_text[i] == '{':
+                            brace_count += 1
+                        elif output_text[i] == '}':
+                            brace_count -= 1
+                            if brace_count == 0:
+                                end = i + 1
+                                break
+                    
+                    if end != -1 and brace_count == 0:
+                        try:
+                            output = json.loads(output_text[start:end])
+                        except json.JSONDecodeError:
+                            raise ValueError("Failed to parse JSON from Anthropic response. Response format invalid.") from e
+                    else:
+                        raise ValueError("Failed to parse JSON from Anthropic response. Unbalanced braces.") from e
+                else:
+                    raise ValueError("Failed to parse JSON from Anthropic response. No JSON object found.") from e
+        else:
+            # Use OpenAI API for all other providers
+            response = self.openai_client.chat.completions.create(
+                model=provider.value,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                temperature=0.1,  # Low temperature for consistency
+                response_format={"type": "json_object"}
+            )
+            
+            # Parse the OpenAI response
+            output = json.loads(response.choices[0].message.content)
         
         # Create and return provider output
         return ProviderOutput.create(
@@ -193,7 +270,8 @@ viability, and technical soundness."""
         providers = [
             LLMProvider.GPT_4_1_MINI,
             LLMProvider.GPT_4_1_NANO,
-            LLMProvider.GEMINI_2_5_FLASH
+            LLMProvider.GEMINI_2_5_FLASH,
+            LLMProvider.CLAUDE_SONNET_4
         ][:self.total_providers]
         
         # Query all providers in parallel

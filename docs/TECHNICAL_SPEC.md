@@ -89,10 +89,11 @@ def get_status(scarindex: float) -> str:
 
 **Consensus Protocol**:
 ```
-1. Query N providers (default: 3)
+1. Available providers: 4 (default uses first 3)
    - gpt-4.1-mini
    - gpt-4.1-nano
    - gemini-2.5-flash
+   - claude-sonnet-4
 
 2. Each provider generates:
    - Coherence scores (C_narrative, C_social, C_economic, C_technical)
@@ -626,3 +627,12 @@ GITHUB_TOKEN=...
 **Version**: 1.0.0  
 **Last Updated**: 2025-10-30  
 **Maintainer**: ZoaGrad
+
+---
+
+**Updated Formula (ΔΩ.125.4.1 - CRITICAL Corrections)**:
+ScarIndex = (C_operational × 0.35) + (C_audit × 0.3) + (C_constitutional × 0.25) + (C_symbolic × 0.1)
+- Sum: 1.0 (Immutable; F2 Protected).
+- Threshold: <0.67 → PanicFrameManager Review (7-Phase Recovery).
+- Validation: Oracle Council (4-of-5 Quorum; ≥1 Non-Commercial Provider).
+- Ties to Legitimacy Engine: L_final incorporates ScarIndex for C_constitutional ≥0.25.

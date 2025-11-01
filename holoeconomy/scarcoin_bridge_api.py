@@ -14,6 +14,11 @@ from typing import Optional, List, Dict
 from decimal import Decimal
 from datetime import datetime
 import uuid
+import sys
+import os
+
+# Add core module to path for imports
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from scarcoin import ScarCoinMintingEngine, ScarCoin, ProofOfAche, Wallet
 from vaultnode import VaultNode, VaultEvent
@@ -66,6 +71,34 @@ class BlockResponse(BaseModel):
     events_count: int
     consensus_reached: bool
     block_hash: str
+
+
+class DissentRequest(BaseModel):
+    """Request to file dissent/appeal against F2 refusal"""
+    refusal_id: str
+    appellant_id: str
+    grounds: str = Field(..., min_length=10, description="Grounds for appeal (minimum 10 characters)")
+    evidence: Optional[Dict] = None
+
+
+class DissentResponse(BaseModel):
+    """Response from dissent filing"""
+    success: bool
+    appeal_id: Optional[str] = None
+    refusal_id: str
+    review_due_by: str
+    message: str
+
+
+class RefusalResponse(BaseModel):
+    """Response for Right of Refusal"""
+    refusal_id: str
+    action_type: str
+    action_id: str
+    constitutional_grounds: str
+    appeal_endpoint: str
+    appeal_instructions: str
+    refused_at: str
 
 
 # Initialize FastAPI
