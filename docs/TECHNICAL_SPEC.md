@@ -626,3 +626,12 @@ GITHUB_TOKEN=...
 **Version**: 1.0.0  
 **Last Updated**: 2025-10-30  
 **Maintainer**: ZoaGrad
+
+---
+
+**Updated Formula (ΔΩ.125.4.1 - CRITICAL Corrections)**:
+ScarIndex = (C_operational × 0.35) + (C_audit × 0.3) + (C_constitutional × 0.25) + (C_symbolic × 0.1)
+- Sum: 1.0 (Immutable; F2 Protected).
+- Threshold: <0.67 → PanicFrameManager Review (7-Phase Recovery).
+- Validation: Oracle Council (4-of-5 Quorum; ≥1 Non-Commercial Provider).
+- Ties to Legitimacy Engine: L_final incorporates ScarIndex for C_constitutional ≥0.25.
