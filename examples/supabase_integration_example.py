@@ -20,16 +20,40 @@ except ImportError:
 
 
 class SpiralOSClient:
-    """Client for interacting with SpiralOS Supabase backend"""
+    """Client for interacting with SpiralOS Supabase backend
+    
+    This client provides a high-level interface to the SpiralOS system,
+    demonstrating the complete Ache → ScarIndex → ScarCoin flow.
+    
+    Example:
+        >>> client = SpiralOSClient()
+        >>> event_id = client.create_ache_event('demo', {'test': 'data'}, 0.5)
+        >>> calc = client.calculate_scarindex(event_id)
+        >>> txn = client.mint_scarcoin(calc['id'])
+    
+    Key Methods:
+        - create_ache_event(): Create Ache measurement from external input
+        - calculate_scarindex(): Run 4D coherence calculation
+        - mint_scarcoin(): Mint ScarCoin via Proof-of-Ache
+        - seal_vaultnode(): Seal immutable audit record
+        - get_oracle_status(): Get 30-day coherence statistics
+    """
     
     def __init__(self):
         """Initialize Supabase client"""
         self.url = os.getenv('SUPABASE_URL')
         self.key = os.getenv('SUPABASE_KEY')
         
-        if not self.url or not self.key:
+        missing = []
+        if not self.url:
+            missing.append('SUPABASE_URL')
+        if not self.key:
+            missing.append('SUPABASE_KEY')
+        
+        if missing:
             raise ValueError(
-                "Missing environment variables. Set SUPABASE_URL and SUPABASE_KEY"
+                f"Missing environment variables: {', '.join(missing)}\n"
+                f"Set them with: export SUPABASE_URL=... SUPABASE_KEY=..."
             )
         
         self.client: Client = create_client(self.url, self.key)

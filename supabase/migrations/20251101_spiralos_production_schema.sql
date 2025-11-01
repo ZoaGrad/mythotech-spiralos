@@ -464,6 +464,16 @@ $$ LANGUAGE plpgsql IMMUTABLE;
 
 COMMENT ON FUNCTION public.technical_coherence IS 'Calculate technical coherence (test coverage placeholder)';
 
+-- Helper function for clamping values to [0, 1] range
+CREATE OR REPLACE FUNCTION public.clamp_to_unit(val DECIMAL(10, 6))
+RETURNS DECIMAL(10, 6) AS $$
+BEGIN
+    RETURN LEAST(GREATEST(val, 0), 1);
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
+COMMENT ON FUNCTION public.clamp_to_unit IS 'Clamp value to [0, 1] range for coherence scores';
+
 -- Update PID Controller
 CREATE OR REPLACE FUNCTION public.update_pid_controller(
     curr DECIMAL(10, 6),
@@ -478,11 +488,16 @@ DECLARE
     derivative DECIMAL(10, 6);
     output DECIMAL(10, 6);
 BEGIN
-    -- Get or create PID state
-    SELECT * INTO pid FROM public.pid_controller_state LIMIT 1 FOR UPDATE;
+    -- Get or create PID state (select only needed columns)
+    SELECT 
+        id, kp, ki, kd, error, integral
+    INTO pid 
+    FROM public.pid_controller_state 
+    LIMIT 1 FOR UPDATE;
     
     IF NOT FOUND THEN
-        INSERT INTO public.pid_controller_state DEFAULT VALUES RETURNING * INTO pid;
+        INSERT INTO public.pid_controller_state DEFAULT VALUES 
+        RETURNING id, kp, ki, kd, error, integral INTO pid;
     END IF;
     
     -- Calculate error
@@ -491,7 +506,7 @@ BEGIN
     -- Calculate integral with anti-windup
     integral_new := GREATEST(LEAST(pid.integral + error * dt, 10.0), -10.0);
     
-    -- Calculate derivative
+    -- Calculate derivative (dt is constant non-zero so safe from division by zero)
     derivative := (error - pid.error) / dt;
     
     -- Calculate output (guidance scale)
@@ -550,7 +565,7 @@ BEGIN
     -- Apply PID guidance
     guidance := pid.guidance_scale;
     scarindex_val := (0.3 * c_n + 0.25 * c_s + 0.25 * c_e + 0.2 * c_t) * guidance;
-    scarindex_val := LEAST(GREATEST(scarindex_val, 0), 1);
+    scarindex_val := public.clamp_to_unit(scarindex_val);
     
     -- Get previous ache level
     SELECT ache_after INTO prev_ache

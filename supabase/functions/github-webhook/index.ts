@@ -5,6 +5,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
+// Configuration constants
+const MAX_FILES_CHANGED_THRESHOLD = 20  // Normalize ache calculation to this maximum
+const MIN_COMMIT_MESSAGE_LENGTH = 50    // Minimum for good message quality
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-github-event, x-hub-signature-256',
@@ -49,12 +53,12 @@ function computeAcheFromCommit(commit: GitHubCommit): number {
                       (commit.modified?.length || 0)
   
   // More changes = higher initial ache (needs more coherence work)
-  // Normalize to [0, 1] range (assume max 20 files changed)
-  const changeAche = Math.min(totalChanges / 20, 0.8)
+  // Normalize to [0, 1] range using configured threshold
+  const changeAche = Math.min(totalChanges / MAX_FILES_CHANGED_THRESHOLD, 0.8)
   
   // Message quality affects ache (poor messages = higher ache)
   const messageLength = commit.message?.length || 0
-  const messageQuality = messageLength > 50 ? 0.1 : 0.3
+  const messageQuality = messageLength > MIN_COMMIT_MESSAGE_LENGTH ? 0.1 : 0.3
   
   return Math.min(changeAche + messageQuality, 1.0)
 }
