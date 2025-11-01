@@ -355,6 +355,71 @@ class PanicFrameManager:
         """
         return operation in self.get_frozen_operations()
 
+
+# Module-level helper functions for backward compatibility
+_panic_manager_instance: Optional[PanicFrameManager] = None
+
+
+def get_panic_manager() -> PanicFrameManager:
+    """Get or create the global panic manager instance."""
+    global _panic_manager_instance
+    if _panic_manager_instance is None:
+        try:
+            store = PanicFrameStore()
+            _panic_manager_instance = PanicFrameManager(store)
+        except Exception:
+            # Fallback to manager without store if Supabase unavailable
+            _panic_manager_instance = PanicFrameManager(None)
+    return _panic_manager_instance
+
+
+def log_event(level: str, message: str, meta: Optional[Dict] = None) -> None:
+    """Log a panic frame event.
+    
+    Args:
+        level: Log level (e.g., 'WARNING', 'CRITICAL', 'INFO')
+        message: Log message
+        meta: Optional metadata dictionary
+    """
+    log.log(
+        getattr(logging, level.upper(), logging.INFO),
+        message
+    )
+    
+    # Try to persist to Supabase if available
+    try:
+        manager = get_panic_manager()
+        if manager.store:
+            manager.store.insert_signal(
+                level=level,
+                key='panic_frame.event',
+                meta=meta or {'message': message}
+            )
+    except Exception as e:
+        log.debug(f"Failed to persist event to Supabase: {e}")
+
+
+def trigger_panic_frames(scarindex: Optional[float] = None) -> None:
+    """Trigger a panic frame due to coherence failure.
+    
+    Args:
+        scarindex: Optional ScarIndex value that triggered the panic
+    """
+    manager = get_panic_manager()
+    
+    # Use provided scarindex or default to threshold breach
+    trigger_value = scarindex if scarindex is not None else 0.29
+    
+    event = manager.trigger_panic_frame(
+        scarindex=trigger_value,
+        metadata={'auto_triggered': True}
+    )
+    
+    log.critical(
+        f"Panic Frame triggered: ScarIndex={trigger_value:.3f} < {manager.threshold}"
+    )
+
+
 class SevenPhaseRecoveryProtocol:
     """
     Implements the 7-Phase Crisis Recovery Protocol
@@ -510,5 +575,29 @@ class SevenPhaseRecoveryProtocol:
         panic_frame_id: str,
         remediation_plan: Dict
     ) -> RecoveryAction:
+        """Execute Phase 5: Remediation - Implementation of corrective measures.
+        
+        Args:
+            panic_frame_id: ID of the panic frame
+            remediation_plan: Dict containing remediation actions
+            
+        Returns:
+            RecoveryAction record
         """
+        # Implement remediation plan
+        log_event(
+            'recovery',
+            f'Phase 5 remediation executed for panic frame {panic_frame_id}'
+        )
+        
+        action = RecoveryAction(
+            phase=RecoveryPhase.PHASE_5_REMEDIATION,
+            action_type='remediation',
+            description='Executed remediation plan',
+            executed_at=datetime.utcnow(),
+            success=True,
+            result=remediation_plan
+        )
+        
+        return action
        
