@@ -20,6 +20,12 @@ from datetime import datetime
 import uuid
 
 
+class ProviderType(Enum):
+    """Provider types for diversity requirement"""
+    COMMERCIAL = "commercial"
+    NON_COMMERCIAL = "non_commercial"
+
+
 class OracleRole(Enum):
     """Roles within the Oracle Council"""
     CHIEF_ORACLE = "chief_oracle"      # Highest authority
@@ -48,6 +54,10 @@ class Oracle:
     name: str = ""
     role: OracleRole = OracleRole.ORACLE
     
+    # Provider information (for diversity requirement)
+    provider: str = ""  # e.g., "openai", "anthropic", "cohere", etc.
+    provider_type: ProviderType = ProviderType.COMMERCIAL
+    
     # Authority
     voting_weight: float = 1.0  # Weighted by role
     specialization: str = ""
@@ -65,6 +75,8 @@ class Oracle:
             'id': self.id,
             'name': self.name,
             'role': self.role.value,
+            'provider': self.provider,
+            'provider_type': self.provider_type.value,
             'voting_weight': self.voting_weight,
             'specialization': self.specialization,
             'decisions_made': self.decisions_made,
@@ -126,47 +138,98 @@ class OracleCouncil:
     """
     Oracle Council - Supreme Governance Authority
     
+    Constitutional Requirement: 4-of-5 quorum with provider diversity
+    - Required providers: ["openai", "anthropic", "cohere", "huggingface", "external_validator"]
+    - ≥1 non-commercial provider required for validity
+    - If only 3/5 agree → external validator arbitration
+    
     The Oracle Council provides the highest level of judicial and
     legislative oversight, reviewing critical decisions through
     multi-oracle consensus.
     """
     
-    def __init__(self, consensus_threshold: float = 0.75):
+    # Constitutional requirement: 5 specific providers
+    REQUIRED_PROVIDERS = [
+        "openai",
+        "anthropic", 
+        "cohere",
+        "huggingface",
+        "external_validator"
+    ]
+    
+    # Constitutional requirement: minimum quorum
+    MIN_QUORUM = 4  # 4-of-5
+    
+    def __init__(self, consensus_threshold: float = 0.8):
         self.oracles: Dict[str, Oracle] = {}
         self.sentinels: Dict[str, Sentinel] = {}
         self.consensus_threshold = consensus_threshold
         
-        # Initialize default council
-        self._initialize_council()
+        # Initialize constitutional council
+        self._initialize_constitutional_council()
         self._initialize_sentinels()
     
-    def _initialize_council(self):
-        """Initialize default Oracle Council members"""
-        # Chief Oracle
-        chief = Oracle(
-            name="Chief Oracle Sigma",
-            role=OracleRole.CHIEF_ORACLE,
-            voting_weight=2.0,
-            specialization="Constitutional Law"
-        )
-        self.oracles[chief.id] = chief
+    def _initialize_constitutional_council(self):
+        """
+        Initialize Oracle Council with constitutional 5-provider requirement
         
-        # Senior Oracles
-        senior1 = Oracle(
-            name="Senior Oracle Alpha",
-            role=OracleRole.SENIOR_ORACLE,
-            voting_weight=1.5,
-            specialization="Coherence Theory"
+        Constitutional mandate: 4-of-5 quorum from specific providers
+        with at least 1 non-commercial provider
+        """
+        # OpenAI Oracle
+        openai = Oracle(
+            name="OpenAI Oracle",
+            role=OracleRole.ORACLE,
+            provider="openai",
+            provider_type=ProviderType.COMMERCIAL,
+            voting_weight=1.0,
+            specialization="AI Safety and Alignment"
         )
-        self.oracles[senior1.id] = senior1
+        self.oracles[openai.id] = openai
         
-        senior2 = Oracle(
-            name="Senior Oracle Beta",
-            role=OracleRole.SENIOR_ORACLE,
-            voting_weight=1.5,
-            specialization="Economic Validation"
+        # Anthropic Oracle
+        anthropic = Oracle(
+            name="Anthropic Oracle",
+            role=OracleRole.ORACLE,
+            provider="anthropic",
+            provider_type=ProviderType.COMMERCIAL,
+            voting_weight=1.0,
+            specialization="Constitutional AI"
         )
-        self.oracles[senior2.id] = senior2
+        self.oracles[anthropic.id] = anthropic
+        
+        # Cohere Oracle
+        cohere = Oracle(
+            name="Cohere Oracle",
+            role=OracleRole.ORACLE,
+            provider="cohere",
+            provider_type=ProviderType.COMMERCIAL,
+            voting_weight=1.0,
+            specialization="Language Understanding"
+        )
+        self.oracles[cohere.id] = cohere
+        
+        # HuggingFace Oracle (Non-commercial)
+        huggingface = Oracle(
+            name="HuggingFace Oracle",
+            role=OracleRole.ORACLE,
+            provider="huggingface",
+            provider_type=ProviderType.NON_COMMERCIAL,
+            voting_weight=1.0,
+            specialization="Open Source AI"
+        )
+        self.oracles[huggingface.id] = huggingface
+        
+        # External Validator (Non-commercial)
+        external = Oracle(
+            name="External Validator",
+            role=OracleRole.SENIOR_ORACLE,
+            provider="external_validator",
+            provider_type=ProviderType.NON_COMMERCIAL,
+            voting_weight=1.0,
+            specialization="Arbitration and Validation"
+        )
+        self.oracles[external.id] = external
     
     def _initialize_sentinels(self):
         """Initialize default Sentinels"""
@@ -200,6 +263,127 @@ class OracleCouncil:
             'consensus_threshold': self.consensus_threshold,
             'timestamp': datetime.utcnow().isoformat()
         }
+    
+    def validate_consensus(
+        self,
+        votes: Dict[str, bool]
+    ) -> tuple[bool, str, bool]:
+        """
+        Validate consensus according to constitutional requirements
+        
+        Constitutional Requirements:
+        1. 4-of-5 quorum from specific providers
+        2. At least 1 non-commercial provider must vote YES
+        3. If only 3/5 agree → external validator arbitration required
+        
+        Args:
+            votes: Dict mapping oracle_id to vote (True=approve, False=reject)
+            
+        Returns:
+            (consensus_reached, reason, requires_arbitration)
+        """
+        # Count votes by provider
+        approvals_by_provider = {}
+        rejections_by_provider = {}
+        non_commercial_approvals = 0
+        
+        for oracle_id, vote in votes.items():
+            if oracle_id not in self.oracles:
+                continue
+                
+            oracle = self.oracles[oracle_id]
+            provider = oracle.provider
+            
+            if vote:
+                approvals_by_provider[provider] = True
+                if oracle.provider_type == ProviderType.NON_COMMERCIAL:
+                    non_commercial_approvals += 1
+            else:
+                rejections_by_provider[provider] = True
+        
+        total_votes = len(votes)
+        total_approvals = sum(1 for v in votes.values() if v)
+        
+        # Check if we have enough votes
+        if total_votes < self.MIN_QUORUM:
+            return (
+                False,
+                f"Insufficient quorum: {total_votes}/5 voted, need {self.MIN_QUORUM}",
+                False
+            )
+        
+        # Check diversity requirement: ≥1 non-commercial provider
+        if total_approvals > 0 and non_commercial_approvals == 0:
+            return (
+                False,
+                "Constitutional violation: No non-commercial provider approved",
+                False
+            )
+        
+        # Check if we have 4-of-5 consensus
+        if total_approvals >= self.MIN_QUORUM:
+            return (
+                True,
+                f"4-of-5 quorum reached: {total_approvals}/5 approved",
+                False
+            )
+        
+        # Check if we have exactly 3-of-5 (requires arbitration)
+        if total_approvals == 3:
+            # External validator must arbitrate
+            external_voted = any(
+                self.oracles[oid].provider == "external_validator"
+                for oid in votes.keys()
+                if oid in self.oracles
+            )
+            
+            if not external_voted:
+                return (
+                    False,
+                    "3-of-5 split requires external validator arbitration",
+                    True
+                )
+            
+            # If external validator already voted and we have 3, check if it's in approval
+            external_oracle = next(
+                (o for o in self.oracles.values() if o.provider == "external_validator"),
+                None
+            )
+            if external_oracle and votes.get(external_oracle.id):
+                return (
+                    True,
+                    "3-of-5 with external validator arbitration approved",
+                    False
+                )
+        
+        # Not enough approvals
+        return (
+            False,
+            f"Insufficient approvals: {total_approvals}/5, need {self.MIN_QUORUM}",
+            False
+        )
+    
+    def check_provider_diversity(self, voting_oracles: List[str]) -> bool:
+        """
+        Check if voting oracles meet diversity requirement
+        
+        Constitutional requirement: ≥1 non-commercial provider must participate
+        
+        Args:
+            voting_oracles: List of oracle IDs that are voting
+            
+        Returns:
+            True if diversity requirement met
+        """
+        non_commercial_count = 0
+        
+        for oracle_id in voting_oracles:
+            if oracle_id in self.oracles:
+                oracle = self.oracles[oracle_id]
+                if oracle.provider_type == ProviderType.NON_COMMERCIAL:
+                    non_commercial_count += 1
+        
+        return non_commercial_count >= 1
 
 
 # Example usage

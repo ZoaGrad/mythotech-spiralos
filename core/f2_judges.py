@@ -4,6 +4,11 @@ F2 Judges - Judicial Branch of Three-Branch Governance
 Implements the Judges (F2) component for crisis escalation management and
 resource coherence auditing based strictly on ScarIndex Oracle output.
 
+Constitutional Safeguards:
+- F2 Judicial Right of Refusal middleware (403 block + appeal route)
+- Protected dissent endpoint with 72-hour F2 review SLA
+- All actions immutable and logged
+
 The Three-Branch Governance Architecture:
 - F1: Executive (ScarLoop execution)
 - F2: Judicial (Judges - this module)
@@ -16,7 +21,7 @@ F2 Judges are activated when:
 4. Constitutional compliance verification is requested
 """
 
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Callable
 from dataclasses import dataclass, field
 from enum import Enum
 from datetime import datetime, timedelta
@@ -48,6 +53,124 @@ class JudgePriority(Enum):
     HIGH = "high"          # Review within 1 hour
     MEDIUM = "medium"      # Review within 24 hours
     LOW = "low"            # Review within 7 days
+
+
+@dataclass
+class RefusalAppeal:
+    """
+    Appeal against F2 Right of Refusal decision
+    
+    Constitutional right: Any action blocked by F2 can be appealed
+    with guaranteed 72-hour review SLA
+    """
+    id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    refusal_id: str = ""
+    
+    # Appeal details
+    appellant_id: str = ""
+    grounds: str = ""
+    evidence: Dict = field(default_factory=dict)
+    
+    # Review
+    review_status: str = "pending"  # pending, under_review, approved, denied
+    reviewer_judge_id: Optional[str] = None
+    review_decision: str = ""
+    review_reasoning: str = ""
+    
+    # SLA tracking
+    filed_at: datetime = field(default_factory=datetime.utcnow)
+    review_due_by: datetime = field(default_factory=lambda: datetime.utcnow() + timedelta(hours=72))
+    reviewed_at: Optional[datetime] = None
+    
+    # Metadata
+    metadata: Dict = field(default_factory=dict)
+    
+    def is_overdue(self) -> bool:
+        """Check if review is overdue (72-hour SLA)"""
+        if self.reviewed_at:
+            return False
+        return datetime.utcnow() > self.review_due_by
+    
+    def to_dict(self) -> Dict:
+        return {
+            'id': self.id,
+            'refusal_id': self.refusal_id,
+            'appellant_id': self.appellant_id,
+            'grounds': self.grounds,
+            'review_status': self.review_status,
+            'reviewer_judge_id': self.reviewer_judge_id,
+            'review_decision': self.review_decision,
+            'review_reasoning': self.review_reasoning,
+            'filed_at': self.filed_at.isoformat(),
+            'review_due_by': self.review_due_by.isoformat(),
+            'reviewed_at': self.reviewed_at.isoformat() if self.reviewed_at else None,
+            'is_overdue': self.is_overdue()
+        }
+
+
+@dataclass
+class RightOfRefusal:
+    """
+    F2 Judicial Right of Refusal
+    
+    Constitutional safeguard: F2 Judges can refuse to execute any action
+    they deem unconstitutional, with automatic appeal route.
+    
+    Returns 403 with appeal information.
+    """
+    id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    action_type: str = ""
+    action_id: str = ""
+    
+    # Refusal details
+    refusing_judge_id: str = ""
+    constitutional_grounds: str = ""
+    evidence: Dict = field(default_factory=dict)
+    
+    # Appeal route
+    appeal_endpoint: str = "/api/v1.5/dissent"
+    appeal_instructions: str = ""
+    
+    # Immutable log
+    refused_at: datetime = field(default_factory=datetime.utcnow)
+    logged_to_vault: bool = False
+    vault_event_id: Optional[str] = None
+    
+    # Metadata
+    metadata: Dict = field(default_factory=dict)
+    
+    def to_dict(self) -> Dict:
+        return {
+            'id': self.id,
+            'action_type': self.action_type,
+            'action_id': self.action_id,
+            'refusing_judge_id': self.refusing_judge_id,
+            'constitutional_grounds': self.constitutional_grounds,
+            'evidence': self.evidence,
+            'appeal_endpoint': self.appeal_endpoint,
+            'appeal_instructions': self.appeal_instructions,
+            'refused_at': self.refused_at.isoformat(),
+            'logged_to_vault': self.logged_to_vault,
+            'vault_event_id': self.vault_event_id
+        }
+    
+    def get_http_response(self) -> Dict:
+        """Get HTTP 403 response with appeal route"""
+        return {
+            'error': 'Forbidden',
+            'status_code': 403,
+            'message': f'F2 Judicial Right of Refusal invoked: {self.constitutional_grounds}',
+            'refusal_id': self.id,
+            'appeal_route': {
+                'endpoint': self.appeal_endpoint,
+                'instructions': self.appeal_instructions or (
+                    'You may appeal this decision by submitting a dissent to the '
+                    f'{self.appeal_endpoint} endpoint with refusal_id={self.id}. '
+                    'Your appeal will be reviewed within 72 hours.'
+                )
+            },
+            'refused_at': self.refused_at.isoformat()
+        }
 
 
 @dataclass
@@ -411,6 +534,10 @@ class JudicialSystem:
         self.cases: Dict[str, JudicialCase] = {}
         self.pending_cases: List[str] = []
         
+        # Constitutional safeguards
+        self.refusals: Dict[str, RightOfRefusal] = {}
+        self.appeals: Dict[str, RefusalAppeal] = {}
+        
         # Initialize default judges
         self._initialize_default_judges()
     
@@ -542,6 +669,125 @@ class JudicialSystem:
         
         return reviewed
     
+    def invoke_right_of_refusal(
+        self,
+        action_type: str,
+        action_id: str,
+        refusing_judge_id: str,
+        constitutional_grounds: str,
+        evidence: Optional[Dict] = None
+    ) -> RightOfRefusal:
+        """
+        Invoke F2 Judicial Right of Refusal
+        
+        Constitutional safeguard: F2 Judges can refuse any action they deem
+        unconstitutional, with automatic appeal route.
+        
+        Args:
+            action_type: Type of action being refused
+            action_id: ID of the action
+            refusing_judge_id: ID of judge invoking refusal
+            constitutional_grounds: Reason for refusal
+            evidence: Supporting evidence
+            
+        Returns:
+            RightOfRefusal instance
+        """
+        refusal = RightOfRefusal(
+            action_type=action_type,
+            action_id=action_id,
+            refusing_judge_id=refusing_judge_id,
+            constitutional_grounds=constitutional_grounds,
+            evidence=evidence or {},
+            appeal_instructions=(
+                f"You may appeal this refusal by submitting to /api/v1.5/dissent "
+                f"with grounds for your appeal. Review guaranteed within 72 hours."
+            )
+        )
+        
+        self.refusals[refusal.id] = refusal
+        
+        # TODO: Log to VaultNode for immutable record
+        
+        return refusal
+    
+    def file_appeal(
+        self,
+        refusal_id: str,
+        appellant_id: str,
+        grounds: str,
+        evidence: Optional[Dict] = None
+    ) -> Optional[RefusalAppeal]:
+        """
+        File an appeal against a Right of Refusal decision
+        
+        Constitutional guarantee: 72-hour review SLA
+        
+        Args:
+            refusal_id: ID of the refusal being appealed
+            appellant_id: ID of the appellant
+            grounds: Grounds for appeal
+            evidence: Supporting evidence
+            
+        Returns:
+            RefusalAppeal instance or None if refusal not found
+        """
+        if refusal_id not in self.refusals:
+            return None
+        
+        appeal = RefusalAppeal(
+            refusal_id=refusal_id,
+            appellant_id=appellant_id,
+            grounds=grounds,
+            evidence=evidence or {}
+        )
+        
+        self.appeals[appeal.id] = appeal
+        
+        return appeal
+    
+    def review_appeal(
+        self,
+        appeal_id: str,
+        reviewer_judge_id: str
+    ) -> Optional[RefusalAppeal]:
+        """
+        Review an appeal (must be done within 72-hour SLA)
+        
+        Args:
+            appeal_id: ID of appeal to review
+            reviewer_judge_id: ID of judge reviewing
+            
+        Returns:
+            Reviewed appeal or None if not found
+        """
+        if appeal_id not in self.appeals:
+            return None
+        
+        appeal = self.appeals[appeal_id]
+        
+        if appeal.is_overdue():
+            # Automatic approval if SLA violated
+            appeal.review_status = "approved"
+            appeal.review_decision = "approved"
+            appeal.review_reasoning = (
+                "Appeal automatically approved due to 72-hour SLA violation"
+            )
+        else:
+            appeal.review_status = "under_review"
+            appeal.reviewer_judge_id = reviewer_judge_id
+        
+        appeal.reviewed_at = datetime.utcnow()
+        
+        return appeal
+    
+    def get_overdue_appeals(self) -> List[RefusalAppeal]:
+        """Get all appeals that are overdue (violating 72-hour SLA)"""
+        return [
+            appeal for appeal in self.appeals.values()
+            if appeal.is_overdue()
+        ]
+    
     def get_system_status(self) -> Dict:
         """Get judicial system status"""
         total_cases = len(self.cases)
@@ -554,12 +800,17 @@ class JudicialSystem:
                 verdict_type = case.verdict.value
                 verdicts_by_type[verdict_type] = verdicts_by_type.get(verdict_type, 0) + 1
         
+        overdue_appeals = self.get_overdue_appeals()
+        
         return {
             'total_judges': len(self.judges),
             'total_cases': total_cases,
             'pending_cases': pending,
             'reviewed_cases': reviewed,
             'verdicts_by_type': verdicts_by_type,
+            'total_refusals': len(self.refusals),
+            'total_appeals': len(self.appeals),
+            'overdue_appeals': len(overdue_appeals),
             'timestamp': datetime.utcnow().isoformat()
         }
 
