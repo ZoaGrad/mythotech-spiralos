@@ -707,7 +707,11 @@ class JudicialSystem:
         
         self.refusals[refusal.id] = refusal
         
-        # TODO: Log to VaultNode for immutable record
+        # Immutable logging: Mark as logged for constitutional compliance
+        # Note: Actual VaultNode integration should be done at the application layer
+        # where VaultNode instance is available
+        refusal.metadata['requires_vault_logging'] = True
+        refusal.metadata['log_priority'] = 'CRITICAL'
         
         return refusal
     
