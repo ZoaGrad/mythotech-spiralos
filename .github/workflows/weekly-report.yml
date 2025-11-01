@@ -51,10 +51,10 @@ jobs:
         run: |
           python3 .github/scripts/publish_to_reddit.py
         env:
-          REDDIT_CLIENT_ID: ${{ 7K9HW5dG2-vB6G7Gf3J9tQ }}
-          REDDIT_CLIENT_SECRET: ${{ U8tbk_oGEfNMMF48o_R_1S3o_OgkOA }}
-          REDDIT_USERNAME: ${{ u/Ok-Ad5407 }}
-          REDDIT_PASSWORD: ${{ Airwolf1990! }}
+          REDDIT_CLIENT_ID: ${{  }}
+          REDDIT_CLIENT_SECRET: ${{  }}
+          REDDIT_USERNAME: ${{  }}
+          REDDIT_PASSWORD: ${{  }}
       
       - name: Publish to GitHub Discussions
         if: success()
