@@ -19,15 +19,15 @@ from .panic_frames import log_event, trigger_panic_frames
 
 @dataclass
 class CoherenceComponents:
-    """Multi-dimensional coherence measurements"""
-    narrative: float  # C_narrative: 0-1 scale
-    social: float     # C_social: 0-1 scale
-    economic: float   # C_economic: 0-1 scale
-    technical: float  # C_technical: 0-1 scale
+    """Multi-dimensional coherence measurements (constitutional weights)"""
+    operational: float      # Operational coherence: 0-1 scale (weight: 0.35)
+    audit: float           # Audit momentum: 0-1 scale (weight: 0.3)
+    constitutional: float  # Constitutional compliance: 0-1 scale (weight: 0.25)
+    symbolic: float        # Symbolic integrity: 0-1 scale (weight: 0.1)
     
     def __post_init__(self):
         """Validate all components are in valid range"""
-        for field in ['narrative', 'social', 'economic', 'technical']:
+        for field in ['operational', 'audit', 'constitutional', 'symbolic']:
             value = getattr(self, field)
             if not 0 <= value <= 1:
                 raise ValueError(f"{field} must be between 0 and 1, got {value}")
@@ -77,10 +77,10 @@ class ScarIndexResult:
         return {
             'id': self.id,
             'created_at': self.timestamp.isoformat(),
-            'c_narrative': self.components.narrative,
-            'c_social': self.components.social,
-            'c_economic': self.components.economic,
-            'c_technical': self.components.technical,
+            'c_operational': self.components.operational,
+            'c_audit': self.components.audit,
+            'c_constitutional': self.components.constitutional,
+            'c_symbolic': self.components.symbolic,
             'scarindex': self.scarindex,
             'ache_before': self.ache.before,
             'ache_after': self.ache.after,
@@ -94,23 +94,50 @@ class ScarIndexOracle:
     """
     The Coherence Oracle (B6) - Supreme regulator of SpiralOS
     
-    Calculates system coherence as a weighted composite score:
-    ScarIndex = (0.4 * C_narrative) + (0.3 * C_social) + (0.2 * C_economic) + (0.1 * C_technical)
+    Calculates system coherence as a weighted composite score using constitutional weights:
+    ScarIndex = (0.35 * operational) + (0.3 * audit) + (0.25 * constitutional) + (0.1 * symbolic)
+    
+    Constitutional Requirement: Sum of weights MUST equal 1.0
+    ScarIndex < 0.67 → triggers PanicFrameManager review
     
     The weighting reflects the relative importance of each dimension in maintaining
     system coherence and enabling anti-fragile growth.
     """
     
-    # Weighting coefficients for coherence dimensions
+    # Constitutional weighting coefficients (CRITICAL: sum must = 1.0)
     WEIGHTS = {
-        'narrative': 0.4,
-        'social': 0.3,
-        'economic': 0.2,
-        'technical': 0.1
+        'operational': 0.35,      # Formerly 'narrative'
+        'audit': 0.3,             # Formerly 'social'
+        'constitutional': 0.25,   # Formerly 'economic'
+        'symbolic': 0.1           # Formerly 'technical'
     }
     
-    # Critical threshold for Panic Frame activation
-    PANIC_THRESHOLD = 0.3
+    # Critical threshold for Panic Frame activation (constitutional requirement)
+    PANIC_THRESHOLD = 0.67
+    
+    @classmethod
+    def validate_weights(cls) -> bool:
+        """
+        Constitutional validation: Verify that weight sum equals 1.0
+        
+        This is a critical constitutional requirement that must never be violated.
+        
+        Returns:
+            True if weights sum to 1.0 (within floating point tolerance)
+        
+        Raises:
+            ValueError if weights do not sum to 1.0
+        """
+        weight_sum = sum(cls.WEIGHTS.values())
+        tolerance = 1e-10
+        
+        if abs(weight_sum - 1.0) > tolerance:
+            raise ValueError(
+                f"CONSTITUTIONAL VIOLATION: ScarIndex weights must sum to 1.0, "
+                f"got {weight_sum:.15f}. Current weights: {cls.WEIGHTS}"
+            )
+        
+        return True
     
     @classmethod
     def calculate(
@@ -146,10 +173,10 @@ class ScarIndexOracle:
             id=str(uuid.uuid4()),
             timestamp=datetime.utcnow(),
             components=CoherenceComponents(
-                narrative=0.0,
-                social=0.0,
-                economic=0.0,
-                technical=0.0
+                operational=0.0,
+                audit=0.0,
+                constitutional=0.0,
+                symbolic=0.0
             ),
             scarindex=scarindex,
             ache=ache,
@@ -195,17 +222,19 @@ class ScarIndexOracle:
         """
         Determine system coherence status from ScarIndex value
         
+        Constitutional requirement: ScarIndex < 0.67 triggers review
+        
         Returns:
-            'CRITICAL' if < 0.3 (Panic Frame territory)
-            'WARNING' if < 0.5
-            'STABLE' if < 0.7
-            'OPTIMAL' if >= 0.7
+            'CRITICAL' if < 0.5 (Severe coherence failure)
+            'WARNING' if < 0.67 (Below constitutional threshold)
+            'STABLE' if < 0.8
+            'OPTIMAL' if >= 0.8
         """
-        if scarindex < 0.3:
+        if scarindex < 0.5:
             return 'CRITICAL'
-        elif scarindex < 0.5:
+        elif scarindex < 0.67:
             return 'WARNING'
-        elif scarindex < 0.7:
+        elif scarindex < 0.8:
             return 'STABLE'
         else:
             return 'OPTIMAL'

@@ -4,6 +4,11 @@ Empathy Market - Proof-of-Being-Seen Economic Layer
 Implements EMP token minting based on Resonance Surplus (ρ_Σ), rewarding
 relational and semantic integrity beyond thermodynamic efficiency.
 
+Constitutional Safeguard: EMP burn validation via GlyphicBindingEngine
+- coherence_score > 0.7 required
+- verified witness declarations required
+- relational_impact.permits_burn = True required
+
 This module complements ScarCoin (thermodynamic value) with EMP (relational value),
 creating a dual-token economy that values both order and understanding.
 """
@@ -15,6 +20,13 @@ from decimal import Decimal
 import uuid
 import hashlib
 import json
+import sys
+import os
+
+# Add core module to path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
+from core.glyphic_binding_engine import GlyphicBindingEngine, Glyph, GlyphType, BindingStrength
 
 
 @dataclass
@@ -199,9 +211,58 @@ class EmpathyWallet:
         }
 
 
+@dataclass
+class BurnValidation:
+    """
+    EMP Burn Validation via GlyphicBindingEngine
+    
+    Constitutional requirements for burning EMP tokens:
+    1. coherence_score > 0.7
+    2. verified witness declarations
+    3. relational_impact.permits_burn = True
+    """
+    id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    token_id: str = ""
+    amount: Decimal = Decimal('0')
+    
+    # GBE validation
+    coherence_score: float = 0.0
+    witness_count: int = 0
+    witness_declarations: List[str] = field(default_factory=list)
+    
+    # Relational impact
+    relational_impact: Dict = field(default_factory=dict)
+    permits_burn: bool = False
+    
+    # Validation result
+    is_valid: bool = False
+    validation_reason: str = ""
+    
+    # Metadata
+    validated_at: datetime = field(default_factory=datetime.utcnow)
+    metadata: Dict = field(default_factory=dict)
+    
+    def to_dict(self) -> Dict:
+        return {
+            'id': self.id,
+            'token_id': self.token_id,
+            'amount': str(self.amount),
+            'coherence_score': self.coherence_score,
+            'witness_count': self.witness_count,
+            'witness_declarations': self.witness_declarations,
+            'relational_impact': self.relational_impact,
+            'permits_burn': self.permits_burn,
+            'is_valid': self.is_valid,
+            'validation_reason': self.validation_reason,
+            'validated_at': self.validated_at.isoformat()
+        }
+
+
 class EmpathyMarket:
     """
     Empathy Market - Proof-of-Being-Seen Economic Engine
+    
+    Constitutional safeguard: EMP burn validation via GlyphicBindingEngine
     
     Implements EMP token minting based on validated resonance events,
     creating economic value from relational understanding.
@@ -211,7 +272,8 @@ class EmpathyMarket:
         self,
         multiplier: Decimal = Decimal('100'),
         min_resonance_surplus: Decimal = Decimal('0.5'),
-        consensus_threshold: int = 2
+        consensus_threshold: int = 2,
+        enable_burn_validation: bool = True
     ):
         """
         Initialize Empathy Market
@@ -220,18 +282,32 @@ class EmpathyMarket:
             multiplier: Economic scaling factor for EMP minting
             min_resonance_surplus: Minimum ρ_Σ required for minting
             consensus_threshold: Required peer validations
+            enable_burn_validation: Enable constitutional burn validation
         """
         self.multiplier = multiplier
         self.min_resonance_surplus = min_resonance_surplus
         self.consensus_threshold = consensus_threshold
+        self.enable_burn_validation = enable_burn_validation
         
         # Storage
         self.resonance_events: Dict[str, ResonanceEvent] = {}
         self.emp_tokens: Dict[str, EMPToken] = {}
         self.wallets: Dict[str, EmpathyWallet] = {}
+        self.burn_validations: Dict[str, BurnValidation] = {}
+        
+        # Constitutional safeguard: GlyphicBindingEngine for burn validation
+        if enable_burn_validation:
+            self.gbe = GlyphicBindingEngine(
+                max_threads=3,
+                coherence_threshold=0.7,  # Constitutional requirement
+                max_glyphs=1000
+            )
+        else:
+            self.gbe = None
         
         # Statistics
         self.total_emp_minted = Decimal('0')
+        self.total_emp_burned = Decimal('0')
         self.total_resonance_events = 0
     
     def create_wallet(self, participant_id: Optional[str] = None) -> EmpathyWallet:
@@ -345,18 +421,161 @@ class EmpathyMarket:
         
         return token
     
+    def validate_burn(
+        self,
+        token_id: str,
+        amount: Decimal,
+        witness_declarations: List[str],
+        relational_context: Dict
+    ) -> BurnValidation:
+        """
+        Validate EMP burn using GlyphicBindingEngine
+        
+        Constitutional requirements:
+        1. coherence_score > 0.7
+        2. verified witness declarations (at least 2)
+        3. relational_impact.permits_burn = True
+        
+        Args:
+            token_id: EMP token ID to burn
+            amount: Amount to burn
+            witness_declarations: List of witness statements
+            relational_context: Context for relational impact assessment
+            
+        Returns:
+            BurnValidation result
+        """
+        validation = BurnValidation(
+            token_id=token_id,
+            amount=amount,
+            witness_declarations=witness_declarations,
+            witness_count=len(witness_declarations)
+        )
+        
+        if not self.enable_burn_validation or not self.gbe:
+            # Skip validation if disabled
+            validation.is_valid = True
+            validation.validation_reason = "Burn validation disabled"
+            return validation
+        
+        # Constitutional requirement 1: Coherence score > 0.7
+        # Create glyphs from witness declarations
+        witness_glyphs = []
+        for i, declaration in enumerate(witness_declarations):
+            glyph = self.gbe.create_glyph(
+                glyph_type=GlyphType.RELATION,
+                symbol=f"W{i}",
+                semantic_content={
+                    'declaration': declaration,
+                    'type': 'witness',
+                    'context': relational_context
+                },
+                source="emp_burn_validation"
+            )
+            witness_glyphs.append(glyph)
+        
+        # Calculate average coherence
+        if witness_glyphs:
+            avg_coherence = sum(g.coherence_score for g in witness_glyphs) / len(witness_glyphs)
+            validation.coherence_score = avg_coherence
+        else:
+            validation.coherence_score = 0.0
+        
+        # Constitutional requirement 2: At least 2 verified witnesses
+        if len(witness_declarations) < 2:
+            validation.is_valid = False
+            validation.validation_reason = (
+                f"Insufficient witnesses: {len(witness_declarations)}/2 required"
+            )
+            return validation
+        
+        # Constitutional requirement 3: Relational impact permits burn
+        validation.relational_impact = relational_context
+        validation.permits_burn = relational_context.get('permits_burn', False)
+        
+        if not validation.permits_burn:
+            validation.is_valid = False
+            validation.validation_reason = "Relational impact does not permit burn"
+            return validation
+        
+        # Check coherence threshold
+        if validation.coherence_score <= 0.7:
+            validation.is_valid = False
+            validation.validation_reason = (
+                f"Coherence score {validation.coherence_score:.4f} below "
+                f"constitutional threshold of 0.7"
+            )
+            return validation
+        
+        # All checks passed
+        validation.is_valid = True
+        validation.validation_reason = (
+            f"Burn validated: coherence={validation.coherence_score:.4f}, "
+            f"witnesses={validation.witness_count}, permits_burn=True"
+        )
+        
+        self.burn_validations[validation.id] = validation
+        
+        return validation
+    
+    def burn_emp_token(
+        self,
+        token_id: str,
+        amount: Decimal,
+        witness_declarations: List[str],
+        relational_context: Dict
+    ) -> Optional[BurnValidation]:
+        """
+        Burn EMP tokens with constitutional validation
+        
+        Args:
+            token_id: Token to burn
+            amount: Amount to burn
+            witness_declarations: Witness statements
+            relational_context: Relational impact context
+            
+        Returns:
+            BurnValidation if successful, None otherwise
+        """
+        # Validate burn
+        validation = self.validate_burn(
+            token_id=token_id,
+            amount=amount,
+            witness_declarations=witness_declarations,
+            relational_context=relational_context
+        )
+        
+        if not validation.is_valid:
+            return validation
+        
+        # Proceed with burn
+        if token_id in self.emp_tokens:
+            token = self.emp_tokens[token_id]
+            
+            # Update wallet balance
+            if token.speaker_id in self.wallets:
+                speaker_wallet = self.wallets[token.speaker_id]
+                if speaker_wallet.emp_balance >= amount:
+                    speaker_wallet.emp_balance -= amount
+                    self.total_emp_burned += amount
+        
+        return validation
+    
     def get_market_stats(self) -> Dict:
         """Get Empathy Market statistics"""
         return {
             'total_emp_minted': str(self.total_emp_minted),
+            'total_emp_burned': str(self.total_emp_burned),
             'total_resonance_events': self.total_resonance_events,
             'total_participants': len(self.wallets),
+            'total_burn_validations': len(self.burn_validations),
             'average_emp_per_event': str(
                 self.total_emp_minted / self.total_resonance_events
                 if self.total_resonance_events > 0 else Decimal('0')
             ),
             'consensus_threshold': self.consensus_threshold,
-            'min_resonance_surplus': str(self.min_resonance_surplus)
+            'min_resonance_surplus': str(self.min_resonance_surplus),
+            'burn_validation_enabled': self.enable_burn_validation
         }
 
 
