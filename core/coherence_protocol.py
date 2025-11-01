@@ -17,6 +17,7 @@ from typing import List, Dict, Optional, Tuple
 from enum import Enum
 import hashlib
 import json
+import re
 from datetime import datetime
 import uuid
 import asyncio
@@ -118,8 +119,12 @@ class DistributedCoherenceProtocol:
             # Import anthropic only if needed to avoid hard dependency
             from anthropic import Anthropic
             self.anthropic_client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
-        except (ImportError, Exception):
-            # If anthropic package not installed or API key not set, set to None
+        except ImportError:
+            # If anthropic package not installed, set to None
+            # Claude Sonnet 4 will fail gracefully if selected
+            self.anthropic_client = None
+        except (TypeError, ValueError) as e:
+            # If API key not set or invalid, set to None
             # Claude Sonnet 4 will fail gracefully if selected
             self.anthropic_client = None
     
@@ -183,7 +188,6 @@ Provide a JSON response with:
             except json.JSONDecodeError as e:
                 # If JSON parsing fails, try to extract JSON from the response
                 # This handles cases where the model includes extra text
-                import re
                 json_match = re.search(r'\{.*\}', output_text, re.DOTALL)
                 if json_match:
                     output = json.loads(json_match.group())
