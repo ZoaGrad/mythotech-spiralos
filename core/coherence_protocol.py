@@ -21,6 +21,7 @@ from datetime import datetime
 import uuid
 import asyncio
 from openai import OpenAI
+import os
 
 
 class LLMProvider(Enum):
@@ -110,7 +111,17 @@ class DistributedCoherenceProtocol:
         """
         self.consensus_threshold = consensus_threshold
         self.total_providers = total_providers
-        self.client = OpenAI()  # API key pre-configured in environment
+        self.openai_client = OpenAI()  # API key pre-configured in environment
+        
+        # Initialize Anthropic client if API key is available
+        try:
+            # Import anthropic only if needed to avoid hard dependency
+            from anthropic import Anthropic
+            self.anthropic_client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+        except (ImportError, Exception):
+            # If anthropic package not installed or API key not set, set to None
+            # Claude Sonnet 4 will fail gracefully if selected
+            self.anthropic_client = None
     
     async def analyze_ache_with_provider(
         self,
@@ -146,19 +157,39 @@ Provide a JSON response with:
 - reasoning: Brief explanation of the scores
 """
         
-        # Call the LLM
-        response = self.client.chat.completions.create(
-            model=provider.value,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
-            temperature=0.1,  # Low temperature for consistency
-            response_format={"type": "json_object"}
-        )
-        
-        # Parse the response
-        output = json.loads(response.choices[0].message.content)
+        # Call the appropriate LLM based on provider
+        if provider == LLMProvider.CLAUDE_SONNET_4:
+            # Use Anthropic API
+            if self.anthropic_client is None:
+                raise ValueError("Anthropic client not initialized. Install anthropic package and set ANTHROPIC_API_KEY.")
+            
+            response = self.anthropic_client.messages.create(
+                model=provider.value,
+                max_tokens=1024,
+                temperature=0.1,
+                system=system_prompt,
+                messages=[
+                    {"role": "user", "content": user_prompt}
+                ]
+            )
+            
+            # Parse the Anthropic response
+            output_text = response.content[0].text
+            output = json.loads(output_text)
+        else:
+            # Use OpenAI API for all other providers
+            response = self.openai_client.chat.completions.create(
+                model=provider.value,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                temperature=0.1,  # Low temperature for consistency
+                response_format={"type": "json_object"}
+            )
+            
+            # Parse the OpenAI response
+            output = json.loads(response.choices[0].message.content)
         
         # Create and return provider output
         return ProviderOutput.create(

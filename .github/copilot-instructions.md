@@ -92,9 +92,12 @@ scarindex = (0.4 * c_narrative) + (0.3 * c_social) + (0.2 * c_economic) + (0.1 *
 # Minimal production dependencies
 pip3 install fastapi uvicorn pydantic
 
+# For Claude Sonnet 4 support (optional)
+pip3 install anthropic
+
 # Development setup
 export OPENAI_API_KEY="sk-..."
-export ANTHROPIC_API_KEY="sk-ant-..."
+export ANTHROPIC_API_KEY="sk-ant-..."  # Required for Claude Sonnet 4
 export SUPABASE_PROJECT_ID="..."
 ```
 
