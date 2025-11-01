@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from typing import Dict, Optional, Tuple
 import hashlib
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 from .panic_frames import log_event, trigger_panic_frames
 
@@ -187,7 +187,7 @@ class ScarIndexOracle:
         # Create result with calculated components
         result = ScarIndexResult(
             id=str(uuid.uuid4()),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             components=CoherenceComponents(
                 operational=avg_c_i,           # Average individual efficacy
                 audit=p_i_avg,                 # Promotion probability
@@ -209,7 +209,6 @@ class ScarIndexOracle:
                 # Don't fail calculation if logging fails
                 log_event('WARNING', f'ScarIndex logging failed: {e}')
         
-        return result
         return result
     
     @classmethod

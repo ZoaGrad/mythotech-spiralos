@@ -243,7 +243,7 @@ def run_all_tests():
     print("TEST SUMMARY")
     print("="*70)
     print(f"\nTotal Tests: {len(tests)}")
-    print(f"Passed: {passed} ({100*passed//len(tests) if tests else 0}%)")
+    print(f"Passed: {passed} ({round(100*passed/len(tests)) if tests else 0}%)")
     print(f"Failed: {failed}")
     
     if failed == 0:
