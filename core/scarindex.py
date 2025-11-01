@@ -12,9 +12,16 @@ from dataclasses import dataclass
 from typing import Dict, Optional, Tuple
 import hashlib
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 from .panic_frames import log_event, trigger_panic_frames
+
+# Import logging module at top level to avoid repeated imports
+try:
+    from .scarindex_logger import log_scarindex_result
+    LOGGING_AVAILABLE = True
+except ImportError:
+    LOGGING_AVAILABLE = False
 
 
 @dataclass
@@ -148,16 +155,21 @@ class ScarIndexOracle:
         decays_count: int,
         ache: AcheMeasurement,
         cmp_lineage: Optional[float] = None,
-        metadata: Optional[Dict] = None
+        metadata: Optional[Dict] = None,
+        enable_logging: bool = True
     ) -> ScarIndexResult:
         """
         Calculate ScarIndex from coherence components and Ache measurements
         
         Args:
-            components: Multi-dimensional coherence measurements
+            N: Number of agents
+            c_i_list: List of individual coherence scores
+            p_i_avg: Average promotion probability
+            decays_count: Number of decay events
             ache: Before/after Ache measurements
             cmp_lineage: Optional Clade-Metaproductivity score
             metadata: Optional additional metadata
+            enable_logging: Whether to log to Supabase (default: True)
             
         Returns:
             ScarIndexResult with complete calculation
@@ -168,15 +180,19 @@ class ScarIndexOracle:
         # Validate transmutation
         is_valid = ache.is_valid_transmutation
         
-        # Create result
+        # Calculate component averages (distributed across 4 dimensions)
+        # Using the v2.1 formula decomposition
+        avg_c_i = sum(c_i_list) / N if N > 0 else 0
+        
+        # Create result with calculated components
         result = ScarIndexResult(
             id=str(uuid.uuid4()),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             components=CoherenceComponents(
-                operational=0.0,
-                audit=0.0,
-                constitutional=0.0,
-                symbolic=0.0
+                operational=avg_c_i,           # Average individual efficacy
+                audit=p_i_avg,                 # Promotion probability
+                constitutional=max(0, 1 - (decays_count / N)) if N > 0 else 0,  # Inverse of decay rate
+                symbolic=scarindex             # Overall coherence
             ),
             scarindex=scarindex,
             ache=ache,
@@ -184,6 +200,14 @@ class ScarIndexOracle:
             cmp_lineage=cmp_lineage,
             metadata=metadata
         )
+        
+        # Log to Supabase if enabled
+        if enable_logging and LOGGING_AVAILABLE:
+            try:
+                log_scarindex_result(result)
+            except Exception as e:
+                # Don't fail calculation if logging fails
+                log_event('WARNING', f'ScarIndex logging failed: {e}')
         
         return result
     
