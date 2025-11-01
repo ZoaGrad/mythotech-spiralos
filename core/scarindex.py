@@ -148,7 +148,8 @@ class ScarIndexOracle:
         decays_count: int,
         ache: AcheMeasurement,
         cmp_lineage: Optional[float] = None,
-        metadata: Optional[Dict] = None
+        metadata: Optional[Dict] = None,
+        enable_logging: bool = True
     ) -> ScarIndexResult:
         """
         Calculate ScarIndex from coherence components and Ache measurements
@@ -158,6 +159,7 @@ class ScarIndexOracle:
             ache: Before/after Ache measurements
             cmp_lineage: Optional Clade-Metaproductivity score
             metadata: Optional additional metadata
+            enable_logging: Whether to log to Supabase (default: True)
             
         Returns:
             ScarIndexResult with complete calculation
@@ -184,6 +186,15 @@ class ScarIndexOracle:
             cmp_lineage=cmp_lineage,
             metadata=metadata
         )
+        
+        # Log to Supabase if enabled
+        if enable_logging:
+            try:
+                from .scarindex_logger import log_scarindex_result
+                log_scarindex_result(result)
+            except Exception as e:
+                # Don't fail calculation if logging fails
+                log_event('WARNING', f'ScarIndex logging failed: {e}')
         
         return result
     
