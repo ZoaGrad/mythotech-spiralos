@@ -172,6 +172,8 @@ class VaultBlock:
         
         tree = MerkleTree(self.events)
         self.merkle_root = tree.get_root_hash()
+        # Invalidate cached hash when merkle_root changes
+        self._cached_hash = None
         return tree
     
     def add_oracle_signature(self, oracle_name: str, signature: str, voting_weight: Decimal):
