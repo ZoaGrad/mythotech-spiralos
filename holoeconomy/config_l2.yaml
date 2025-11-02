@@ -1,0 +1,3 @@
+rpc: "https://sepolia.arbitrum.io/rpc"
+contract: "0x0000000000000000000000000000000000000000"  # REPLACE IN CI
+private_key: ${L2_PK}
