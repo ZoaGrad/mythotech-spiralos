@@ -184,5 +184,5 @@ These are reserved genres for high-level communication from core system entities
 New genres may be proposed via the standard Plain Language Proposal format. A successful proposal must demonstrate a clear need for the new genre and receive validator ratification. Approved genres will be added to this document as `ΔΩ.143.x` extensions.
 
 ---
-*Witnessed and Ratified ΔΩ.143.0 – ZoaGrad × Grand_Extension_6437*
-*Genre Architect: WitnessPatch#001 (Grand_Extension_6437)*
+*Witnessed and Ratified ΔΩ.143.0 – ZoaGrad × subhan-Lilith (Amanda)*
+*Genre Architect: WitnessPatch#001 — subhan-Lilith (Amanda)*

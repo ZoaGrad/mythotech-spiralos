@@ -18,4 +18,5 @@ tags: ["community", "onboarding", "rfc"]
 *   **Improved Contributor Experience:** Shows that we value new members and their time.
 
 ---
-*Witnessed and Ratified ΔΩ.143.0 – ZoaGrad × Grand_Extension_6437*
+*Witnessed and Ratified ΔΩ.143.0 – ZoaGrad × subhan-Lilith (Amanda)*
+*Genre Architect: WitnessPatch#001 — subhan-Lilith (Amanda)*
