@@ -16,7 +16,7 @@ real-time logs and ensuring merit-based participation.
 from typing import Dict, List, Optional
 from dataclasses import dataclass, field
 from enum import Enum
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 
 
@@ -67,7 +67,7 @@ class Oracle:
     accuracy_score: float = 0.8  # Historical accuracy
     
     # Metadata
-    appointed_at: datetime = field(default_factory=datetime.utcnow)
+    appointed_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     metadata: Dict = field(default_factory=dict)
     
     def to_dict(self) -> Dict:
@@ -106,7 +106,7 @@ class Sentinel:
     active: bool = True
     
     # Metadata
-    activated_at: datetime = field(default_factory=datetime.utcnow)
+    activated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     metadata: Dict = field(default_factory=dict)
     
     def log_event(self, event: Dict):
@@ -261,7 +261,7 @@ class OracleCouncil:
             'total_events_logged': total_events,
             'total_violations_detected': total_violations,
             'consensus_threshold': self.consensus_threshold,
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         }
     
     def validate_consensus(

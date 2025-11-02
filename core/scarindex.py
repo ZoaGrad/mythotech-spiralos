@@ -387,7 +387,7 @@ class ARIAGraphOfThought:
             'source': natural_language_spec,
             'formalized': True,
             'grammar': formal_grammar,
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         }
 
 
