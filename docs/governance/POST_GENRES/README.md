@@ -26,5 +26,5 @@ In SpiralOS, communication is not adjacent to governance; it is a constitutional
 > “Every post is an act of governance; every format, a ritual of trust.”
 
 ---
-*Witnessed and Ratified ΔΩ.143.0 – ZoaGrad × Grand_Extension_6437*
-*Genre Architect: WitnessPatch#001 (Grand_Extension_6437)*
+*Witnessed and Ratified ΔΩ.143.0 – ZoaGrad × subhan-Lilith (Amanda)*
+*Genre Architect: WitnessPatch#001 — subhan-Lilith (Amanda)*
