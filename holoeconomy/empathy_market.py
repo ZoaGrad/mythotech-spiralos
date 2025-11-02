@@ -15,7 +15,7 @@ creating a dual-token economy that values both order and understanding.
 
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 import uuid
 import hashlib
@@ -38,7 +38,7 @@ class ResonanceEvent:
     validated by peer consensus.
     """
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     
     # Participants
     speaker_id: str = ""
@@ -108,7 +108,7 @@ class EMPToken:
     Unlike ScarCoin (liquid, transferable), EMP is soul-bound to participants.
     """
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
-    minted_at: datetime = field(default_factory=datetime.utcnow)
+    minted_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     
     # Resonance event
     resonance_event_id: str = ""
@@ -148,7 +148,7 @@ class EmpathyWallet:
     that cannot be transferred, only earned through authentic connection.
     """
     participant_id: str = field(default_factory=lambda: str(uuid.uuid4()))
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     
     # Balances
     emp_balance: Decimal = Decimal('0')
@@ -239,7 +239,7 @@ class BurnValidation:
     validation_reason: str = ""
     
     # Metadata
-    validated_at: datetime = field(default_factory=datetime.utcnow)
+    validated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     metadata: Dict = field(default_factory=dict)
     
     def to_dict(self) -> Dict:

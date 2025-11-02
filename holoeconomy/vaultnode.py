@@ -10,7 +10,7 @@ Supabase + IPFS for redundancy.
 
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 import uuid
 import hashlib
@@ -27,7 +27,7 @@ class VaultEvent:
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
     event_type: str = ""  # scarcoin_minted, transmutation_completed, etc.
     event_data: Dict = field(default_factory=dict)
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     
     def to_dict(self) -> Dict:
         return {
@@ -141,7 +141,7 @@ class VaultBlock:
     block_number: int = 0
     previous_hash: str = ""
     merkle_root: str = ""
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     
     # Events
     events: List[VaultEvent] = field(default_factory=list)
@@ -156,9 +156,14 @@ class VaultBlock:
     # Metadata
     metadata: Dict = field(default_factory=dict)
     
+    # Performance: Cache calculated hash
+    _cached_hash: Optional[str] = field(default=None, init=False, repr=False)
+    
     def add_event(self, event: VaultEvent):
         """Add event to block"""
         self.events.append(event)
+        # Invalidate cached hash when block is modified
+        self._cached_hash = None
     
     def build_merkle_tree(self) -> MerkleTree:
         """Build Merkle tree from events"""
@@ -172,6 +177,8 @@ class VaultBlock:
     def add_oracle_signature(self, oracle_name: str, signature: str, voting_weight: Decimal):
         """Add Oracle signature"""
         self.oracle_signatures[oracle_name] = signature
+        # Invalidate cached hash when signatures are added
+        self._cached_hash = None
         
         # Check consensus (75% threshold)
         total_weight = sum(
@@ -186,7 +193,11 @@ class VaultBlock:
             self.consensus_reached = True
     
     def calculate_hash(self) -> str:
-        """Calculate block hash"""
+        """Calculate block hash with caching for performance"""
+        # Return cached hash if available
+        if self._cached_hash is not None:
+            return self._cached_hash
+        
         block_data = {
             'block_number': self.block_number,
             'previous_hash': self.previous_hash,
@@ -196,7 +207,8 @@ class VaultBlock:
         }
         
         block_json = json.dumps(block_data, sort_keys=True)
-        return hashlib.sha256(block_json.encode()).hexdigest()
+        self._cached_hash = hashlib.sha256(block_json.encode()).hexdigest()
+        return self._cached_hash
     
     def to_dict(self) -> Dict:
         return {
@@ -250,7 +262,7 @@ class VaultNode:
         genesis_block = VaultBlock(
             block_number=0,
             previous_hash="0" * 64,
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(timezone.utc)
         )
         
         genesis_block.add_event(genesis_event)
@@ -292,7 +304,7 @@ class VaultNode:
         block = VaultBlock(
             block_number=len(self.blocks),
             previous_hash=previous_block.calculate_hash(),
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(timezone.utc)
         )
         
         # Add events
