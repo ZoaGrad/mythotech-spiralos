@@ -21,7 +21,7 @@ Env vars required:
 from dataclasses import dataclass
 from typing import List, Dict, Optional
 from enum import Enum
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 import os
 import sys
@@ -196,7 +196,7 @@ class PanicFrameManager:
         """
         event = PanicFrameEvent(
             id=str(uuid.uuid4()),
-            triggered_at=datetime.utcnow(),
+            triggered_at=datetime.now(timezone.utc),
             scarindex_value=scarindex,
             trigger_threshold=self.PANIC_THRESHOLD,
             actions_frozen=self.DEFAULT_FROZEN_OPERATIONS,
@@ -271,7 +271,7 @@ class PanicFrameManager:
             else:
                 # Recovery complete
                 frame.status = PanicStatus.RESOLVED
-                frame.resolved_at = datetime.utcnow()
+                frame.resolved_at = datetime.now(timezone.utc)
                 self.store.record_resolution(frame)
                 return None
 
@@ -322,7 +322,7 @@ class PanicFrameManager:
         # Verify ScarIndex is above threshold
         if final_scarindex >= self.PANIC_THRESHOLD:
             frame.status = PanicStatus.RESOLVED
-            frame.resolved_at = datetime.utcnow()
+            frame.resolved_at = datetime.now(timezone.utc)
             frame.metadata['final_scarindex'] = final_scarindex
             self.store.record_resolution(frame)
             return True
@@ -463,7 +463,7 @@ class SevenPhaseRecoveryProtocol:
             phase=RecoveryPhase.PHASE_1_ASSESSMENT,
             action_type='assessment',
             description='Assessed coherence failure extent',
-            executed_at=datetime.utcnow(),
+            executed_at=datetime.now(timezone.utc),
             success=True,
             result=assessment
         )
@@ -495,7 +495,7 @@ class SevenPhaseRecoveryProtocol:
             phase=RecoveryPhase.PHASE_2_ISOLATION,
             action_type='isolation',
             description=f'Isolated {len(isolated)} affected components',
-            executed_at=datetime.utcnow(),
+            executed_at=datetime.now(timezone.utc),
             success=True,
             result={'isolated_components': isolated}
         )
@@ -526,7 +526,7 @@ class SevenPhaseRecoveryProtocol:
             phase=RecoveryPhase.PHASE_3_STABILIZATION,
             action_type='stabilization',
             description='Stabilized critical systems',
-            executed_at=datetime.utcnow(),
+            executed_at=datetime.now(timezone.utc),
             success=True,
             result=stabilization_result
         )
@@ -563,7 +563,7 @@ class SevenPhaseRecoveryProtocol:
             phase=RecoveryPhase.PHASE_4_DIAGNOSIS,
             action_type='diagnosis',
             description='Diagnosed root cause of coherence failure',
-            executed_at=datetime.utcnow(),
+            executed_at=datetime.now(timezone.utc),
             success=True,
             result=diagnosis
         )
@@ -594,7 +594,7 @@ class SevenPhaseRecoveryProtocol:
             phase=RecoveryPhase.PHASE_5_REMEDIATION,
             action_type='remediation',
             description='Executed remediation plan',
-            executed_at=datetime.utcnow(),
+            executed_at=datetime.now(timezone.utc),
             success=True,
             result=remediation_plan
         )

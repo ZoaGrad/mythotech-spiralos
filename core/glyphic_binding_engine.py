@@ -19,7 +19,7 @@ Key Concepts:
 from typing import Dict, List, Optional, Tuple, Set
 from dataclasses import dataclass, field
 from enum import Enum
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 import hashlib
 import json
@@ -71,8 +71,8 @@ class Glyph:
     paradox_index: float = 0.0  # How paradoxical (0-1)
     
     # Metadata
-    created_at: datetime = field(default_factory=datetime.utcnow)
-    last_accessed: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    last_accessed: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     access_count: int = 0
     metadata: Dict = field(default_factory=dict)
     
@@ -89,7 +89,7 @@ class Glyph:
     
     def access(self):
         """Record access to this glyph"""
-        self.last_accessed = datetime.utcnow()
+        self.last_accessed = datetime.now(timezone.utc)
         self.access_count += 1
     
     def to_dict(self) -> Dict:
@@ -135,7 +135,7 @@ class Sigil:
     thread_id: Optional[str] = None  # SigilThread ID if threaded
     
     # Metadata
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     metadata: Dict = field(default_factory=dict)
     
     def add_glyph(self, glyph_id: str):
@@ -207,7 +207,7 @@ class SigilThread:
     active: bool = True
     
     # Metadata
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     metadata: Dict = field(default_factory=dict)
     
     def enqueue_glyph(self, glyph_id: str):
@@ -537,7 +537,7 @@ class GlyphicBindingEngine:
             'bindings_created': self.total_bindings_created,
             'symbolic_coherence': self.get_symbolic_coherence(),
             'capacity_used': len(self.glyphs) / self.max_glyphs,
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         }
 
 
