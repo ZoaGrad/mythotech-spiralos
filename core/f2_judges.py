@@ -89,7 +89,13 @@ class RefusalAppeal:
         """Check if review is overdue (72-hour SLA)"""
         if self.reviewed_at:
             return False
-        return datetime.now(timezone.utc) > self.review_due_by
+
+        review_due = self.review_due_by
+        if review_due.tzinfo is None:
+            review_due = review_due.replace(tzinfo=timezone.utc)
+
+        now = datetime.now(timezone.utc)
+        return now > review_due
     
     def to_dict(self) -> Dict:
         return {
