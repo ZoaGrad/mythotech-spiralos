@@ -104,14 +104,67 @@ serve(async (req) => {
     const payload: WebhookPayload = await req.json()
 
     console.log(`Received GitHub webhook: ${eventType}`)
+    
+    // Early guard: Ignore non-push and non-issues events
+    if (eventType !== 'push' && eventType !== 'issues') {
+      console.log(`Ignoring unsupported event type: ${eventType}`)
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: `Event type '${eventType}' not processed`,
+          event_type: eventType
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200
+        }
+      )
+    }
+    
+    // Early guard: For issues events, only process 'opened' action
+    if (eventType === 'issues' && payload.action !== 'opened') {
+      console.log(`Ignoring issues event with action: ${payload.action}`)
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: `Issues action '${payload.action}' not processed`,
+          event_type: eventType
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200
+        }
+      )
+    }
+    
+    // Early guard: For push events, ensure we have commits
+    if (eventType === 'push' && (!payload.commits || payload.commits.length === 0)) {
+      console.log('Ignoring push event with no commits')
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: 'Push event with no commits not processed',
+          event_type: eventType
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200
+        }
+      )
+    }
 
-    // Store webhook for audit
+    // Store webhook for audit using upsert for idempotency
+    // Use a unique constraint based on event_type + source_id + timestamp
+    const webhookId = `${eventType}_${payload.repository?.full_name}_${Date.now()}`
     const { data: webhookRecord, error: webhookError } = await supabase
       .from('github_webhooks')
-      .insert({
+      .upsert({
+        id: webhookId,
         event_type: eventType,
-        payload: payload,
+        payload: payload || {},
         processed: false
+      }, {
+        onConflict: 'id'
       })
       .select()
       .single()
@@ -129,10 +182,38 @@ serve(async (req) => {
       for (const commit of payload.commits) {
         const acheLevel = computeAcheFromCommit(commit)
         
-        // Create Ache event
+        // Check if this commit was already processed using scar_index table
+        const { data: existingIndex } = await supabase
+          .from('scar_index')
+          .select('id, processing_status, scarindex_value')
+          .eq('external_id', commit.id)
+          .eq('external_source', 'github_commit')
+          .single()
+        
+        if (existingIndex && existingIndex.processing_status === 'completed') {
+          console.log(`Commit ${commit.id} already processed (ScarIndex: ${existingIndex.scarindex_value})`)
+          acheEventId = existingIndex.id
+          continue
+        }
+        
+        // Create or update scar_index entry
+        const { data: scarIndexEntry } = await supabase
+          .from('scar_index')
+          .upsert({
+            external_id: commit.id,
+            external_source: 'github_commit',
+            processing_status: 'processing',
+            metadata: { commit_message: commit.message }
+          }, {
+            onConflict: 'external_id'
+          })
+          .select()
+          .single()
+        
+        // Create Ache event using upsert
         const { data: acheEvent, error: acheError } = await supabase
           .from('ache_events')
-          .insert({
+          .upsert({
             source: 'github_commit',
             source_id: commit.id,
             content: {
@@ -145,14 +226,28 @@ serve(async (req) => {
                 modified: commit.modified?.length || 0
               },
               repository: payload.repository?.full_name
-            },
-            ache_level: acheLevel
+            } || {},
+            ache_level: acheLevel,
+            metadata: {}
+          }, {
+            onConflict: 'source_id'
           })
           .select()
           .single()
 
         if (acheError) {
           console.error('Failed to create ache event for commit:', acheError)
+          
+          // Update scar_index with error
+          await supabase
+            .from('scar_index')
+            .update({
+              processing_status: 'failed',
+              error_message: acheError.message,
+              retry_count: (scarIndexEntry?.retry_count || 0) + 1
+            })
+            .eq('external_id', commit.id)
+          
           continue
         }
 
@@ -165,48 +260,127 @@ serve(async (req) => {
 
         if (calcError) {
           console.error('Failed to calculate ScarIndex:', calcError)
+          
+          // Update scar_index with error
+          await supabase
+            .from('scar_index')
+            .update({
+              processing_status: 'failed',
+              error_message: calcError.message
+            })
+            .eq('external_id', commit.id)
         } else {
           console.log(`ScarIndex calculated: ${calculation?.scarindex}`)
+          
+          // Update scar_index with success
+          await supabase
+            .from('scar_index')
+            .update({
+              processing_status: 'completed',
+              scarindex_value: calculation?.scarindex,
+              scarindex_calculation_id: calculation?.id
+            })
+            .eq('external_id', commit.id)
         }
       }
     } else if (eventType === 'issues' && payload.action === 'opened' && payload.issue) {
       // Process new issue
       const issue = payload.issue
       const acheLevel = nlpAcheScore(issue.body)
+      const issueExternalId = `issue_${issue.number}`
       
-      // Create Ache event
-      const { data: acheEvent, error: acheError } = await supabase
-        .from('ache_events')
-        .insert({
-          source: 'github_issue',
-          source_id: `issue_${issue.number}`,
-          content: {
-            number: issue.number,
-            title: issue.title,
-            body: issue.body,
-            state: issue.state,
-            labels: issue.labels?.map(l => l.name) || [],
-            repository: payload.repository?.full_name
-          },
-          ache_level: acheLevel
-        })
-        .select()
+      // Check if this issue was already processed
+      const { data: existingIndex } = await supabase
+        .from('scar_index')
+        .select('id, processing_status, scarindex_value')
+        .eq('external_id', issueExternalId)
+        .eq('external_source', 'github_issue')
         .single()
-
-      if (acheError) {
-        console.error('Failed to create ache event for issue:', acheError)
+      
+      if (existingIndex && existingIndex.processing_status === 'completed') {
+        console.log(`Issue ${issue.number} already processed (ScarIndex: ${existingIndex.scarindex_value})`)
+        acheEventId = existingIndex.id
       } else {
-        acheEventId = acheEvent.id
-        console.log(`Created ache event ${acheEventId} for issue ${issue.number} (ache: ${acheLevel})`)
+        // Create or update scar_index entry
+        const { data: scarIndexEntry } = await supabase
+          .from('scar_index')
+          .upsert({
+            external_id: issueExternalId,
+            external_source: 'github_issue',
+            processing_status: 'processing',
+            metadata: { issue_title: issue.title }
+          }, {
+            onConflict: 'external_id'
+          })
+          .select()
+          .single()
+        
+        // Create Ache event using upsert
+        const { data: acheEvent, error: acheError } = await supabase
+          .from('ache_events')
+          .upsert({
+            source: 'github_issue',
+            source_id: issueExternalId,
+            content: {
+              number: issue.number,
+              title: issue.title,
+              body: issue.body,
+              state: issue.state,
+              labels: issue.labels?.map(l => l.name) || [],
+              repository: payload.repository?.full_name
+            } || {},
+            ache_level: acheLevel,
+            metadata: {}
+          }, {
+            onConflict: 'source_id'
+          })
+          .select()
+          .single()
 
-        // Trigger ScarIndex calculation
-        const { data: calculation, error: calcError } = await supabase
-          .rpc('coherence_calculation', { event_id: acheEventId })
-
-        if (calcError) {
-          console.error('Failed to calculate ScarIndex:', calcError)
+        if (acheError) {
+          console.error('Failed to create ache event for issue:', acheError)
+          
+          // Update scar_index with error
+          await supabase
+            .from('scar_index')
+            .update({
+              processing_status: 'failed',
+              error_message: acheError.message,
+              retry_count: (scarIndexEntry?.retry_count || 0) + 1
+            })
+            .eq('external_id', issueExternalId)
         } else {
-          console.log(`ScarIndex calculated: ${calculation?.scarindex}`)
+          acheEventId = acheEvent.id
+          console.log(`Created ache event ${acheEventId} for issue ${issue.number} (ache: ${acheLevel})`)
+
+          // Trigger ScarIndex calculation
+          const { data: calculation, error: calcError } = await supabase
+            .rpc('coherence_calculation', { event_id: acheEventId })
+
+          if (calcError) {
+            console.error('Failed to calculate ScarIndex:', calcError)
+            
+            // Update scar_index with error
+            await supabase
+              .from('scar_index')
+              .update({
+                processing_status: 'failed',
+                error_message: calcError.message
+              })
+              .eq('external_id', issueExternalId)
+          } else {
+            console.log(`ScarIndex calculated: ${calculation?.scarindex}`)
+            
+            // Update scar_index with success
+            await supabase
+              .from('scar_index')
+              .update({
+                processing_status: 'completed',
+                scarindex_value: calculation?.scarindex,
+                scarindex_calculation_id: calculation?.id
+              })
+              .eq('external_id', issueExternalId)
+          }
         }
       }
     } else {
