@@ -59,16 +59,30 @@ class SupabaseClient:
         Returns:
             Inserted record
         """
+        # Defensive defaults for payloads
         record = {
-            'source': source,
-            'content': content,
-            'ache_level': ache_level,
+            'source': source or 'unknown',
+            'content': content or {},
+            'ache_level': max(0.0, min(1.0, ache_level)),  # Clamp to [0,1]
             'metadata': metadata or {}
         }
         
         # In production, this would use the Supabase REST API or Python client
-        # For now, we'll return the record structure
-        return record
+        # with robust error handling
+        try:
+            # Placeholder for actual database write
+            # In production:
+            # result = await self.supabase_client.table('ache_events').insert(record).execute()
+            # if result.error:
+            #     raise Exception(f"Database write failed: {result.error}")
+            return record
+        except Exception as e:
+            # Log error and return fallback
+            print(f"Error inserting ache event: {e}")
+            # Return record with error metadata
+            record['metadata']['error'] = str(e)
+            record['metadata']['failed_at'] = datetime.utcnow().isoformat()
+            return record
     
     async def insert_scarindex_calculation(
         self,
@@ -85,11 +99,28 @@ class SupabaseClient:
         Returns:
             Inserted record
         """
-        record = result.to_dict()
-        if ache_event_id:
-            record['ache_event_id'] = ache_event_id
-        
-        return record
+        try:
+            record = result.to_dict()
+            if ache_event_id:
+                record['ache_event_id'] = ache_event_id
+            
+            # Add defensive defaults
+            record['metadata'] = record.get('metadata', {})
+            
+            # In production:
+            # result = await self.supabase_client.table('scarindex_calculations').insert(record).execute()
+            # if result.error:
+            #     raise Exception(f"Database write failed: {result.error}")
+            
+            return record
+        except Exception as e:
+            print(f"Error inserting scarindex calculation: {e}")
+            # Return fallback with error metadata
+            return {
+                'error': str(e),
+                'failed_at': datetime.utcnow().isoformat(),
+                'metadata': {}
+            }
     
     async def insert_verification_records(
         self,
@@ -161,18 +192,32 @@ class SupabaseClient:
         Returns:
             Inserted record
         """
-        record = {
-            'node_type': node_type,
-            'reference_id': reference_id,
-            'state_hash': state_hash,
-            'previous_hash': previous_hash,
-            'audit_log': audit_log,
-            'github_commit_sha': github_commit_sha,
-            'github_path': github_path,
-            'metadata': {}
-        }
-        
-        return record
+        try:
+            # Defensive defaults for all fields
+            record = {
+                'node_type': node_type or 'unknown',
+                'reference_id': reference_id or 'unknown',
+                'state_hash': state_hash or '',
+                'previous_hash': previous_hash,
+                'audit_log': audit_log or {},
+                'github_commit_sha': github_commit_sha,
+                'github_path': github_path,
+                'metadata': {}
+            }
+            
+            # In production:
+            # result = await self.supabase_client.table('vaultnodes').insert(record).execute()
+            # if result.error:
+            #     raise Exception(f"Database write failed: {result.error}")
+            
+            return record
+        except Exception as e:
+            print(f"Error inserting vaultnode: {e}")
+            return {
+                'error': str(e),
+                'failed_at': datetime.utcnow().isoformat(),
+                'metadata': {'error_type': 'vaultnode_insert_failed'}
+            }
     
     async def insert_smart_contract_txn(
         self,
