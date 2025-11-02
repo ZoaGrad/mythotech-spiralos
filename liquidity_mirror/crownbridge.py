@@ -10,7 +10,7 @@ with distributed governance control over bridge assets.
 
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from enum import Enum
 import uuid
@@ -45,7 +45,7 @@ class MPCKeyShare:
     Distributed across governance branches for constitutional custody.
     """
     share_id: str = field(default_factory=lambda: str(uuid.uuid4()))
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     
     # Governance assignment
     branch: GovernanceBranch = GovernanceBranch.LEGISLATIVE
@@ -79,7 +79,7 @@ class CryptographicSignature:
     Part of 2-of-3 verification protocol.
     """
     signature_id: str = field(default_factory=lambda: str(uuid.uuid4()))
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     
     # Signer
     share_id: str = ""
@@ -114,7 +114,7 @@ class BridgeTransaction:
     Requires 2-of-3 governance signatures for execution.
     """
     tx_id: str = field(default_factory=lambda: str(uuid.uuid4()))
-    initiated_at: datetime = field(default_factory=datetime.utcnow)
+    initiated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     
     # Chain details
     source_chain: str = ""
@@ -325,7 +325,7 @@ class CrownBridge:
         tx.signatures.append(signature)
         
         # Update key share usage
-        share.last_used_at = datetime.utcnow()
+        share.last_used_at = datetime.now(timezone.utc)
         
         # Update transaction status
         if tx.has_sufficient_signatures():
@@ -359,14 +359,14 @@ class CrownBridge:
         
         # Execute transaction
         tx.status = BridgeStatus.EXECUTING
-        tx.executed_at = datetime.utcnow()
+        tx.executed_at = datetime.now(timezone.utc)
         
         # Simulate execution (production would interact with actual chains)
         # ...
         
         # Complete transaction
         tx.status = BridgeStatus.COMPLETED
-        tx.completed_at = datetime.utcnow()
+        tx.completed_at = datetime.now(timezone.utc)
         
         # Update statistics
         self.successful_transactions += 1

@@ -16,7 +16,7 @@ from typing import Dict, List, Tuple, Optional
 from dataclasses import dataclass
 from enum import Enum
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 class InterpretationDirection(Enum):
@@ -520,7 +520,7 @@ class EAFInterpreter:
         
         # Construct trace
         trace = {
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             "legitimacy_score": round(legitimacy_score, 4),
             "classification": classification,
             "coherence_scores": {

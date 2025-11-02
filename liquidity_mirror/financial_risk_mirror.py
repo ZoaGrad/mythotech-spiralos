@@ -11,7 +11,7 @@ provides real-time transparency."
 
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from enum import Enum
 import uuid
@@ -39,7 +39,7 @@ class RiskLevel(Enum):
 @dataclass
 class PriceDataPoint:
     """ScarCoin price data point"""
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     price: Decimal = Decimal('0')
     scarindex: Decimal = Decimal('0')
     volume: Decimal = Decimal('0')
@@ -56,7 +56,7 @@ class PriceDataPoint:
 @dataclass
 class VolatilityMetrics:
     """Volatility calculation metrics"""
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     
     # Price volatility
     price_volatility: Decimal = Decimal('0')  # Standard deviation / mean
@@ -92,7 +92,7 @@ class ConstitutionalStabilityIndex:
     Combines ScarIndex, price volatility, and market sentiment to
     provide real-time constitutional compliance telemetry.
     """
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     
     # Core metrics
     scarindex: Decimal = Decimal('0')
@@ -211,7 +211,7 @@ class FinancialRiskMirror:
         self.current_scarindex = scarindex
         
         # Trim history to window size
-        cutoff_time = datetime.utcnow() - timedelta(hours=self.window_size)
+        cutoff_time = datetime.now(timezone.utc) - timedelta(hours=self.window_size)
         self.price_history = [
             dp for dp in self.price_history
             if dp.timestamp > cutoff_time

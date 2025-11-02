@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict
 from decimal import Decimal
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 import sys
 import os
@@ -364,7 +364,7 @@ async def get_quick_summary():
     """Get quick one-line system status"""
     return {
         "status": system_summary.get_quick_status(),
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat()
     }
 
 

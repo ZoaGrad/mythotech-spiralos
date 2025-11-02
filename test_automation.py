@@ -51,8 +51,6 @@ def test_report_generation():
     
     print("✓ Template contains all required sections")
     print("✓ Weekly report generation test PASSED")
-    
-    return True
 
 
 def test_report_file_creation():
@@ -101,8 +99,6 @@ def test_report_file_creation():
         print(f"✓ Report file created: {report_file}")
         print(f"✓ File size: {len(content)} bytes")
         print("✓ Report file creation test PASSED")
-    
-    return True
 
 
 def test_scarindex_logger_init():
@@ -128,8 +124,6 @@ def test_scarindex_logger_init():
     
     print("✓ Global logger initialized")
     print("✓ ScarIndex logger initialization test PASSED")
-    
-    return True
 
 
 def test_scarindex_logging_structure():
@@ -161,8 +155,6 @@ def test_scarindex_logging_structure():
     # Result depends on whether credentials are configured
     print(f"✓ log_calculation executed: {result}")
     print("✓ ScarIndex logging structure test PASSED")
-    
-    return True
 
 
 def test_scarindex_integration():
@@ -204,8 +196,6 @@ def test_scarindex_integration():
     
     print(f"✓ Calculation without logging: ScarIndex={result2.scarindex:.4f}")
     print("✓ ScarIndex integration test PASSED")
-    
-    return True
 
 
 def run_all_tests():
@@ -227,17 +217,17 @@ def run_all_tests():
     
     for name, test_func in tests:
         try:
-            if test_func():
-                passed += 1
-            else:
-                failed += 1
-                print(f"✗ {name} FAILED")
-        except Exception as e:
+            test_func()
+        except AssertionError as exc:
             failed += 1
-            print(f"\n✗ {name} FAILED with error:")
-            print(f"  {type(e).__name__}: {e}")
+            print(f"\n✗ {name} FAILED: {exc}")
+        except Exception as exc:
+            failed += 1
+            print(f"\n✗ {name} ERROR: {type(exc).__name__}: {exc}")
             import traceback
             traceback.print_exc()
+        else:
+            passed += 1
     
     print("\n" + "="*70)
     print("TEST SUMMARY")

@@ -7,7 +7,6 @@ and VaultNode blockchain integration.
 
 import sys
 from decimal import Decimal
-from datetime import datetime
 import uuid
 import hashlib
 
@@ -47,8 +46,6 @@ def test_scarcoin_minting():
     print("✅ ScarCoin minting successful")
     print(f"   Coin value: {coin.coin_value}")
     print(f"   Wallet balance: {wallet.balance}")
-    
-    return True
 
 
 def test_proof_of_ache_validation():
@@ -90,8 +87,6 @@ def test_proof_of_ache_validation():
     
     print("✅ Failed validation (Ache increased)")
     print(f"   Ache differential: {proof2.ache_differential}")
-    
-    return True
 
 
 def test_wallet_operations():
@@ -126,8 +121,6 @@ def test_wallet_operations():
         assert False, "Should raise ValueError"
     except ValueError:
         print("✅ Insufficient balance check works")
-    
-    return True
 
 
 def test_vaultnode_blockchain():
@@ -187,8 +180,6 @@ def test_vaultnode_blockchain():
     assert chain_valid, "Chain should be valid"
     
     print("✅ Chain verification passed")
-    
-    return True
 
 
 def test_merkle_tree():
@@ -220,8 +211,6 @@ def test_merkle_tree():
     assert tree.verify_event(events[0]), "Event should be in tree"
     
     print("✅ Event verification works")
-    
-    return True
 
 
 def test_coin_burning():
@@ -260,8 +249,6 @@ def test_coin_burning():
     print(f"   Coin burned: {coin.burned}")
     print(f"   Wallet balance: {wallet.balance}")
     print(f"   Total burned: {wallet.total_burned}")
-    
-    return True
 
 
 def test_supply_statistics():
@@ -296,8 +283,6 @@ def test_supply_statistics():
     print(f"   Total supply: {stats['total_supply']}")
     print(f"   Minting count: {stats['minting_count']}")
     print(f"   Active wallets: {stats['active_wallets']}")
-    
-    return True
 
 
 def run_all_tests():
@@ -321,12 +306,15 @@ def run_all_tests():
     
     for test_name, test_func in tests:
         try:
-            result = test_func()
-            if result:
-                passed += 1
-        except Exception as e:
-            print(f"\n❌ {test_name} FAILED: {e}")
+            test_func()
+        except AssertionError as exc:
+            print(f"\n❌ {test_name} FAILED: {exc}")
             failed += 1
+        except Exception as exc:
+            print(f"\n❌ {test_name} ERROR: {exc}")
+            failed += 1
+        else:
+            passed += 1
     
     # Summary
     print("\n" + "=" * 70)

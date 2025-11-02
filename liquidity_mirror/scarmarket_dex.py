@@ -11,7 +11,7 @@ principles without requiring full production blockchain deployment.
 
 from typing import Dict, List, Optional, Tuple, Union
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from enum import Enum
 import uuid
@@ -81,7 +81,7 @@ class LiquidityPool:
     Implements constant product formula: x * y = k
     """
     pool_id: str = field(default_factory=lambda: str(uuid.uuid4()))
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     
     # Token pair
     token_a_id: str = ""
@@ -186,7 +186,7 @@ class LiquidityPool:
 class Trade:
     """DEX trade record"""
     trade_id: str = field(default_factory=lambda: str(uuid.uuid4()))
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     
     pool_id: str = ""
     trader_address: str = ""

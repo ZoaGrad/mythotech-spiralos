@@ -11,7 +11,7 @@ Integrates SpiralOS with Supabase backend for:
 from typing import Dict, List, Optional, Any
 import os
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 import asyncio
 import httpx
 
@@ -81,7 +81,7 @@ class SupabaseClient:
             print(f"Error inserting ache event: {e}")
             # Return record with error metadata
             record['metadata']['error'] = str(e)
-            record['metadata']['failed_at'] = datetime.utcnow().isoformat()
+            record['metadata']['failed_at'] = datetime.now(timezone.utc).isoformat()
             return record
     
     async def insert_scarindex_calculation(
@@ -118,7 +118,7 @@ class SupabaseClient:
             # Return fallback with error metadata
             return {
                 'error': str(e),
-                'failed_at': datetime.utcnow().isoformat(),
+                'failed_at': datetime.now(timezone.utc).isoformat(),
                 'metadata': {}
             }
     
@@ -215,7 +215,7 @@ class SupabaseClient:
             print(f"Error inserting vaultnode: {e}")
             return {
                 'error': str(e),
-                'failed_at': datetime.utcnow().isoformat(),
+                'failed_at': datetime.now(timezone.utc).isoformat(),
                 'metadata': {'error_type': 'vaultnode_insert_failed'}
             }
     
@@ -344,7 +344,7 @@ class GitHubIntegration:
         Returns:
             Audit trail metadata
         """
-        file_path = f"audit_trail/{datetime.utcnow().strftime('%Y/%m/%d')}/{scarindex_id}.json"
+        file_path = f"audit_trail/{datetime.now(timezone.utc).strftime('%Y/%m/%d')}/{scarindex_id}.json"
         
         commit_sha = await self.commit_vaultnode(
             vaultnode_data=calculation_data,
@@ -355,7 +355,7 @@ class GitHubIntegration:
         return {
             'file_path': file_path,
             'commit_sha': commit_sha,
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         }
 
 
@@ -436,7 +436,7 @@ class SpiralOSBackend:
             previous_hash=None,  # Would link to previous VaultNode
             audit_log={
                 'action': 'scarindex_calculation',
-                'timestamp': datetime.utcnow().isoformat(),
+                'timestamp': datetime.now(timezone.utc).isoformat(),
                 'result': scarindex_record
             }
         )
@@ -482,7 +482,7 @@ class SpiralOSBackend:
             'active_panic_frames': len(panic_frames),
             'panic_frames': panic_frames,
             'pid_state': pid_state,
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         }
 
 

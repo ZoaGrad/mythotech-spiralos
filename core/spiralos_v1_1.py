@@ -16,7 +16,7 @@ Evolution from v1.0:
 
 from typing import Dict, Optional, List
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 
 from .scarindex import (
     ScarIndexOracle,
@@ -296,7 +296,7 @@ class SpiralOSv1_1:
             'soc_state': soc_state if self.enable_soc else None,
             'panic_frame': panic_frame.to_dict() if panic_frame else None,
             'coherence_status': self.oracle.calculate_coherence_status(scarindex_result.scarindex),
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         }
     
     def get_system_status_v1_1(self) -> Dict:
@@ -366,7 +366,7 @@ class SpiralOSv1_1:
                 'panic_frames_enabled': self.enable_panic_frames,
                 'soc_enabled': self.enable_soc
             },
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         }
     
     def get_law_of_recursive_alignment(self) -> str:

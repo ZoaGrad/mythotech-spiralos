@@ -13,7 +13,7 @@ This system implements:
 
 from typing import Dict, Optional, List
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 
 from .scarindex import (
     ScarIndexOracle,
@@ -237,7 +237,7 @@ class SpiralOS:
             'panic_frame': panic_frame.to_dict() if panic_frame else None,
             'coherence_status': self.oracle.calculate_coherence_status(scarindex_result.scarindex),
             'backend': backend_result,
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         }
     
     async def recover_from_panic(self, panic_frame_id: str) -> Dict:
@@ -276,7 +276,7 @@ class SpiralOS:
                 }
                 for action in recovery_actions
             ],
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         }
     
     def get_system_status(self) -> Dict:
@@ -329,7 +329,7 @@ class SpiralOS:
                 'consensus_enabled': self.enable_consensus,
                 'panic_frames_enabled': self.enable_panic_frames
             },
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         }
     
     def get_law_of_recursive_alignment(self) -> str:
