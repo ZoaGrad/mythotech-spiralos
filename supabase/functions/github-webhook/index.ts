@@ -154,8 +154,8 @@ serve(async (req) => {
     }
 
     // Store webhook for audit using upsert for idempotency
-    // Use a unique constraint based on event_type + source_id + timestamp
-    const webhookId = `${eventType}_${payload.repository?.full_name}_${Date.now()}`
+    // Use UUID for uniqueness to prevent collisions
+    const webhookId = crypto.randomUUID()
     const { data: webhookRecord, error: webhookError } = await supabase
       .from('github_webhooks')
       .upsert({
@@ -192,7 +192,7 @@ serve(async (req) => {
         
         if (existingIndex && existingIndex.processing_status === 'completed') {
           console.log(`Commit ${commit.id} already processed (ScarIndex: ${existingIndex.scarindex_value})`)
-          acheEventId = existingIndex.id
+          // Skip this commit as it was already processed
           continue
         }
         
@@ -299,7 +299,7 @@ serve(async (req) => {
       
       if (existingIndex && existingIndex.processing_status === 'completed') {
         console.log(`Issue ${issue.number} already processed (ScarIndex: ${existingIndex.scarindex_value})`)
-        acheEventId = existingIndex.id
+        // Skip this issue as it was already processed
       } else {
         // Create or update scar_index entry
         const { data: scarIndexEntry } = await supabase

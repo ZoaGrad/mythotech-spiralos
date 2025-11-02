@@ -10,13 +10,28 @@
 -- PART 1: Schema Fixes - Default Values for Binary Payloads
 -- ───────────────────────────────────────────────────────────────────────────
 
+-- Fix existing NULL values in github_webhooks before setting default
+UPDATE public.github_webhooks 
+  SET payload = '{}'::JSONB 
+  WHERE payload IS NULL;
+
 -- Ensure github_webhooks table has proper default for payload
 ALTER TABLE IF EXISTS public.github_webhooks 
   ALTER COLUMN payload SET DEFAULT '{}'::JSONB;
 
+-- Fix existing NULL values in ache_events before setting default
+UPDATE public.ache_events 
+  SET content = '{}'::JSONB 
+  WHERE content IS NULL;
+
 -- Ensure ache_events table has proper default for content
 ALTER TABLE IF EXISTS public.ache_events 
   ALTER COLUMN content SET DEFAULT '{}'::JSONB;
+
+-- Fix existing NULL values in scarindex_calculations before setting default
+UPDATE public.scarindex_calculations 
+  SET metadata = '{}'::JSONB 
+  WHERE metadata IS NULL;
 
 -- Ensure scarindex_calculations table has proper defaults
 ALTER TABLE IF EXISTS public.scarindex_calculations 
