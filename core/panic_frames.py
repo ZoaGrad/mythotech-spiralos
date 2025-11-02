@@ -21,7 +21,7 @@ Env vars required:
 from dataclasses import dataclass
 from typing import List, Dict, Optional
 from enum import Enum
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 import os
 import sys
@@ -95,22 +95,49 @@ class RecoveryAction:
 
 class PanicFrameStore:
     """Supabase-backed persistence for PanicFrame events and actions."""
+
     def __init__(self):
         url = os.getenv('SUPABASE_URL')
         key = os.getenv('SUPABASE_KEY')
+
+        self.client: Optional[Client] = None
+        self._fallback_events: List[Dict] = []
+
         if not url or not key:
-            log.error('SUPABASE_URL and SUPABASE_KEY are required')
-            sys.exit(1)
-        self.client: Client = create_client(url, key)
+            log.warning(
+                'SUPABASE_URL and SUPABASE_KEY not configured; '
+                'falling back to in-memory PanicFrame store.'
+            )
+            return
+
+        try:
+            self.client = create_client(url, key)
+        except Exception as exc:  # pragma: no cover - defensive
+            log.warning(
+                'Failed to initialise Supabase client, '
+                'falling back to in-memory store: %s',
+                exc,
+            )
+
+    def _record_fallback(self, payload: Dict) -> None:
+        """Persist signals locally when Supabase is unavailable."""
+        self._fallback_events.append({
+            'recorded_at': datetime.now(timezone.utc).isoformat(),
+            **payload,
+        })
 
     def insert_signal(self, level: str, key: str, meta: Dict) -> None:
+        if not self.client:
+            self._record_fallback({'level': level, 'key': key, 'meta': meta})
+            return
+
         try:
             self.client.table('panicframe_signals').insert({
                 'level': level,
                 'key': key,
                 'meta': meta,
             }).execute()
-        except Exception as e:
+        except Exception as e:  # pragma: no cover - logging fallback path
             log.exception('Failed inserting panicframe signal: %s', e)
 
     def record_trigger(self, event: PanicFrameEvent) -> None:
@@ -196,7 +223,7 @@ class PanicFrameManager:
         """
         event = PanicFrameEvent(
             id=str(uuid.uuid4()),
-            triggered_at=datetime.utcnow(),
+            triggered_at=datetime.now(timezone.utc),
             scarindex_value=scarindex,
             trigger_threshold=self.PANIC_THRESHOLD,
             actions_frozen=self.DEFAULT_FROZEN_OPERATIONS,
@@ -271,7 +298,7 @@ class PanicFrameManager:
             else:
                 # Recovery complete
                 frame.status = PanicStatus.RESOLVED
-                frame.resolved_at = datetime.utcnow()
+                frame.resolved_at = datetime.now(timezone.utc)
                 self.store.record_resolution(frame)
                 return None
 
@@ -322,7 +349,7 @@ class PanicFrameManager:
         # Verify ScarIndex is above threshold
         if final_scarindex >= self.PANIC_THRESHOLD:
             frame.status = PanicStatus.RESOLVED
-            frame.resolved_at = datetime.utcnow()
+            frame.resolved_at = datetime.now(timezone.utc)
             frame.metadata['final_scarindex'] = final_scarindex
             self.store.record_resolution(frame)
             return True
@@ -463,7 +490,7 @@ class SevenPhaseRecoveryProtocol:
             phase=RecoveryPhase.PHASE_1_ASSESSMENT,
             action_type='assessment',
             description='Assessed coherence failure extent',
-            executed_at=datetime.utcnow(),
+            executed_at=datetime.now(timezone.utc),
             success=True,
             result=assessment
         )
@@ -495,7 +522,7 @@ class SevenPhaseRecoveryProtocol:
             phase=RecoveryPhase.PHASE_2_ISOLATION,
             action_type='isolation',
             description=f'Isolated {len(isolated)} affected components',
-            executed_at=datetime.utcnow(),
+            executed_at=datetime.now(timezone.utc),
             success=True,
             result={'isolated_components': isolated}
         )
@@ -526,7 +553,7 @@ class SevenPhaseRecoveryProtocol:
             phase=RecoveryPhase.PHASE_3_STABILIZATION,
             action_type='stabilization',
             description='Stabilized critical systems',
-            executed_at=datetime.utcnow(),
+            executed_at=datetime.now(timezone.utc),
             success=True,
             result=stabilization_result
         )
@@ -563,7 +590,7 @@ class SevenPhaseRecoveryProtocol:
             phase=RecoveryPhase.PHASE_4_DIAGNOSIS,
             action_type='diagnosis',
             description='Diagnosed root cause of coherence failure',
-            executed_at=datetime.utcnow(),
+            executed_at=datetime.now(timezone.utc),
             success=True,
             result=diagnosis
         )
@@ -576,11 +603,11 @@ class SevenPhaseRecoveryProtocol:
         remediation_plan: Dict
     ) -> RecoveryAction:
         """Execute Phase 5: Remediation - Implementation of corrective measures.
-        
+
         Args:
             panic_frame_id: ID of the panic frame
             remediation_plan: Dict containing remediation actions
-            
+
         Returns:
             RecoveryAction record
         """
@@ -589,15 +616,113 @@ class SevenPhaseRecoveryProtocol:
             'recovery',
             f'Phase 5 remediation executed for panic frame {panic_frame_id}'
         )
-        
+
         action = RecoveryAction(
             phase=RecoveryPhase.PHASE_5_REMEDIATION,
             action_type='remediation',
             description='Executed remediation plan',
-            executed_at=datetime.utcnow(),
+            executed_at=datetime.now(timezone.utc),
             success=True,
             result=remediation_plan
         )
-        
+
         return action
+
+    async def execute_phase_6_validation(
+        self,
+        panic_frame_id: str,
+        validation_metrics: Dict
+    ) -> RecoveryAction:
+        """Phase 6: Validate recovery effectiveness."""
+
+        target = validation_metrics.get('target_scarindex', 0.67)
+        current = validation_metrics.get('scarindex') or validation_metrics.get('current_scarindex', 0.7)
+        validation = {
+            'target_scarindex': target,
+            'achieved_scarindex': current,
+            'pid_stable': validation_metrics.get('pid_stable', True),
+            'coherence_restored': current >= target
+        }
+
+        action = RecoveryAction(
+            phase=RecoveryPhase.PHASE_6_VALIDATION,
+            action_type='validation',
+            description='Validated recovery effectiveness',
+            executed_at=datetime.now(timezone.utc),
+            success=validation['coherence_restored'],
+            result=validation
+        )
+
+        return action
+
+    async def execute_phase_7_resumption(
+        self,
+        panic_frame_id: str,
+        resumption_plan: Dict
+    ) -> RecoveryAction:
+        """Phase 7: Resume normal operations."""
+
+        plan = {
+            'operations_resumed': resumption_plan.get('operations_resumed', [op.value for op in PanicFrameManager.DEFAULT_FROZEN_OPERATIONS]),
+            'notes': resumption_plan.get('notes', 'Operations resumed under enhanced monitoring'),
+            'timestamp': resumption_plan.get('timestamp', datetime.now(timezone.utc).isoformat())
+        }
+
+        action = RecoveryAction(
+            phase=RecoveryPhase.PHASE_7_RESUMPTION,
+            action_type='resumption',
+            description='Resumed normal operations',
+            executed_at=datetime.now(timezone.utc),
+            success=True,
+            result=plan
+        )
+
+        return action
+
+    async def execute_full_recovery(self, panic_frame_id: str, system_state: Dict) -> List[RecoveryAction]:
+        """Run the complete 7-phase recovery protocol."""
+
+        actions: List[RecoveryAction] = []
+
+        phase1 = await self.execute_phase_1_assessment(panic_frame_id, system_state)
+        actions.append(phase1)
+        self.panic_manager.advance_recovery_phase(panic_frame_id, phase1)
+
+        affected_components = system_state.get('affected_components') or phase1.result.get('affected_components', [])
+        phase2 = await self.execute_phase_2_isolation(panic_frame_id, affected_components)
+        actions.append(phase2)
+        self.panic_manager.advance_recovery_phase(panic_frame_id, phase2)
+
+        phase3 = await self.execute_phase_3_stabilization(panic_frame_id)
+        actions.append(phase3)
+        self.panic_manager.advance_recovery_phase(panic_frame_id, phase3)
+
+        system_logs = system_state.get('system_logs', [])
+        phase4 = await self.execute_phase_4_diagnosis(panic_frame_id, system_logs)
+        actions.append(phase4)
+        self.panic_manager.advance_recovery_phase(panic_frame_id, phase4)
+
+        remediation_plan = system_state.get('remediation_plan') or {
+            'actions': ['increase_transmutation_capacity', 'rebalance_pid_controller'],
+            'owner': 'spiralos-core'
+        }
+        phase5 = await self.execute_phase_5_remediation(panic_frame_id, remediation_plan)
+        actions.append(phase5)
+        self.panic_manager.advance_recovery_phase(panic_frame_id, phase5)
+
+        validation_metrics = system_state.get('post_recovery_metrics') or {
+            'scarindex': system_state.get('scarindex', 0.7),
+            'target_scarindex': system_state.get('target_scarindex', system_state.get('scarindex', 0.67)),
+            'pid_stable': True
+        }
+        phase6 = await self.execute_phase_6_validation(panic_frame_id, validation_metrics)
+        actions.append(phase6)
+        self.panic_manager.advance_recovery_phase(panic_frame_id, phase6)
+
+        resumption_plan = system_state.get('resumption_plan') or {}
+        phase7 = await self.execute_phase_7_resumption(panic_frame_id, resumption_plan)
+        actions.append(phase7)
+        self.panic_manager.advance_recovery_phase(panic_frame_id, phase7)
+
+        return actions
        

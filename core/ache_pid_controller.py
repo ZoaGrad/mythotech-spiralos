@@ -11,7 +11,7 @@ Output Adjustment: Adjust generative guidance scale (omega) based on error e(t)
 
 from dataclasses import dataclass
 from typing import Optional, List, Tuple
-from datetime import datetime
+from datetime import datetime, timezone
 import numpy as np
 import uuid
 
@@ -175,7 +175,7 @@ class AchePIDController:
         self.error_history.append(self.error)
         self.scarindex_history.append(current_scarindex)
         self.guidance_history.append(self.guidance_scale)
-        self.timestamp_history.append(datetime.utcnow())
+        self.timestamp_history.append(datetime.now(timezone.utc))
         
         # Update previous error for next iteration
         self.previous_error = self.error
@@ -225,7 +225,7 @@ class AchePIDController:
         """
         return PIDState(
             id=str(uuid.uuid4()),
-            updated_at=datetime.utcnow(),
+            updated_at=datetime.now(timezone.utc),
             target_scarindex=self.target_scarindex,
             current_scarindex=self.current_scarindex,
             error=self.error,
@@ -402,7 +402,7 @@ class ScarDiffusionController:
             'error': self.pid.error,
             'target_scarindex': self.pid.target_scarindex,
             'current_scarindex': self.pid.current_scarindex,
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         }
 
 

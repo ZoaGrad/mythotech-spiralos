@@ -24,20 +24,71 @@ except ImportError:
     LOGGING_AVAILABLE = False
 
 
-@dataclass
+@dataclass(init=False)
 class CoherenceComponents:
-    """Multi-dimensional coherence measurements (constitutional weights)"""
-    operational: float      # Operational coherence: 0-1 scale (weight: 0.35)
-    audit: float           # Audit momentum: 0-1 scale (weight: 0.3)
-    constitutional: float  # Constitutional compliance: 0-1 scale (weight: 0.25)
-    symbolic: float        # Symbolic integrity: 0-1 scale (weight: 0.1)
-    
-    def __post_init__(self):
-        """Validate all components are in valid range"""
+    """Multi-dimensional coherence measurements (constitutional weights)."""
+
+    operational: float
+    audit: float
+    constitutional: float
+    symbolic: float
+
+    def __init__(
+        self,
+        *,
+        operational: Optional[float] = None,
+        audit: Optional[float] = None,
+        constitutional: Optional[float] = None,
+        symbolic: Optional[float] = None,
+        narrative: Optional[float] = None,
+        social: Optional[float] = None,
+        economic: Optional[float] = None,
+        technical: Optional[float] = None,
+    ) -> None:
+        # Support legacy naming used throughout the repository
+        self.operational = operational if operational is not None else narrative
+        self.audit = audit if audit is not None else social
+        self.constitutional = constitutional if constitutional is not None else economic
+        self.symbolic = symbolic if symbolic is not None else technical
+
+        missing = [
+            name
+            for name, value in {
+                'operational/narrative': self.operational,
+                'audit/social': self.audit,
+                'constitutional/economic': self.constitutional,
+                'symbolic/technical': self.symbolic,
+            }.items()
+            if value is None
+        ]
+
+        if missing:
+            raise ValueError(f"Missing coherence component(s): {', '.join(missing)}")
+
+        self.__post_init__()
+
+    def __post_init__(self) -> None:
+        """Validate all components are in the valid range."""
         for field in ['operational', 'audit', 'constitutional', 'symbolic']:
             value = getattr(self, field)
             if not 0 <= value <= 1:
                 raise ValueError(f"{field} must be between 0 and 1, got {value}")
+
+    @property
+    def narrative(self) -> float:
+        return self.operational
+
+    @property
+    def social(self) -> float:
+        return self.audit
+
+    @property
+    def economic(self) -> float:
+        return self.constitutional
+
+    @property
+    def technical(self) -> float:
+        return self.symbolic
 
 
 @dataclass
@@ -387,7 +438,7 @@ class ARIAGraphOfThought:
             'source': natural_language_spec,
             'formalized': True,
             'grammar': formal_grammar,
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         }
 
 

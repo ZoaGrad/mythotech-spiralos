@@ -11,7 +11,7 @@ creating a currency where value flows from coherence.
 
 from typing import Dict, List, Optional
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal, ROUND_HALF_UP
 import uuid
 import hashlib
@@ -28,7 +28,7 @@ class ScarCoin:
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
     
     # Minting details
-    minted_at: datetime = field(default_factory=datetime.utcnow)
+    minted_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     transmutation_id: str = ""
     
     # Coherence measurements
@@ -78,7 +78,7 @@ class ScarCoin:
             raise ValueError(f"Coin {self.id} already burned")
         
         self.burned = True
-        self.burned_at = datetime.utcnow()
+        self.burned_at = datetime.now(timezone.utc)
         self.burn_reason = reason
     
     def to_dict(self) -> Dict:
@@ -126,7 +126,7 @@ class ProofOfAche:
     consensus_reached: bool = False
     
     # Metadata
-    validated_at: datetime = field(default_factory=datetime.utcnow)
+    validated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     metadata: Dict = field(default_factory=dict)
     
     def validate(self) -> bool:
@@ -147,7 +147,7 @@ class ProofOfAche:
             self.validation_passed = False
             self.validation_reason = f"Ache increased by {self.ache_differential}"
         
-        self.validated_at = datetime.utcnow()
+        self.validated_at = datetime.now(timezone.utc)
         return self.validation_passed
     
     def add_oracle_signature(self, signature: str):
@@ -193,7 +193,7 @@ class Wallet:
     transaction_count: int = 0
     
     # Metadata
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     last_transaction_at: Optional[datetime] = None
     metadata: Dict = field(default_factory=dict)
     
@@ -201,7 +201,7 @@ class Wallet:
         """Deposit ScarCoin to wallet"""
         self.balance += amount
         self.transaction_count += 1
-        self.last_transaction_at = datetime.utcnow()
+        self.last_transaction_at = datetime.now(timezone.utc)
         
         if is_minting:
             self.total_minted += amount
@@ -213,7 +213,7 @@ class Wallet:
         
         self.balance -= amount
         self.transaction_count += 1
-        self.last_transaction_at = datetime.utcnow()
+        self.last_transaction_at = datetime.now(timezone.utc)
         
         if is_burning:
             self.total_burned += amount

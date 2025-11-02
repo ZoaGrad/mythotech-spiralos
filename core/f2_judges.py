@@ -24,7 +24,7 @@ F2 Judges are activated when:
 from typing import Dict, List, Optional, Tuple, Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import uuid
 
 
@@ -78,8 +78,8 @@ class RefusalAppeal:
     review_reasoning: str = ""
     
     # SLA tracking
-    filed_at: datetime = field(default_factory=datetime.utcnow)
-    review_due_by: datetime = field(default_factory=lambda: datetime.utcnow() + timedelta(hours=72))
+    filed_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    review_due_by: datetime = field(default_factory=lambda: datetime.now(timezone.utc) + timedelta(hours=72))
     reviewed_at: Optional[datetime] = None
     
     # Metadata
@@ -89,7 +89,13 @@ class RefusalAppeal:
         """Check if review is overdue (72-hour SLA)"""
         if self.reviewed_at:
             return False
-        return datetime.utcnow() > self.review_due_by
+
+        review_due = self.review_due_by
+        if review_due.tzinfo is None:
+            review_due = review_due.replace(tzinfo=timezone.utc)
+
+        now = datetime.now(timezone.utc)
+        return now > review_due
     
     def to_dict(self) -> Dict:
         return {
@@ -132,7 +138,7 @@ class RightOfRefusal:
     appeal_instructions: str = ""
     
     # Immutable log
-    refused_at: datetime = field(default_factory=datetime.utcnow)
+    refused_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     logged_to_vault: bool = False
     vault_event_id: Optional[str] = None
     
@@ -194,7 +200,7 @@ class JudicialCase:
     remediation_required: List[str] = field(default_factory=list)
     
     # Metadata
-    filed_at: datetime = field(default_factory=datetime.utcnow)
+    filed_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     reviewed_at: Optional[datetime] = None
     judge_id: Optional[str] = None
     metadata: Dict = field(default_factory=dict)
@@ -244,7 +250,7 @@ class Judge:
     cmp_minimum: float = 0.3
     
     # Metadata
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     metadata: Dict = field(default_factory=dict)
     
     def review_case(self, case: JudicialCase) -> JudicialCase:
@@ -257,7 +263,7 @@ class Judge:
         Returns:
             Case with verdict
         """
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
         
         # Route to appropriate review method
         if case.judgment_type == JudgmentType.CRISIS_ESCALATION:
@@ -274,7 +280,7 @@ class Judge:
             case = self._review_holon_termination(case)
         
         # Update metrics
-        case.reviewed_at = datetime.utcnow()
+        case.reviewed_at = datetime.now(timezone.utc)
         case.judge_id = self.id
         
         review_time = (case.reviewed_at - start_time).total_seconds()
@@ -781,7 +787,7 @@ class JudicialSystem:
             appeal.review_status = "under_review"
             appeal.reviewer_judge_id = reviewer_judge_id
         
-        appeal.reviewed_at = datetime.utcnow()
+        appeal.reviewed_at = datetime.now(timezone.utc)
         
         return appeal
     
@@ -815,7 +821,7 @@ class JudicialSystem:
             'total_refusals': len(self.refusals),
             'total_appeals': len(self.appeals),
             'overdue_appeals': len(overdue_appeals),
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         }
 
 

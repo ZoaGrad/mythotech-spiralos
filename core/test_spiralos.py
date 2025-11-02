@@ -43,7 +43,6 @@ def test_scarindex_calculation():
     assert result.is_valid, "Should be valid transmutation"
     
     print("✓ ScarIndex calculation test PASSED")
-    return True
 
 
 def test_pid_controller():
@@ -85,7 +84,6 @@ def test_pid_controller():
     assert final_error < 0.1, "PID controller did not converge"
     
     print("✓ PID controller test PASSED")
-    return True
 
 
 def test_panic_frames():
@@ -119,15 +117,14 @@ def test_panic_frames():
     assert len(frame.actions_frozen) > 0
     
     print("✓ Panic Frames test PASSED")
-    return True
 
 
-async def test_recovery_protocol():
-    """Test 7-Phase Recovery Protocol"""
+async def _run_recovery_protocol():
+    """Execute the asynchronous recovery protocol test scenario."""
     print("\n" + "="*70)
     print("TEST: 7-Phase Recovery Protocol")
     print("="*70)
-    
+
     manager = PanicFrameManager()
     protocol = SevenPhaseRecoveryProtocol(manager)
     
@@ -146,17 +143,20 @@ async def test_recovery_protocol():
     
     assert len(actions) == 7, "Should execute all 7 phases"
     assert all(action.success for action in actions), "All phases should succeed"
-    
+
     print("✓ Recovery protocol test PASSED")
-    return True
 
 
-async def test_spiralos_integration():
-    """Test full SpiralOS integration"""
+def test_recovery_protocol():
+    asyncio.run(_run_recovery_protocol())
+
+
+async def _run_spiralos_integration():
+    """Execute the asynchronous SpiralOS integration flow for testing."""
     print("\n" + "="*70)
     print("TEST: SpiralOS Integration")
     print("="*70)
-    
+
     spiralos = SpiralOS(
         target_scarindex=0.7,
         enable_consensus=False,  # Disable for testing
@@ -190,13 +190,16 @@ async def test_spiralos_integration():
     print(f"  Success Rate: {status['transmutations']['success_rate']:.1%}")
     
     assert status['transmutations']['total'] > 0, "Should have transmutations"
-    
+
     print("✓ SpiralOS integration test PASSED")
-    return True
 
 
-async def test_hgm_policy():
-    """Test Huxley-Gödel Machine policy function"""
+def test_spiralos_integration():
+    asyncio.run(_run_spiralos_integration())
+
+
+async def _run_hgm_policy():
+    """Execute the asynchronous Huxley-Gödel Machine policy flow for testing."""
     print("\n" + "="*70)
     print("TEST: HGM Policy Function")
     print("="*70)
@@ -239,11 +242,12 @@ async def test_hgm_policy():
     print(f"  CMP: {cmp:.4f}")
     
     assert cmp > 0, "CMP should be positive"
-    
+
     print("✓ HGM policy test PASSED")
-    return True
 
 
+def test_hgm_policy():
+    asyncio.run(_run_hgm_policy())
 async def run_all_tests():
     """Run all tests"""
     print("\n" + "="*70)
