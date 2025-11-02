@@ -19,7 +19,7 @@ import json
 import os
 import uuid
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import List, Dict, Optional, Tuple
 
@@ -70,7 +70,7 @@ class ProviderOutput:
         output_hash = hashlib.sha256(output_json.encode()).hexdigest()
         
         # Create signature (in production, use proper cryptographic signing)
-        signature_data = f"{provider.value}:{instance}:{output_hash}:{datetime.utcnow().isoformat()}"
+        signature_data = f"{provider.value}:{instance}:{output_hash}:{datetime.now(timezone.utc).isoformat()}"
         signature = hashlib.sha256(signature_data.encode()).hexdigest()
         
         return cls(
@@ -79,7 +79,7 @@ class ProviderOutput:
             output=output,
             output_hash=output_hash,
             signature=signature,
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(timezone.utc)
         )
 
 
@@ -445,7 +445,7 @@ class AgentFusionStack:
             'semantic_graph': {},
             'ontology_compliance': True,
             'drift_score': 0.0,
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         }
 
 

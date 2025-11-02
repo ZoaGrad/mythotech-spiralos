@@ -16,7 +16,7 @@ function as a component of a larger system. The μApp Stack implements this thro
 from typing import Dict, List, Optional, Tuple, Any
 from dataclasses import dataclass, field
 from enum import Enum
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 import hashlib
 import json
@@ -52,7 +52,7 @@ class Residue:
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
     source_holon_id: str = ""
     delta_c: float = 0.0  # Coherence gap (optimal - achieved)
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     metadata: Dict = field(default_factory=dict)
     
     def to_dict(self) -> Dict:
@@ -147,7 +147,7 @@ class HolonicMicroApp:
     residue_generated: float = 0.0
     
     # Metadata
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     completed_at: Optional[datetime] = None
     metadata: Dict = field(default_factory=dict)
     
@@ -341,7 +341,7 @@ class HolonicMicroAppStack:
         
         # Complete execution
         holon.state = HolonState.COMPLETED
-        holon.completed_at = datetime.utcnow()
+        holon.completed_at = datetime.now(timezone.utc)
         
         holon.output_data = {
             'scarindex': holon.scarindex_produced,
@@ -451,7 +451,7 @@ class HolonicMicroAppStack:
             'total_residue': self.total_residue,
             'residue_pool_size': len(self.residue_pool),
             'average_cmp': avg_cmp,
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         }
 
 
