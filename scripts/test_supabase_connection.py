@@ -8,16 +8,17 @@ Tests both SERVICE_KEY and ANON_KEY if available.
 
 import os
 import sys
+from typing import Optional
+
+import pytest
 
 try:
     from supabase import create_client
-except ImportError:
-    print("ERROR: supabase package not installed")
-    print("Install with: pip install supabase>=1.0.0,<2.0.0")
-    sys.exit(1)
+except ImportError:  # pragma: no cover - dependency safety net
+    create_client = None  # type: ignore[assignment]
 
 
-def test_connection(url: str, key: str, key_type: str) -> bool:
+def _test_connection(url: str, key: str, key_type: str) -> bool:
     """
     Test Supabase connection with given credentials
     
@@ -55,11 +56,43 @@ def test_connection(url: str, key: str, key_type: str) -> bool:
         return False
 
 
+def _get_env(var: str) -> Optional[str]:
+    value = os.getenv(var)
+    return value if value else None
+
+
+@pytest.mark.skipif(create_client is None, reason="supabase package not installed")
+def test_supabase_service_connection():
+    url = _get_env('SUPABASE_URL')
+    service_key = _get_env('SUPABASE_SERVICE_KEY')
+
+    if not url or not service_key:
+        pytest.skip('Supabase service credentials not configured')
+
+    assert _test_connection(url, service_key, "SERVICE_KEY")
+
+
+@pytest.mark.skipif(create_client is None, reason="supabase package not installed")
+def test_supabase_anon_connection():
+    url = _get_env('SUPABASE_URL')
+    anon_key = _get_env('SUPABASE_ANON_KEY')
+
+    if not url or not anon_key:
+        pytest.skip('Supabase anon credentials not configured')
+
+    assert _test_connection(url, anon_key, "ANON_KEY")
+
+
 def main():
     """Main test function"""
     print("=" * 60)
     print("SpiralOS Supabase Connection Test")
     print("=" * 60)
+
+    if create_client is None:
+        print("\n✗ ERROR: supabase package not installed")
+        print("  Install with: pip install supabase>=1.0.0,<2.0.0")
+        sys.exit(1)
     
     # Get credentials from environment
     url = os.getenv('SUPABASE_URL')
@@ -79,12 +112,12 @@ def main():
         sys.exit(1)
     
     # Test service key (required)
-    service_ok = test_connection(url, service_key, "SERVICE_KEY")
+    service_ok = _test_connection(url, service_key, "SERVICE_KEY")
     
     # Test anon key (optional)
     anon_ok = True
     if anon_key:
-        anon_ok = test_connection(url, anon_key, "ANON_KEY")
+        anon_ok = _test_connection(url, anon_key, "ANON_KEY")
     else:
         print("\n⚠ SUPABASE_ANON_KEY not set (optional for frontend)")
     
