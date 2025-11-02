@@ -17,7 +17,7 @@ import os
 import json
 import logging
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, List, Optional
 from supabase import create_client
 
@@ -149,7 +149,7 @@ class StatusReportGenerator:
             Dictionary with signal statistics
         """
         try:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             hour_ago = (now - timedelta(hours=1)).isoformat()
             day_ago = (now - timedelta(days=1)).isoformat()
             
@@ -197,7 +197,7 @@ class StatusReportGenerator:
         Returns:
             Complete status report dictionary
         """
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         
         # Fetch all data
         judge_summary = self.fetch_judge_summary()

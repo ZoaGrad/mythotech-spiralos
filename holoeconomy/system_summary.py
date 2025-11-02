@@ -11,7 +11,7 @@ This module serves as a unified dashboard for system health monitoring and telem
 """
 
 from typing import Dict, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 
 
@@ -59,7 +59,7 @@ class SystemSummary:
                 'name': 'SpiralOS',
                 'version': '1.3.0-alpha',
                 'vault_id': self.vaultnode.vault_id if self.vaultnode else 'N/A',
-                'timestamp': datetime.utcnow().isoformat(),
+                'timestamp': datetime.now(timezone.utc).isoformat(),
                 'status': self._determine_overall_status()
             },
             'components': {

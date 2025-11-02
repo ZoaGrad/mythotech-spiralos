@@ -12,7 +12,7 @@ Tests for critical constitutional corrections:
 import sys
 import os
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 # Add parent directory to path
@@ -65,7 +65,6 @@ def test_scarindex_weights_sum():
         print(f"✓ {name}: {weight}")
     
     print("✓ ScarIndex weight sum validation PASSED")
-    return True
 
 
 def test_scarindex_panic_threshold():
@@ -113,7 +112,6 @@ def test_scarindex_panic_threshold():
     print(f"✓ Coherence status thresholds correct")
     
     print("✓ ScarIndex panic threshold test PASSED")
-    return True
 
 
 def test_consensus_4_of_5_quorum():
@@ -205,7 +203,6 @@ def test_consensus_4_of_5_quorum():
     print(f"✓ 2-of-5 insufficient: {reason}")
     
     print("✓ 4-of-5 consensus quorum test PASSED")
-    return True
 
 
 def test_consensus_diversity_requirement():
@@ -265,7 +262,6 @@ def test_consensus_diversity_requirement():
     print(f"✓ Diversity check passed")
     
     print("✓ Provider diversity requirement test PASSED")
-    return True
 
 
 def test_f2_right_of_refusal():
@@ -314,7 +310,6 @@ def test_f2_right_of_refusal():
     print(f"✓ Refusal stored in system")
     
     print("✓ F2 Right of Refusal test PASSED")
-    return True
 
 
 def test_f2_appeal_72_hour_sla():
@@ -363,7 +358,7 @@ def test_f2_appeal_72_hour_sla():
     print(f"✓ Appeal not overdue initially")
     
     # Test overdue detection (simulate)
-    appeal.review_due_by = datetime.utcnow() - timedelta(hours=1)
+    appeal.review_due_by = datetime.now(timezone.utc) - timedelta(hours=1)
     assert appeal.is_overdue(), "Should be overdue after due date"
     print(f"✓ Overdue detection works")
     
@@ -374,7 +369,6 @@ def test_f2_appeal_72_hour_sla():
     print(f"✓ Overdue appeal auto-approved: {reviewed.review_reasoning}")
     
     print("✓ F2 Appeal 72-hour SLA test PASSED")
-    return True
 
 
 def test_emp_burn_validation():
@@ -450,7 +444,6 @@ def test_emp_burn_validation():
     print(f"✓ permits_burn=False rejected: {validation_no_permit.validation_reason}")
     
     print("✓ EMP burn validation test PASSED")
-    return True
 
 
 def test_emp_burn_coherence_threshold():
@@ -490,7 +483,6 @@ def test_emp_burn_coherence_threshold():
         print(f"✓ High coherence accepted: {validation.validation_reason}")
     
     print("✓ EMP burn coherence threshold test PASSED")
-    return True
 
 
 async def run_all_tests():

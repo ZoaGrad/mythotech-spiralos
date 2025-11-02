@@ -1,6 +1,6 @@
 import json
 import hashlib
-from datetime import datetime
+from datetime import datetime, timezone
 
 # Load manifest
 with open('MANIFEST_v1.2.json', 'r') as f:
@@ -9,7 +9,7 @@ with open('MANIFEST_v1.2.json', 'r') as f:
 # Create vault export
 vault_export = {
     'vault_id': 'ΔΩ.122.0',
-    'export_timestamp': datetime.utcnow().isoformat() + 'Z',
+    'export_timestamp': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
     'manifest_version': manifest['version'],
     'manifest_codename': manifest['codename'],
     'manifest_hash': hashlib.sha256(

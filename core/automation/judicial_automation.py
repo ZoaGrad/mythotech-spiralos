@@ -16,7 +16,7 @@ Environment Variables:
 import os
 import json
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass, asdict
 from enum import Enum
@@ -262,7 +262,7 @@ class JudicialAutomation:
                 self.supabase.table('cases').update({
                     'assigned_judge_id': judge_id,
                     'status': 'assigned',
-                    'updated_at': datetime.utcnow().isoformat()
+                    'updated_at': datetime.now(timezone.utc).isoformat()
                 }).eq('id', case_id).execute()
                 
                 # Update judge workload
@@ -274,7 +274,7 @@ class JudicialAutomation:
                     current_workload = judge_response.data[0]['current_workload']
                     self.supabase.table('judges').update({
                         'current_workload': current_workload + 1,
-                        'updated_at': datetime.utcnow().isoformat()
+                        'updated_at': datetime.now(timezone.utc).isoformat()
                     }).eq('id', judge_id).execute()
             
             logger.info(f'Persisted {len(assignments)} case assignments')

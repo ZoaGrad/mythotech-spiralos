@@ -19,7 +19,7 @@ Key Concepts:
 from typing import Dict, List, Optional, Tuple, Set
 from dataclasses import dataclass, field
 from enum import Enum
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import uuid
 import hashlib
 import json
@@ -76,7 +76,7 @@ class ParadoxOperation:
     actual_delta_c: Optional[float] = None
     
     # Metadata
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     executed_at: Optional[datetime] = None
     metadata: Dict = field(default_factory=dict)
     
@@ -134,7 +134,7 @@ class ParadoxAgent:
     last_operation_at: Optional[datetime] = None
     
     # Metadata
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     metadata: Dict = field(default_factory=dict)
     
     def propose_operation(
@@ -201,7 +201,7 @@ class ParadoxAgent:
         )
         
         self.operations_proposed += 1
-        self.last_operation_at = datetime.utcnow()
+        self.last_operation_at = datetime.now(timezone.utc)
         
         return operation
     
@@ -508,7 +508,7 @@ class ParadoxNetwork:
         
         # Record execution
         operation.executed = True
-        operation.executed_at = datetime.utcnow()
+        operation.executed_at = datetime.now(timezone.utc)
         operation.actual_delta_c = actual_delta_c
         
         self.executed_operations += 1
@@ -585,7 +585,7 @@ class ParadoxNetwork:
             'execution_rate': self.executed_operations / self.approved_operations if self.approved_operations > 0 else 0,
             'average_reputation': avg_reputation,
             'consensus_threshold': self.consensus_threshold,
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         }
 
 
