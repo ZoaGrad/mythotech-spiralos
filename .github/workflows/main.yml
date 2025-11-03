@@ -1,0 +1,21 @@
+name: Main Workflow
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  hello-spiralos:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Greet SpiralOS
+        shell: pwsh
+        run: Write-Output 'Hello, SpiralOS!'
