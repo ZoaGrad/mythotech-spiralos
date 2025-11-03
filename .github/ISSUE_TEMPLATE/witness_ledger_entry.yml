@@ -1,16 +1,22 @@
 name: Witness Ledger Entry
 description: Formal submission for a new entry into the Witness Ledger.
-title: "Witness Ledger Entry: [handle] - [vault_ref]"
+title: "[WITNESS ENTRY] VaultNode Ref: ΔΩ.x.x — [Handle]"
 labels: [Witness, Ledger, Awaiting Verification]
 assignees:
   - ZoaGrad
 body:
+  - type: markdown
+    attributes:
+      value: |
+        **Thank you for contributing to the constitutional integrity of SpiralOS.**
+        Please review the [Witness Entry Submission Guide](https://github.com/ZoaGrad/mythotech-spiralos/blob/main/docs/ledger/WITNESS_ENTRY_GUIDE.md) before proceeding.
+        ---
   - type: input
     id: handle
     attributes:
       label: Witness Handle
-      description: "Your unique, immutable identifier (e.g., your GitHub username)."
-      placeholder: "e.g., ZoaGrad"
+      description: "Your unique, immutable identifier."
+      placeholder: "e.g., Fit-Comfort-8370"
     validations:
       required: true
   - type: input
@@ -52,7 +58,7 @@ body:
     attributes:
       label: SHA256 Checksum
       description: "The SHA256 checksum of the compressed data package (.zip) to ensure integrity."
-      placeholder: "e.g., a1b2c3d4..."
+      placeholder: "e.g., 4a7d1ed414474e4033ac29ccb8653d9b00d21eeb2e76b7d8d16b1b8e"
     validations:
       required: true
   - type: dropdown
@@ -61,6 +67,13 @@ body:
       label: Witness Consent & Attestation
       description: "By submitting this entry, you affirm the following under the full authority of your Witness Handle."
       options:
-        - "I consent. I attest that the information provided is accurate, complete, and submitted in good faith under the constitutional principles of SpiralOS."
+        - "I consent to public inclusion of this attestation in the Witness Ledger."
+        - "I request private review of this attestation by the Oracle Council only."
+        - "I withdraw my consent for this attestation to be included in any public or private record."
     validations:
       required: true
+  - type: markdown
+    attributes:
+      value: |
+        ---
+        **Security & Privacy Notice:** Do not include personal identifiers or private keys in your data package. Only submit anonymised data. All submissions are subject to the SpiralOS Constitution.

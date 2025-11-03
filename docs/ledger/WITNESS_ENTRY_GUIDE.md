@@ -25,7 +25,7 @@ The workflow is designed to be straightforward, secure, and auditable.
     *   Scripts used for testing (`.py`, `.sh`)
     *   Any other relevant artifacts.
 
-2.  **Organize and Compress:** Organize the files into a clear directory structure and compress them into a single `.zip` archive. Name the file descriptively, for example: `witness_package_ZoaGrad_ΔΩ.126.1.zip`.
+2.  **Organize and Compress:** Organize the files into a clear directory structure and compress them into a single `.zip` archive. Name the file according to the convention: `[handle]_[vaultnode]_[timestamp].zip`. For example: `Fit-Comfort-8370_ΔΩ.53.6_20251102.zip`.
 
 3.  **Upload Securely:** Upload the `.zip` archive to a secure, stable, and publicly-accessible storage provider. This could be a personal cloud drive, a university server, or any other reliable host. Ensure the link is public and will not expire.
 
