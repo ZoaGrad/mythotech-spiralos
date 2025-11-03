@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Submit Witness Entry</title>
+    <style>
+        :root {
+            --primary-color: #0d1117;
+            --secondary-color: #161b22;
+            --border-color: #30363d;
+            --text-color: #c9d1d9;
+            --text-secondary-color: #8b949e;
+            --accent-color: #58a6ff;
+            --success-color: #238636;
+            --error-color: #da3633;
+            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+        }
+        body {
+            font-family: var(--font-family);
+            background-color: var(--primary-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            width: 100%;
+            max-width: 600px;
+            background-color: var(--secondary-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 2rem;
+        }
+        h1 {
+            color: var(--text-color);
+            text-align: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 1rem;
+            margin-top: 0;
+        }
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        input, textarea, .file-input-wrapper {
+            width: 100%;
+            background-color: var(--primary-color);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 10px 12px;
+            color: var(--text-color);
+            font-size: 1rem;
+            box-sizing: border-box;
+        }
+        textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+        input::placeholder, textarea::placeholder {
+            color: var(--text-secondary-color);
+        }
+        .file-input-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        input[type="file"] { display: none; }
+        .file-label {
+            cursor: pointer;
+            padding: 10px 15px;
+            background-color: var(--border-color);
+            border-radius: 6px;
+            white-space: nowrap;
+        }
+        .file-label:hover { background-color: #444c56; }
+        #file-name {
+            margin-left: 15px;
+            color: var(--text-secondary-color);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: white;
+            background-color: var(--success-color);
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        button:hover:not(:disabled) {
+            background-color: #2ea043;
+        }
+        button:disabled {
+            background-color: var(--border-color);
+            cursor: not-allowed;
+        }
+        .progress-bar {
+            width: 100%;
+            background-color: var(--border-color);
+            border-radius: 6px;
+            overflow: hidden;
+            height: 10px;
+            margin-top: 1rem;
+            display: none;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            width: 0%;
+            background-color: var(--accent-color);
+            transition: width 0.1s linear;
+        }
+        #status {
+            text-align: center;
+            margin-top: 1rem;
+            font-weight: 500;
+            min-height: 20px;
+        }
+        .error { color: var(--error-color); }
+        .success { color: var(--success-color); }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Submit Witness Entry</h1>
+        <form id="witness-form">
+            <div class="form-group">
+                <label for="handle">Witness Handle</label>
+                <input type="text" id="handle" name="handle" placeholder="e.g., Fit-Comfort-8370" required>
+            </div>
+            <div class="form-group">
+                <label for="vault-ref">Vault Reference (ΔΩ)</label>
+                <input type="text" id="vault-ref" name="vault-ref" placeholder="e.g., ΔΩ.53.6" required>
+            </div>
+            <div class="form-group">
+                <label for="test-method">Test Method & Results</label>
+                <textarea id="test-method" name="test-method" placeholder="1. Cloned repository at commit [commit_hash]..." required></textarea>
+            </div>
+            <div class="form-group">
+                <label for="summary">Witness Summary</label>
+                <textarea id="summary" name="summary" placeholder="A concise summary of your attestation..." required></textarea>
+            </div>
+            <div class="form-group">
+                <label for="zip-file">Data Package (.zip, &lt;100MB)</label>
+                <div class="file-input-wrapper">
+                     <label for="zip-file" class="file-label">Choose File</label>
+                     <span id="file-name">No file selected</span>
+                </div>
+                <input type="file" id="zip-file" name="zip-file" accept=".zip" required>
+            </div>
+
+            <button type="submit" id="submit-btn">Submit to Ledger</button>
+
+            <div id="status"></div>
+            <div class="progress-bar" id="progress-bar">
+                <div class="progress-bar-fill" id="progress-bar-fill"></div>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        const form = document.getElementById('witness-form');
+        const submitBtn = document.getElementById('submit-btn');
+        const statusDiv = document.getElementById('status');
+        const progressBar = document.getElementById('progress-bar');
+        const progressBarFill = document.getElementById('progress-bar-fill');
+        const fileInput = document.getElementById('zip-file');
+        const fileNameSpan = document.getElementById('file-name');
+
+        fileInput.addEventListener('change', () => {
+            fileNameSpan.textContent = fileInput.files.length > 0 ? fileInput.files[0].name : 'No file selected';
+        });
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const file = fileInput.files[0];
+            if (!file) {
+                showStatus('Please select a data package (.zip file).', 'error');
+                return;
+            }
+            if (file.size > 100 * 1024 * 1024) {
+                showStatus('File size must be under 100MB.', 'error');
+                return;
+            }
+
+            // Disable form and show progress
+            setLoadingState(true, 'Calculating checksum...');
+
+            try {
+                // 1. Calculate SHA256 Checksum
+                const checksum = await calculateSHA256(file);
+                showStatus('Uploading file...');
+
+                // 2. Upload to Supabase
+                const { url: uploadUrl } = await uploadToSupabase(file, checksum);
+                showStatus('Upload complete. Generating issue...', 'success');
+                
+                // 3. Open pre-filled GitHub Issue
+                generateGitHubIssue(checksum, uploadUrl);
+                
+                // Reset form after a delay
+                setTimeout(() => {
+                    setLoadingState(false);
+                    form.reset();
+                    fileNameSpan.textContent = 'No file selected';
+                    showStatus('Successfully redirected to GitHub.');
+                }, 3000);
+
+            } catch (error) {
+                console.error('Submission failed:', error);
+                showStatus(`Error: ${error.message}`, 'error');
+                setLoadingState(false);
+            }
+        });
+
+        function setLoadingState(isLoading, message = '') {
+            submitBtn.disabled = isLoading;
+            Array.from(form.elements).forEach(el => el.disabled = isLoading);
+            progressBar.style.display = isLoading ? 'block' : 'none';
+            progressBarFill.style.width = '0%';
+            if (isLoading) {
+                statusDiv.className = '';
+                statusDiv.textContent = message;
+            }
+        }
+
+        function showStatus(message, type = 'info') {
+            statusDiv.textContent = message;
+            statusDiv.className = type; // 'error' or 'success'
+        }
+
+        async function calculateSHA256(file) {
+            const buffer = await file.arrayBuffer();
+            const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            return hashHex;
+        }
+
+        function uploadToSupabase(file, checksum) {
+            // This function simulates the upload to a Supabase Edge Function.
+            // Jules will need to replace '/supabase/functions/witness_upload'
+            // with the actual deployed function URL.
+            return new Promise((resolve, reject) => {
+                const formData = new FormData();
+                formData.append('witnessFile', file);
+                
+                // Using XMLHttpRequest to get upload progress
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', '/supabase/functions/witness_upload', true);
+                
+                // Attach headers if needed, e.g., for auth or checksum
+                xhr.setRequestHeader('X-File-Checksum', checksum);
+
+                xhr.upload.onprogress = (event) => {
+                    if (event.lengthComputable) {
+                        const percentComplete = (event.loaded / event.total) * 100;
+                        progressBarFill.style.width = percentComplete + '%';
+                    }
+                };
+
+                xhr.onload = () => {
+                    progressBarFill.style.width = '100%';
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        try {
+                            const response = JSON.parse(xhr.responseText);
+                            // Assuming the function returns { url, checksum }
+                            resolve(response);
+                        } catch (e) {
+                            reject(new Error('Invalid response from server.'));
+                        }
+                    } else {
+                        reject(new Error(`Upload failed. Server responded with ${xhr.status}.`));
+                    }
+                };
+                
+                xhr.onerror = () => {
+                    reject(new Error('Network error during upload.'));
+                };
+
+                xhr.send(formData);
+            });
+        }
+        
+        function generateGitHubIssue(checksum, uploadUrl) {
+            const handle = document.getElementById('handle').value;
+            const vaultRef = document.getElementById('vault-ref').value;
+            const method = document.getElementById('test-method').value;
+            const summary = document.getElementById('summary').value;
+
+            // Construct issue body based on the template fields
+            const issueBody = `
+**Witness Handle:** ${handle}
+
+**Vault Reference (ΔΩ):** ${vaultRef}
+
+---
+
+### Test Method & Results
+\\`
+${method}
+\\`
+
+### Witness Summary
+${summary}
+
+---
+
+### Data Verification
+*   **Data Package URL:** ${uploadUrl}
+*   **SHA256 Checksum:** \
+
+### Witness Consent & Attestation
+I consent to public inclusion of this attestation in the Witness Ledger.
+
+*This issue was generated automatically by the Witness Submission Form.*
+`;
+
+            const title = encodeURIComponent(`[WITNESS ENTRY] ${vaultRef} — ${handle}`);
+            const body = encodeURIComponent(issueBody.trim());
+            const labels = encodeURIComponent('Witness,Ledger,Awaiting Verification');
+            
+            const githubUrl = `https://github.com/ZoaGrad/mythotech-spiralos/issues/new?title=${title}&body=${body}&labels=${labels}`;
+
+            window.open(githubUrl, '_blank');
+        }
+
+    </script>
+</body>
+</html>
