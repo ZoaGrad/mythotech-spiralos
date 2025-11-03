@@ -1,0 +1,117 @@
+# .github/workflows/dynamic_auditor.yml
+# SpiralOS Governance Automation: Dynamic Auditor + Ledger Append
+# This workflow generates a daily auditor report when key governance files change,
+# and appends a concise verification entry to the chronological LEDGER.md.
+
+name: Generate Dynamic Auditor Report & Append Ledger
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'docs/governance/COMMITMENT_CERTIFICATE.md'
+      - 'docs/governance/90_DAY_ROADMAP.md'
+      - 'docs/governance/IMPLEMENTATION_TRACKER.md'
+      - 'docs/governance/ANALYTICAL_FRAMEWORK.md'
+
+jobs:
+  generate-dynamic-report:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate Dynamic Report
+        id: generate_report
+        run: |
+          REPORT_FILE="docs/governance/validators/AUDITOR_REPORT_$(date +'%Y-%m-%d').md"
+          LEDGER_FILE="docs/governance/validators/LEDGER.md"
+          echo "REPORT_FILE=$REPORT_FILE" >> $GITHUB_ENV
+          echo "LEDGER_FILE=$LEDGER_FILE" >> $GITHUB_ENV
+
+          declare -a GOVERNANCE_FILES=(
+            "docs/governance/COMMITMENT_CERTIFICATE.md"
+            "docs/governance/90_DAY_ROADMAP.md"
+            "docs/governance/IMPLEMENTATION_TRACKER.md"
+            "docs/governance/ANALYTICAL_FRAMEWORK.md"
+          )
+
+          COMMIT_SHA="${{ github.sha }}"
+          SHORT_SHA=$(echo $COMMIT_SHA | cut -c1-7)
+          COMMIT_TIMESTAMP=$(git log -1 --format=%cI "$COMMIT_SHA")
+          COMMIT_MESSAGE=$(git log -1 --format=%s "$COMMIT_SHA")
+
+          CHANGED_FILES=$(git diff-tree --no-commit-id --name-only -r "$COMMIT_SHA" | grep -E "$(IFS=\|; echo "${GOVERNANCE_FILES[*]}")" || true)
+
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "No monitored governance files changed. Exiting."
+            echo "SHOULD_COMMIT=false" >> $GITHUB_ENV
+            exit 0
+          fi
+          echo "SHOULD_COMMIT=true" >> $GITHUB_ENV
+
+          mkdir -p "$(dirname "$REPORT_FILE")"
+
+          {
+            echo "# External Timeline Auditor Report"
+            echo "**Generated:** $(date -u --iso-8601=seconds)"
+            echo ""
+            echo "## Triggering Event"
+            echo "| Field | Value |"
+            echo "|---|---|"
+            echo "| **Commit SHA** | \`$SHORT_SHA\` |"
+            echo "| **Full SHA** | \`$COMMIT_SHA\` |"
+            echo "| **Timestamp** | $COMMIT_TIMESTAMP |"
+            echo "| **Commit Message** | $COMMIT_MESSAGE |"
+            echo ""
+            echo "## Verified Artifacts Changed"
+            echo "$CHANGED_FILES" | sed 's/^/- /'
+            echo ""
+            echo "## Validation Checklist"
+            echo "- [ ] **Attestation:** Confirm authenticity of commit and changed artifacts."
+            echo "- [ ] **Temporal Audit:** Ensure change falls within the mandated timeline."
+            echo "- [ ] **Ledger Update:** Append a record of this verification to \`validators/LEDGER.md\`."
+            echo "- [ ] **Publish Report:** Confirm this report is accessible."
+          } > "$REPORT_FILE"
+
+          echo "✅ Generated auditor report at $REPORT_FILE"
+
+      - name: Append Ledger Entry
+        if: env.SHOULD_COMMIT == 'true'
+        run: |
+          LEDGER_FILE="${{ env.LEDGER_FILE }}"
+          REPORT_FILE="${{ env.REPORT_FILE }}"
+          COMMIT_SHA="${{ github.sha }}"
+          SHORT_SHA=$(echo $COMMIT_SHA | cut -c1-7)
+          COMMIT_TIMESTAMP=$(git log -1 --format=%cI "$COMMIT_SHA")
+          COMMIT_MESSAGE=$(git log -1 --format=%s "$COMMIT_SHA")
+          REPORT_NAME=$(basename "$REPORT_FILE")
+
+          mkdir -p "$(dirname "$LEDGER_FILE")"
+          touch "$LEDGER_FILE"
+
+          {
+            echo "| Date | Commit | Summary | Report |"
+            echo "|------|---------|----------|---------|"
+            if ! grep -q "Date" "$LEDGER_FILE"; then
+              cat "$LEDGER_FILE"
+            fi
+          } > tmpfile && mv tmpfile "$LEDGER_FILE"
+
+          echo "| $(date -u +'%Y-%m-%d') | [$SHORT_SHA](https://github.com/${{ github.repository }}/commit/$COMMIT_SHA) | ${COMMIT_MESSAGE:-N/A} | [${REPORT_NAME}](./${REPORT_NAME}) |" >> "$LEDGER_FILE"
+
+          echo "📜 Ledger updated with new verification entry."
+
+      - name: Commit and Push Outputs
+        if: env.SHOULD_COMMIT == 'true'
+        run: |
+          git config user.name "SpiralOS Bot"
+          git config user.email "actions@github.com"
+          git add ${{ env.REPORT_FILE }} ${{ env.LEDGER_FILE }}
+          git commit -m "docs(governance): auto-generate auditor report + ledger entry for ${{ github.sha }}"
+          git push
