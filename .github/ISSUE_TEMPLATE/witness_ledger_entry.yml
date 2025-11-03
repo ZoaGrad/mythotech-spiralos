@@ -24,7 +24,7 @@ body:
     attributes:
       label: Vault Reference (ΔΩ)
       description: "The unique ΔΩ reference for the constitutional artifact or event being witnessed."
-      placeholder: "e.g., ΔΩ.53.6"
+      placeholder: "e.g., ΔΩ.126.1"
     validations:
       required: true
   - type: textarea
@@ -49,7 +49,7 @@ body:
     id: data_url
     attributes:
       label: Data Package URL
-      description: "A secure, publicly-accessible URL to the compressed (.zip) data package. The zip file should be under 100 MB and named in the format `[handle]_[vaultnode]_[timestamp].zip`."
+      description: "A secure, publicly-accessible URL to the compressed (.zip) data package containing all relevant evidence (logs, screenshots, etc.)."
       placeholder: "e.g., https://[storage_provider]/path/to/witness_package.zip"
     validations:
       required: true
