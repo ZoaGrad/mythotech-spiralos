@@ -179,6 +179,12 @@ Overall coverage: 96.5%
 
 ---
 
+## 🪞 Witness Ledger Access
+
+- [Witness Entry Submission Guide](./docs/ledger/WITNESS_ENTRY_GUIDE.md)
+
+---
+
 ## 🏛️ VaultNode Lineage (selections)
 
 - ΔΩ.125.4.1-summary-sync — Constitutional Corrections & Layer 2 Merger (SEALED)  

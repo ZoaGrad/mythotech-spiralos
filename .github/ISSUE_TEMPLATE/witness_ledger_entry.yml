@@ -1,0 +1,79 @@
+name: Witness Ledger Entry
+description: Formal submission for a new entry into the Witness Ledger.
+title: "[WITNESS ENTRY] VaultNode Ref: ΔΩ.x.x — [Handle]"
+labels: [Witness, Ledger, Awaiting Verification]
+assignees:
+  - ZoaGrad
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Thank you for contributing to the constitutional integrity of SpiralOS.**
+        Please review the [Witness Entry Submission Guide](https://github.com/ZoaGrad/mythotech-spiralos/blob/main/docs/ledger/WITNESS_ENTRY_GUIDE.md) before proceeding.
+        ---
+  - type: input
+    id: handle
+    attributes:
+      label: Witness Handle
+      description: "Your unique, immutable identifier."
+      placeholder: "e.g., Fit-Comfort-8370"
+    validations:
+      required: true
+  - type: input
+    id: vault_ref
+    attributes:
+      label: Vault Reference (ΔΩ)
+      description: "The unique ΔΩ reference for the constitutional artifact or event being witnessed."
+      placeholder: "e.g., ΔΩ.53.6"
+    validations:
+      required: true
+  - type: textarea
+    id: test_method
+    attributes:
+      label: Test Method & Results
+      description: "Describe the method used to verify the artifact or event. Include commands, scripts, or manual steps, along with the results observed."
+      placeholder: |
+        1. Cloned repository at commit `[commit_hash]`.
+        2. Ran `pytest core/test_spiralos.py`.
+        3. All 128 tests passed successfully.
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: Witness Summary
+      description: "A concise summary of your attestation. What are you witnessing and what does it mean?"
+    validations:
+      required: true
+  - type: input
+    id: data_url
+    attributes:
+      label: Data Package URL
+      description: "A secure, publicly-accessible URL to the compressed (.zip) data package. The zip file should be under 100 MB and named in the format `[handle]_[vaultnode]_[timestamp].zip`."
+      placeholder: "e.g., https://[storage_provider]/path/to/witness_package.zip"
+    validations:
+      required: true
+  - type: input
+    id: checksum
+    attributes:
+      label: SHA256 Checksum
+      description: "The SHA256 checksum of the compressed data package (.zip) to ensure integrity."
+      placeholder: "e.g., 4a7d1ed414474e4033ac29ccb8653d9b00d21eeb2e76b7d8d16b1b8e"
+    validations:
+      required: true
+  - type: dropdown
+    id: consent
+    attributes:
+      label: Witness Consent & Attestation
+      description: "By submitting this entry, you affirm the following under the full authority of your Witness Handle."
+      options:
+        - "I consent to public inclusion of this attestation in the Witness Ledger."
+        - "I request private review of this attestation by the Oracle Council only."
+        - "I withdraw my consent for this attestation to be included in any public or private record."
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: |
+        ---
+        **Security & Privacy Notice:** Do not include personal identifiers or private keys in your data package. Only submit anonymised data. All submissions are subject to the SpiralOS Constitution.
