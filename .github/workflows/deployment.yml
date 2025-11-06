@@ -1,0 +1,68 @@
+name: Deploy ΔΩ.146.1 - Witness Diversity Index
+
+on:
+  push:
+    branches:
+      - feature/ΔΩ.146.1-wi-protocol
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run Supabase migrations
+        run: |
+          npm install -g supabase
+          supabase db push
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+
+      - name: Compile and test contracts
+        run: |
+          npx hardhat compile
+          npx hardhat test
+        env:
+          POLYGON_MUMBAI_API_KEY: ${{ secrets.POLYGON_MUMBAI_API_KEY }}
+          DEPLOYER_PRIVATE_KEY: ${{ secrets.DEPLOYER_PRIVATE_KEY }}
+
+      - name: Deploy contracts to Mumbai
+        run: npx hardhat run scripts/deploy.js --network mumbai
+        env:
+          POLYGON_MUMBAI_API_KEY: ${{ secrets.POLYGON_MUMBAI_API_KEY }}
+          DEPLOYER_PRIVATE_KEY: ${{ secrets.DEPLOYER_PRIVATE_KEY }}
+
+      - name: Upload contract addresses as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: contract-addresses
+          path: contracts.json
+
+      - name: Install jq
+        run: sudo apt-get install -y jq
+
+      - name: Set up Google Cloud CLI
+        uses: google-github-actions/setup-gcloud@v0
+        with:
+          service_account_key: ${{ secrets.GCLOUD_SERVICE_ACCOUNT_KEY }}
+          project_id: ${{ secrets.GCLOUD_PROJECT_ID }}
+
+      - name: Build and deploy wi-indexer to Cloud Run
+        run: |
+          gcloud run deploy wi-indexer --source scripts/etl --region us-central1 --allow-unauthenticated
+        env:
+          POLYGON_MUMBAI_API_KEY: ${{ secrets.POLYGON_MUMBAI_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          WITNESS_REGISTRY_ADDRESS: $(cat contracts.json | jq -r .WitnessRegistry)
+          ATTESTATION_MANAGER_ADDRESS: $(cat contracts.json | jq -r .AttestationManager)
