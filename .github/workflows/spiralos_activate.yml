@@ -1,0 +1,80 @@
+name: SpiralOS Activation Pipeline
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 3 * * *"  # Nightly governance audit
+
+permissions:
+  contents: read
+
+jobs:
+  activate_spiralos:
+    name: Deploy & Synchronize SpiralOS
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+      ALCHEMY_API_KEY: ${{ secrets.ALCHEMY_API_KEY }}
+      POLYGON_RPC: https://polygon-mumbai.g.alchemy.com/v2/${{ secrets.ALCHEMY_API_KEY }}
+      PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
+      DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
+
+    steps:
+      - name: 🌀 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🧰 Setup Node.js and Python
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 📦 Install dependencies
+        run: |
+          npm ci
+          pip install -r requirements.txt
+          npm install -g supabase@latest
+
+      - name: 🧪 Run tests (core + holoeconomy)
+        run: |
+          python -m pytest core/test_spiralos.py -v
+          python -m pytest holoeconomy/test_holoeconomy.py -v
+
+      - name: 🗄️ Deploy Supabase migrations
+        run: supabase db push
+
+      - name: ⚙️ Deploy Supabase Edge Functions
+        run: |
+          supabase functions deploy audit_guard --no-verify-jwt
+          supabase functions deploy scarindex_update --no-verify-jwt
+
+      - name: 💎 Verify smart contracts
+        run: |
+          npx hardhat verify --network mumbai ${{ secrets.SCARCOIN_CONTRACT }}
+          npx hardhat verify --network mumbai ${{ secrets.SCARINDEX_ORACLE_CONTRACT }}
+
+      - name: 🔗 Oracle Bridge Sync
+        run: |
+          python scripts/oracle_bridge.py --sync
+          echo "✅ Oracle bridge synchronized"
+
+      - name: 🤖 Activate Comet + MirrorBot
+        run: |
+          python agents/comet_boot.py
+          python agents/mirrorbot_boot.py
+          echo "✅ Agents synchronized with Supabase"
+
+      - name: 🩶 Governance Audit Trigger
+        run: |
+          supabase functions invoke audit_guard
+          supabase functions invoke scarindex_update
+          echo "🩶 Governance audit complete"
+
+      - name: 📡 Deploy Witness Dashboard
+        run: |
+          npm run build
+          npx vercel deploy --prod --yes
