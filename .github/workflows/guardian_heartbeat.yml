@@ -26,6 +26,7 @@ jobs:
         run: |
           STATUS="${{ steps.guardian_check.outputs.status }}"
           SCORE="${{ steps.guardian_check.outputs.score }}"
+          RESPONSE='${{ steps.guardian_check.outputs.response }}'
           
           if [[ "$STATUS" == "🟢" ]]; then
             COLOR="3066993"
@@ -35,19 +36,24 @@ jobs:
             COLOR="15158332"
           fi
           
+          # Create JSON payload file to avoid escaping issues
+          cat > /tmp/discord_payload.json << EOF
+          {
+            "embeds": [{
+              "title": "Guardian System Heartbeat",
+              "description": "Status: $STATUS\nScarIndex Score: $SCORE",
+              "color": $COLOR,
+              "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%S.000Z)",
+              "fields": [
+                {
+                  "name": "Response",
+                  "value": "\`\`\`json\n${RESPONSE}\n\`\`\`"
+                }
+              ]
+            }]
+          }
+          EOF
+          
           curl -X POST "${{ secrets.DISCORD_WEBHOOK_URL }}" \
             -H "Content-Type: application/json" \
-            -d "{
-              \"embeds\": [{
-                \"title\": \"Guardian System Heartbeat\",
-                \"description\": \"Status: $STATUS\\nScarIndex Score: $SCORE\",
-                \"color\": $COLOR,
-                \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%S.000Z)\",
-                \"fields\": [
-                  {
-                    \"name\": \"Response\",
-                    \"value\": \"\`\`\`json\\n${{ steps.guardian_check.outputs.response }}\\n\`\`\`\"
-                  }
-                ]
-              }]
-            }"
+            -d @/tmp/discord_payload.json
