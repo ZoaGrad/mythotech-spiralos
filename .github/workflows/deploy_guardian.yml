@@ -2,36 +2,36 @@ name: Deploy Guardian to Supabase
 
 on:
   push:
-      branches: [main]
-          paths:
-                - 'supabase/functions/guardian_sync/**'
-                      - 'supabase/migrations/**'
-                            - '.github/workflows/deploy_guardian.yml'
-                              workflow_dispatch:
+    branches: [main]
+    paths:
+      - 'supabase/functions/guardian_sync/**'
+      - 'supabase/migrations/**'
+      - '.github/workflows/deploy_guardian.yml'
+  workflow_dispatch:
 
-                              jobs:
-                                deploy:
-                                    runs-on: ubuntu-latest
-
-                                        steps:
-                                              - name: Checkout code
-                                                      uses: actions/checkout@v3
-
-                                                            - name: Setup Supabase CLI
-                                                                    uses: supabase/setup-cli@v1
-                                                                            with:
-                                                                                      version: latest
-
-                                                                                            - name: Deploy Edge Function
-                                                                                                    run: |
-                                                                                                              supabase functions deploy guardian_sync \
-                                                                                                                          --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
-                                                                                                                                  env:
-                                                                                                                                            SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-                                                                                                                                            
-                                                                                                                                                  - name: Run Migrations
-                                                                                                                                                          run: |
-                                                                                                                                                                    supabase db push \
-                                                                                                                                                                                --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
-                                                                                                                                                                                        env:
-                                                                                                                                                                                                  SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      
+      - name: Deploy Edge Function
+        run: |
+          supabase functions deploy guardian_sync \
+            --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      
+      - name: Run Migrations
+        run: |
+          supabase db push \
+            --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
