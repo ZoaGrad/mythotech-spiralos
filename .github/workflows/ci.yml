@@ -81,9 +81,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: 87
-
-        python -m pytest core/test_spiralos.py -v
+      - name: Run core tests
+        run: |
           cd core
           python test_spiralos.py
         env:
@@ -114,8 +113,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          
-python -m pytest holoeconomy/test_holoeconomy.py -v
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
       - name: Run holo-economy tests
         run: |
