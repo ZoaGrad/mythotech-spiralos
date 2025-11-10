@@ -1,0 +1,42 @@
+
+# File: core/guardian/config/tasks.deepagent.yaml
+version: 1
+
+tasks:
+  - id: Guardian.SystemCheck
+    description: Periodic SpiralOS heartbeat — pull metrics, assess bands, post to Discord, log.
+    schedule: "every 3 hours"
+    env:
+      GUARDIAN_EDGE_URL: ${GUARDIAN_EDGE_URL}
+      DISCORD_GUARDIAN_WEBHOOK: ${DISCORD_GUARDIAN_WEBHOOK}
+      GUARDIAN_WINDOW_HOURS: "24"
+    run:
+      - name: Fetch status
+        type: http
+        method: GET
+        url: "${GUARDIAN_EDGE_URL}?hours=${GUARDIAN_WINDOW_HOURS}"
+      - name: Evaluate & format
+        type: code
+        language: python
+        code: |
+          import json
+          p = json.loads(${steps[0].response.body})
+          scar = p.get('scar_score')
+          emoji = p.get('scar_status','❔')
+          lines = [f"**Guardian Heartbeat** {emoji}", f"`{p.get('timestamp')}` | window: {p.get('window_hours')}h", ""]
+          for m in p.get('metrics',[]):
+            lines.append(f"• **{m['label']}**: {m['value']}")
+          if isinstance(scar,(int,float)) and (scar < 0.6 or scar >= 1.4):
+            lines.append("\n⚠ **Coherence Alert** — ScarIndex out of band (target: 0.6–1.4).")
+          content = "\n".join(lines)
+          ${output.assign('discord_payload', {'content': content[:1995]})}
+      - name: Post to Discord
+        type: http
+        method: POST
+        url: ${DISCORD_GUARDIAN_WEBHOOK}
+        headers:
+          Content-Type: application/json
+        body: ${outputs.discord_payload}
+      - name: Log
+        type: log
+        message: "Guardian.SystemCheck sent heartbeat to Discord"
