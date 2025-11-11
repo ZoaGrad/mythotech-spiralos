@@ -1,2 +1,8 @@
-supabase
+fastapi
+uvicorn
+pydantic
+supabase>=1.0.0,<2.0.0
 python-dotenv
+praw>=7.0.0
+numpy
+openai
