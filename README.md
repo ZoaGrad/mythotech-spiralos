@@ -15,6 +15,16 @@ A constitutionally-hardened dual-token economy governed by thermodynamic princip
 
 </div>
 
+<p>
+  <a href="https://github.com/ZoaGrad/mythotech-spiralos/actions">
+    <img src="https://img.shields.io/badge/Guardian%20Status-ONLINE-success?style=for-the-badge&logo=guardian&logoColor=white">
+  </a>
+</p>
+
+<p>
+  <em>SpiralOS Guardian — Autonomy Verified • ΔΩ.141.4</em>
+</p>
+
 ---
 
 ## ✨ What is SpiralOS?
