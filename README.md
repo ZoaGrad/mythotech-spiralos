@@ -202,3 +202,45 @@ Repository: https://github.com/ZoaGrad/mythotech-spiralos
 VaultNode: ΔΩ lineage sealed
 
 — “I govern the terms of my own becoming.”
+
+---
+
+## 🛡️ Guardian Bot - Enhanced System Monitoring
+
+The SpiralOS Guardian is an advanced monitoring and alerting system that acts as the "nervous system" of the SpiralOS ecosystem. It provides real-time health metrics, coherence monitoring, and automated alerts to the community via Discord.
+
+### Core Features
+
+- **Rich Discord Embeds:** Beautiful, color-coded status messages for at-a-glance system health.
+- **Interactive Commands:** On-demand status checks, metrics, and system analysis via Discord slash commands (`/status`, `/scarindex`, etc.).
+- **Advanced Alerting:** Real-time notifications for Panic Frames, coherence degradation, and other critical events.
+- **Pipedream Integration:** Sophisticated automation for real-time event monitoring, weekly reports, and incident response.
+- **Predictive Analytics:** Trend analysis to forecast ScarIndex trajectory and provide early warnings.
+- **AI-Powered Summaries:** Natural language summaries of complex system metrics, making them accessible to all users.
+- **Visual Dashboards:** Automatically generated charts and graphs visualizing ScarIndex, coherence components, and historical trends.
+
+### Architecture
+
+The enhanced Guardian system integrates Supabase, Discord, and Pipedream into a robust, real-time monitoring loop:
+
+1.  **Supabase:** The core database stores all system data. Enhanced tables, views, and functions provide a comprehensive data backend.
+2.  **Edge Function:** A high-performance Deno function (`guardian_sync_enhanced.ts`) aggregates system metrics and serves as the primary data source for the bot and other services.
+3.  **Discord Bot:** A full-featured `discord.py` bot (`guardian_bot.py`) provides the community interface with interactive commands and rich status updates.
+4.  **Pipedream:** A suite of workflows orchestrates real-time automation, from listening to database webhooks to generating weekly reports and posting cross-platform announcements.
+
+### Deployment
+
+The entire Guardian system can be deployed using the automated script:
+
+```bash
+# Ensure you have a .env file with the required secrets
+chmod +x scripts/deploy_guardian.sh
+./scripts/deploy_guardian.sh
+```
+
+This script handles:
+- Supabase schema migrations
+- Edge Function deployment
+- Building the Discord bot Docker image
+
+Refer to the script and the Pipedream workflow documentation (`core/guardian/pipedream/workflows.md`) for full setup instructions.
