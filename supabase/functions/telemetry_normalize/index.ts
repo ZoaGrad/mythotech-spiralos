@@ -427,9 +427,22 @@ serve(async (req: Request): Promise<Response> => {
 
   console.log("✅ Normalized event created:", data.id);
 
+  // ============================================================================
+  // PHASE 8.4: MICRO-REGULATION HOOKS
+  // ============================================================================
+  // Check if event indicates need for auto-regulation
+  let regulation_triggered = false;
+  
+  if (ache_signature > 0.80 || agent_health < 0.5) {
+    console.log("⚠️ High ache or low health detected - regulation may be needed");
+    // Future: trigger micro-regulation or flag for monitoring
+    regulation_triggered = true;
+  }
+
   return jsonResponse({
     success: true,
     event: data as NormalizedEvent,
+    regulation_triggered,
     processing_time_ms: Date.now() - startTime,
   });
 });
