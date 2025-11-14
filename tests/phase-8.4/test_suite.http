@@ -1,0 +1,275 @@
+
+# Phase 8.4: Auto-Regulation Engine Test Suite
+# ============================================================================
+# These tests cover all 12 scenarios specified in the requirements
+# Run with REST Client extension in VS Code or use curl
+# ============================================================================
+
+@baseUrl = {{SUPABASE_URL}}/functions/v1
+@apiKey = {{GUARDIAN_API_KEY}}
+@bridgeId = f8f41ffa-6c2b-4a2a-a3be-32f0236668f4
+
+# ============================================================================
+# TEST 1: ScarIndex Recovery - Low ScarIndex
+# ============================================================================
+# @name test1_scarindex_recovery_low
+POST {{baseUrl}}/guardian_autoregulate
+Content-Type: application/json
+x-guardian-api-key: {{apiKey}}
+
+{
+  "bridge_id": "{{bridgeId}}",
+  "mode": "MANUAL"
+}
+
+# Prerequisites: 
+# - Insert low ScarIndex value and corresponding anomaly
+# SQL:
+# INSERT INTO guardian_scarindex_current (bridge_id, scar_value) 
+# VALUES ('{{bridgeId}}', 0.30) 
+# ON CONFLICT (bridge_id) DO UPDATE SET scar_value = 0.30;
+#
+# INSERT INTO guardian_anomalies (bridge_id, anomaly_type, severity, status, details)
+# VALUES ('{{bridgeId}}', 'SCARINDEX_DROP', 'HIGH', 'ACTIVE', '{"reason": "low_value", "value": 0.30}');
+
+###
+
+# ============================================================================
+# TEST 2: ScarIndex Recovery - Large Drop
+# ============================================================================
+# @name test2_scarindex_recovery_drop
+POST {{baseUrl}}/guardian_autoregulate
+Content-Type: application/json
+x-guardian-api-key: {{apiKey}}
+
+{
+  "bridge_id": "{{bridgeId}}",
+  "mode": "MANUAL"
+}
+
+# Prerequisites:
+# SQL:
+# INSERT INTO guardian_scarindex_history (bridge_id, scar_value, delta, source)
+# VALUES ('{{bridgeId}}', 0.80, 0, 'baseline'), ('{{bridgeId}}', 0.50, -0.30, 'drop');
+#
+# UPDATE guardian_scarindex_current SET scar_value = 0.50 WHERE bridge_id = '{{bridgeId}}';
+#
+# INSERT INTO guardian_anomalies (bridge_id, anomaly_type, severity, status, details)
+# VALUES ('{{bridgeId}}', 'SCARINDEX_DROP', 'CRITICAL', 'ACTIVE', '{"reason": "large_drop", "drop_percent": 37.5}');
+
+###
+
+# ============================================================================
+# TEST 3: Sovereignty Stabilizer
+# ============================================================================
+# @name test3_sovereignty_stabilizer
+POST {{baseUrl}}/guardian_autoregulate
+Content-Type: application/json
+x-guardian-api-key: {{apiKey}}
+
+{
+  "bridge_id": "{{bridgeId}}",
+  "mode": "MANUAL"
+}
+
+# Prerequisites:
+# SQL:
+# INSERT INTO guardian_anomalies (bridge_id, anomaly_type, severity, status, details)
+# VALUES ('{{bridgeId}}', 'SOVEREIGNTY_INSTABILITY', 'MEDIUM', 'ACTIVE', 
+#         '{"changes_per_hour": 5, "unique_states": 6}');
+
+###
+
+# ============================================================================
+# TEST 4: Ache Buffer - High Ache
+# ============================================================================
+# @name test4_ache_buffer
+POST {{baseUrl}}/guardian_autoregulate
+Content-Type: application/json
+x-guardian-api-key: {{apiKey}}
+
+{
+  "bridge_id": "{{bridgeId}}",
+  "mode": "MANUAL"
+}
+
+# Prerequisites:
+# SQL:
+# INSERT INTO guardian_anomalies (bridge_id, anomaly_type, severity, status, details)
+# VALUES ('{{bridgeId}}', 'ACHE_SPIKE', 'HIGH', 'ACTIVE', 
+#         '{"current_ache": 0.85, "threshold": 0.80}');
+
+###
+
+# ============================================================================
+# TEST 5: Heartbeat Correction
+# ============================================================================
+# @name test5_heartbeat_correction
+POST {{baseUrl}}/guardian_autoregulate
+Content-Type: application/json
+x-guardian-api-key: {{apiKey}}
+
+{
+  "bridge_id": "{{bridgeId}}",
+  "mode": "MANUAL"
+}
+
+# Prerequisites:
+# SQL:
+# INSERT INTO guardian_anomalies (bridge_id, anomaly_type, severity, status, details)
+# VALUES ('{{bridgeId}}', 'HEARTBEAT_GAP', 'HIGH', 'ACTIVE', 
+#         '{"gap_minutes": 15, "threshold_minutes": 10}');
+
+###
+
+# ============================================================================
+# TEST 6: Entropy Correction
+# ============================================================================
+# @name test6_entropy_correction
+POST {{baseUrl}}/guardian_autoregulate
+Content-Type: application/json
+x-guardian-api-key: {{apiKey}}
+
+{
+  "bridge_id": "{{bridgeId}}",
+  "mode": "MANUAL"
+}
+
+# Prerequisites:
+# SQL:
+# INSERT INTO guardian_anomalies (bridge_id, anomaly_type, severity, status, details)
+# VALUES ('{{bridgeId}}', 'ENTROPY_SPIKE', 'HIGH', 'ACTIVE', 
+#         '{"entropy": 0.18, "threshold": 0.15}');
+
+###
+
+# ============================================================================
+# TEST 7: Self-Preservation Freeze Mode (CRITICAL)
+# ============================================================================
+# @name test7_freeze_mode
+POST {{baseUrl}}/guardian_autoregulate
+Content-Type: application/json
+x-guardian-api-key: {{apiKey}}
+
+{
+  "bridge_id": "{{bridgeId}}",
+  "mode": "MANUAL"
+}
+
+# Prerequisites:
+# SQL:
+# INSERT INTO guardian_anomalies (bridge_id, anomaly_type, severity, status, details)
+# VALUES ('{{bridgeId}}', 'SCARINDEX_DROP', 'CRITICAL', 'ACTIVE', 
+#         '{"reason": "catastrophic_failure", "value": 0.15}');
+
+###
+
+# ============================================================================
+# TEST 8: Deduplication / Idempotency
+# ============================================================================
+# @name test8_idempotency_first
+POST {{baseUrl}}/guardian_autoregulate
+Content-Type: application/json
+x-guardian-api-key: {{apiKey}}
+
+{
+  "bridge_id": "{{bridgeId}}",
+  "mode": "MANUAL"
+}
+
+###
+
+# Run same request again immediately
+# @name test8_idempotency_second
+POST {{baseUrl}}/guardian_autoregulate
+Content-Type: application/json
+x-guardian-api-key: {{apiKey}}
+
+{
+  "bridge_id": "{{bridgeId}}",
+  "mode": "MANUAL"
+}
+
+# Expected: Second request should respect cooldown and not double-apply
+
+###
+
+# ============================================================================
+# TEST 9: Mixed Anomaly Batch
+# ============================================================================
+# @name test9_mixed_batch
+POST {{baseUrl}}/guardian_autoregulate
+Content-Type: application/json
+x-guardian-api-key: {{apiKey}}
+
+{
+  "bridge_id": "{{bridgeId}}",
+  "mode": "AUTO"
+}
+
+# Prerequisites:
+# SQL:
+# INSERT INTO guardian_anomalies (bridge_id, anomaly_type, severity, status, details)
+# VALUES 
+#   ('{{bridgeId}}', 'ACHE_SPIKE', 'HIGH', 'ACTIVE', '{"ache": 0.85}'),
+#   ('{{bridgeId}}', 'HEARTBEAT_GAP', 'MEDIUM', 'ACTIVE', '{"gap_minutes": 12}'),
+#   ('{{bridgeId}}', 'ENTROPY_SPIKE', 'LOW', 'ACTIVE', '{"entropy": 0.16}');
+
+###
+
+# ============================================================================
+# TEST 10: Authentication Failure
+# ============================================================================
+# @name test10_auth_fail
+POST {{baseUrl}}/guardian_autoregulate
+Content-Type: application/json
+x-guardian-api-key: INVALID_KEY_12345
+
+{
+  "bridge_id": "{{bridgeId}}",
+  "mode": "AUTO"
+}
+
+# Expected: 401 Unauthorized
+
+###
+
+# ============================================================================
+# TEST 11: Performance Test (Batch Anomalies)
+# ============================================================================
+# @name test11_performance
+POST {{baseUrl}}/guardian_autoregulate
+Content-Type: application/json
+x-guardian-api-key: {{apiKey}}
+
+{
+  "bridge_id": "{{bridgeId}}",
+  "mode": "AUTO"
+}
+
+# Prerequisites: Create 50 anomalies using SQL script
+# See test_performance_setup.sql
+
+###
+
+# ============================================================================
+# TEST 12: Logging Integrity Check
+# ============================================================================
+# @name test12_logging_integrity
+POST {{baseUrl}}/guardian_autoregulate
+Content-Type: application/json
+x-guardian-api-key: {{apiKey}}
+
+{
+  "bridge_id": "{{bridgeId}}",
+  "mode": "AUTO"
+}
+
+# After running, verify with SQL:
+# SELECT * FROM guardian_autoregulation_history 
+# WHERE bridge_id = '{{bridgeId}}' 
+# ORDER BY created_at DESC LIMIT 10;
+#
+# SELECT * FROM guardian_autoregulation_recent LIMIT 10;
+
+###
