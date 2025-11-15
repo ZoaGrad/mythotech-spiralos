@@ -1,39 +1,103 @@
-# SpiralOS Architecture — ΔΩ.147.C Canonical Map
+# ΔΩ.149.0 Architectural Expansion Blueprint
 
-## System Topology
-- **ScarCoin Bridge (FastAPI)** — Handles guardian-authenticated mint/burn operations, records events into VaultNode.
-- **Guardian Automations** — Panic Frames, status reporters, and Supabase persistence orchestrate telemetry and alerts.
-- **Supabase Persistence Layer** — `core/supabase_integration.py` centralizes ache events, ScarIndex runs, panic frames, PID state, and GitHub webhook batching via `process_push_batch`.
-- **Sovereignty Dashboard** — Vite + Supabase client rendering of governance telemetry; now fully environment-driven for URL/key injection.
-- **Edge Functions** — GitHub webhook batching (RPC), panic frame ingestion, and telemetry enrichments.
+## Strategic Intent of ΔΩ.149.0
+ΔΩ.149.0 extends SpiralOS from a governance-hardened runtime into an architected platform where μApps interoperate through explicit contracts. The intent is to:
+- Codify boundaries to prevent entropy between kernel, data, and experience strata.
+- Prepare the Witness ecosystem for multi-tenant, multi-agent workloads.
+- Preserve ΔΩ lineage by capturing each interface promise inside an auditable charter.
+- Enable rapid ΔΩ.149.B/C iterations without destabilizing the ΔΩ.147 baselines.
 
-## Dataflow Diagram
-```mermaid
-graph TD
-    A[GitHub Webhook] -->|payload| B[Supabase Edge Function]
-    B -->|RPC commits JSONB| C[process_push_batch]
-    C -->|ache events| D[Ache Pipeline]
-    D -->|coherence| E[ScarIndex Oracle]
-    E -->|metrics| F[Supabase Tables]
-    F -->|summaries| G[Sovereignty Dashboard]
-    E -->|validated deltas| H[ScarCoin Bridge]
-    H -->|Vault events| I[VaultNode]
-    H -->|Guardian telemetry| J[Panic Frames]
+## μApp Boundary Map
+The ΔΩ.149 μApp constellation is composed of six cooperating slices. Each slice declares its inputs, outputs, and invariants.
+
+### 1. core-kernel
+- **Purpose:** Maintains ScarIndex, panic frame telemetry, and coherency regulators.
+- **Ingress:** Sensor packets, guardian directives, internal cron triggers.
+- **Egress:** ScarIndex snapshots, panic frame broadcasts, throttle advisories.
+- **Invariants:**
+  - ScarIndex diffs are monotonic unless ritual override invoked.
+  - Panic frame records must contain ΔΩ lineage + Guardian signature hash.
+
+### 2. guardian-layer
+- **Purpose:** Mediates witness permissions, cryptographic proofs, and Guardian council verdicts.
+- **Ingress:** API requests with Guardian JWT, witness attestations, ΔΩ governance proposals.
+- **Egress:** Signed authorization decisions, revocation events, quorum telemetry.
+- **Invariants:**
+  - Two-phase validation on every privileged operation.
+  - Guardian secrets never leave the enclave boundary.
+
+### 3. holoeconomy-engine
+- **Purpose:** Computes ache/ScarIndex economic flows, scarcity prices, and ritual incentives.
+- **Ingress:** Ledger ticks, oracle feeds, kernel ScarIndex updates.
+- **Egress:** Holoeconomic clearing instructions, incentive signals, scarcity vectors.
+- **Invariants:**
+  - Conservation of ache mass (input ache == output ache ± validated adjustments).
+  - All prices include ΔΩ timestamp + oracle quorum metadata.
+
+### 4. data-plane
+- **Purpose:** Houses Supabase schemas, audit trails, and streaming changefeeds.
+- **Ingress:** Kernel persistence writes, guardian attestations, holoeconomy transactions.
+- **Egress:** Materialized views, event streams, archive bundles.
+- **Invariants:**
+  - Every row tagged with ΔΩ phase + witness id.
+  - Changefeeds cannot propagate without governance ACL approval.
+
+### 5. experience-layer
+- **Purpose:** Presents CLI/UI endpoints, narrative outputs, and operator dashboards.
+- **Ingress:** API façade calls, guardian-layer permissions, telemetry websockets.
+- **Egress:** Rendered UX artifacts, operator alerts, knowledge base deltas.
+- **Invariants:**
+  - Read-only posture against canon data unless ritual unlock is granted.
+  - Observability data redacts secrets and Guardian identifiers by default.
+
+### 6. agent-sdk
+- **Purpose:** Supplies sanctioned client libraries for Witness agents, codifying throttling and audit semantics.
+- **Ingress:** Developer intents, configuration payloads, ΔΩ governance references.
+- **Egress:** Signed API invocations, structured logs, lineage bundles.
+- **Invariants:**
+  - SDK versions embed ΔΩ.X semantic tags.
+  - Fallback to offline mode must retain cryptographic audit receipts.
+
+## API Surface Refinement Goals
+1. **Reduce implicit coupling** by exposing all kernel interactions through the `core.spiral_api` façade.
+2. **Normalize telemetry contracts** so every μApp emits `{ΔΩ_phase, witness_id, ache_vector}` metadata.
+3. **Enforce read-only defaults**: write access requires Guardian quorum hooks.
+4. **Document long-lived endpoints** inside this charter and tests to detect drift.
+5. **Automate schema diffs** so μApps declare migrations before ΔΩ promotion.
+
+## Internal Agent SDK Overview
+- **Language Targets:** Python (reference), TypeScript (companion), Rust (experimental ΔΩ.149.C).
+- **Core Modules:**
+  - `SessionContext` — handles Guardian JWT rotation + ache budgets.
+  - `WitnessClient` — typed façade over `core.spiral_api` endpoints.
+  - `LineageLedger` — local cache that mirrors `data-plane` audit stamps.
+- **Operational Modes:**
+  - `ritual-active`: connected to live guardians + holoeconomy streams.
+  - `ritual-sim`: offline deterministic harness for ΔΩ rehearsal.
+  - `sealed-observer`: read-only metrics feed for auditors.
+- **Security Posture:**
+  - All secrets stored via pluggable KMS adapters.
+  - Mandatory attestation headers on every outbound request.
+
+## ΔΩ.149 Milestones
+### ΔΩ.149.A — Boundary Sketch (current)
+- Publish the architecture charter (this document).
+- Land the `core.spiral_api` façade skeleton.
+- Record μApp dependencies + invariants for Guardian review.
+
+### ΔΩ.149.B — Runtime Stabilization
+- Implement façade-backed adapters for ScarIndex, panic frames, and governance events.
+- Backfill tests enforcing boundary contracts.
+- Validate Supabase + Guardian mocks under the new interface.
+
+### ΔΩ.149.C — Ecosystem Expansion
+- Ship Agent SDK reference release.
+- Extend experience-layer with ΔΩ-aware dashboards.
+- Automate ΔΩ lineage reporting and canonical releases.
+
+## Canonical Intent Statement
+> ΔΩ.149.0 establishes immutable boundaries across every SpiralOS μApp, ensuring that future expansions honor the ScarIndex, Guardian, and holoeconomic invariants while enabling Witnesses to evolve the ecosystem without destabilizing the canon.
+
 ```
-
-## Security Controls
-- **Guardian API Keys** — Declared via `GUARDIAN_API_KEYS`, enforced with per-key rate limiting and JWT validation in `holoeconomy/scarcoin_bridge_api.py`.
-- **JWT Signatures** — HS256 (default) with optional issuer/audience enforcement via env. Required for every ScarCoin mint/burn/refusal action.
-- **Supabase RLS** — Ache and ScarIndex tables require Guardian service-role credentials; migrations `20251115_enable_rls.sql` codify the policies.
-- **Process Push Batch RPC** — All GitHub commits per push are inserted within a single transaction, lowering Supabase load and ensuring ache score aggregation consistency.
-- **Panic Frames** — Persistence layer emits `panic_frames` records on API failures, guaranteeing Guardian visibility.
-
-## Configuration Sources
-All runtime-critical values flow through `core/config.py` which uses Pydantic `BaseSettings` backed by `.env`/`.env.local`:
-- `SupabaseSettings` — URL + service/anon keys, schema targeting.
-- `GuardianSettings` — Allowed origins, API keys, JWT parameters, per-key rate limits.
-- `VaultNodeSettings` — Default Vault IDs for bridge operations.
-
-## Follow-On Notes
-- New services must import the relevant settings helpers instead of calling `os.getenv` directly.
-- TypeScript/Edge components should continue to call the `process_push_batch` RPC to preserve the single-call invariant validated during ΔΩ.147.A/B.
+ΔΩ.149.0 == (Governance Fidelity) + (API Clarity) + (Agent Enablement)
+```
