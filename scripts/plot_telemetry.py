@@ -4,15 +4,17 @@ Telemetry Event Plotting - Comet Autonomous Task
 Fetches telemetry events and generates a 24-hour coherence chart.
 """
 
-import os
-import requests
-from datetime import datetime, timedelta
 import json
+import os
+from datetime import datetime, timedelta
+
+import requests
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 TELEMETRY_URL = f"{SUPABASE_URL}/functions/v1/telemetry_logger"
 OUTPUT_DIR = "docs/telemetry"
+
 
 def fetch_telemetry_events(hours=24):
     """Fetch telemetry events from the last N hours."""
@@ -27,6 +29,7 @@ def fetch_telemetry_events(hours=24):
         log_event("telemetry_plot", False, {"error": str(e)})
         return []
 
+
 def calculate_coherence_score(events):
     """Calculate system coherence based on event success rates."""
     if not events:
@@ -34,6 +37,7 @@ def calculate_coherence_score(events):
     total = len(events)
     successful = sum(1 for e in events if e.get("success_state", False))
     return successful / total
+
 
 def group_by_hour(events):
     """Group events by hour for time-series analysis."""
@@ -46,6 +50,7 @@ def group_by_hour(events):
                 hourly[hour_key] = []
             hourly[hour_key].append(event)
     return hourly
+
 
 def generate_html_chart(hourly_data):
     """Generate HTML chart showing 24-hour coherence trend."""
@@ -121,6 +126,7 @@ def generate_html_chart(hourly_data):
     """
     return html
 
+
 def save_chart(html_content, filename="telemetry_chart.html"):
     """Save HTML chart to file."""
     try:
@@ -133,36 +139,33 @@ def save_chart(html_content, filename="telemetry_chart.html"):
         print(f"Failed to save chart: {e}")
         return None
 
+
 def log_event(event_type, success, metadata=None):
     """Log event to telemetry_events table."""
     try:
-        payload = {
-            "agent_id": "comet",
-            "event_type": event_type,
-            "success_state": success,
-            "metadata": metadata or {}
-        }
+        payload = {"agent_id": "comet", "event_type": event_type, "success_state": success, "metadata": metadata or {}}
         headers = {"Authorization": f"Bearer {SUPABASE_KEY}"}
         requests.post(TELEMETRY_URL, json=payload, headers=headers, timeout=10)
     except Exception as e:
         print(f"Failed to log event: {e}")
 
+
 def main():
     print("[Comet] Starting Telemetry Plot Generation...")
-    
+
     events = fetch_telemetry_events(hours=24)
     if not events:
         print("[Comet] No telemetry events found.")
         return
-    
+
     hourly_data = group_by_hour(events)
     labels = sorted(hourly_data.keys())
     coherence_scores = [calculate_coherence_score(hourly_data[h]) for h in labels]
     avg_coherence = sum(coherence_scores) / len(coherence_scores) if coherence_scores else 0
-    
+
     total_success = sum(1 for e in events if e.get("success_state", False))
     success_rate = total_success / len(events)
-    
+
     html_content = generate_html_chart(hourly_data)
     html_content = html_content.format(
         timestamp=datetime.utcnow().isoformat(),
@@ -170,20 +173,25 @@ def main():
         avg_coherence=avg_coherence,
         success_rate=success_rate,
         labels=json.dumps([h[11:16] for h in labels]),
-        data=json.dumps([round(s, 3) for s in coherence_scores])
+        data=json.dumps([round(s, 3) for s in coherence_scores]),
     )
-    
+
     filepath = save_chart(html_content)
     if filepath:
         print(f"[Comet] Chart saved to {filepath}")
-        log_event("telemetry_plot", True, {
-            "total_events": len(events),
-            "avg_coherence": avg_coherence,
-            "success_rate": success_rate,
-            "filepath": filepath
-        })
+        log_event(
+            "telemetry_plot",
+            True,
+            {
+                "total_events": len(events),
+                "avg_coherence": avg_coherence,
+                "success_rate": success_rate,
+                "filepath": filepath,
+            },
+        )
     else:
         log_event("telemetry_plot", False, {"error": "Failed to save chart"})
+
 
 if __name__ == "__main__":
     main()

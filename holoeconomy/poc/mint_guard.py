@@ -2,8 +2,10 @@
 
 import os
 import sys
-from supabase import create_client, Client
+
 from dotenv import load_dotenv
+
+from supabase import Client, create_client
 
 # --- Constants ---
 WI_THRESHOLD = 0.60
@@ -20,6 +22,7 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # --- Guardrail Function ---
 
+
 def wi_ok() -> bool:
     """
     Checks if the latest Witness Diversity Index (Wᵢ) meets the minimum threshold.
@@ -31,13 +34,15 @@ def wi_ok() -> bool:
 
     try:
         # Fetch the most recent Wᵢ value from the database
-        response = supabase.table('wi_metrics').select('wi_value').order('calculation_timestamp', desc=True).limit(1).execute()
+        response = (
+            supabase.table("wi_metrics").select("wi_value").order("calculation_timestamp", desc=True).limit(1).execute()
+        )
 
         if not response.data:
             print("🚨 Guardrail Veto: No Wᵢ metrics found in the database.")
             return False
 
-        latest_wi = response.data[0]['wi_value']
+        latest_wi = response.data[0]["wi_value"]
         print(f"Latest Wᵢ value found: {latest_wi:.4f}")
 
         if latest_wi >= WI_THRESHOLD:
@@ -51,19 +56,20 @@ def wi_ok() -> bool:
         print(f"🚨 Guardrail Error: An exception occurred while checking Wᵢ: {e}")
         return False
 
+
 def update_guard_flag(status: bool):
     """
     Updates the 'wi_ok' flag in the guard_flags table.
     """
     print(f"Updating 'wi_ok' guard flag to: {status}")
     try:
-        supabase.table('guard_flags').update({
-            'is_active': status,
-            'last_checked': 'now()'
-        }).eq('flag_name', 'wi_ok').execute()
+        supabase.table("guard_flags").update({"is_active": status, "last_checked": "now()"}).eq(
+            "flag_name", "wi_ok"
+        ).execute()
         print("Successfully updated guard flag.")
     except Exception as e:
         print(f"Error updating guard flag: {e}")
+
 
 # --- Main Execution ---
 

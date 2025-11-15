@@ -9,31 +9,40 @@ Provides programmatic access to the economic validation layer.
 
 # VaultNode Seal: ΔΩ.147.C — Guardian authentication canonical build
 
+import sys
+import time
 from collections import defaultdict, deque
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal
-import os
-import sys
-import time
-from typing import Any, Awaitable, Callable, Deque, Dict, List, Optional
+from pathlib import Path
+from typing import Any, Deque, Dict, List, Optional
 
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from jose import JWTError, jwt
 from pydantic import BaseModel, Field
 
-# Add module and core directories to path for imports
-MODULE_DIR = os.path.dirname(__file__)
-sys.path.insert(0, MODULE_DIR)
-sys.path.insert(0, os.path.join(MODULE_DIR, ".."))
+MODULE_DIR = Path(__file__).resolve().parent
 
-from core.config import get_guardian_settings, get_vaultnode_settings
-from core.f2_judges import JudicialSystem
-from scarcoin import ScarCoinMintingEngine
-from system_summary import SystemSummary
-from vaultnode import VaultEvent, VaultNode
-
+try:
+    from scarcoin import ScarCoinMintingEngine
+    from system_summary import SystemSummary
+    from vaultnode import VaultEvent, VaultNode
+    from core.config import get_guardian_settings, get_vaultnode_settings
+    from core.f2_judges import JudicialSystem
+except ModuleNotFoundError:  # pragma: no cover - fallback when executed directly
+    module_root = str(MODULE_DIR)
+    parent_root = str(MODULE_DIR.parent)
+    if module_root not in sys.path:
+        sys.path.insert(0, module_root)
+    if parent_root not in sys.path:
+        sys.path.insert(0, parent_root)
+    from scarcoin import ScarCoinMintingEngine
+    from system_summary import SystemSummary
+    from vaultnode import VaultEvent, VaultNode
+    from core.config import get_guardian_settings, get_vaultnode_settings
+    from core.f2_judges import JudicialSystem
 
 guardian_settings = get_guardian_settings()
 vaultnode_settings = get_vaultnode_settings()
@@ -60,10 +69,7 @@ def _enforce_guardian_rate_limit(api_key: str) -> None:
         rate_window.popleft()
 
     if len(rate_window) >= guardian_settings.rate_limit_per_minute:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Guardian request rate exceeded"
-        )
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="Guardian request rate exceeded")
 
     rate_window.append(time.time())
 
@@ -72,13 +78,13 @@ def _extract_roles(payload: Dict[str, Any]) -> List[str]:
     """Normalize Guardian roles from JWT payload."""
 
     roles: List[str] = []
-    raw_roles = payload.get('roles')
+    raw_roles = payload.get("roles")
     if isinstance(raw_roles, list):
         roles.extend(str(role) for role in raw_roles)
     elif isinstance(raw_roles, str):
         roles.append(raw_roles)
 
-    single_role = payload.get('role')
+    single_role = payload.get("role")
     if isinstance(single_role, str) and single_role not in roles:
         roles.append(single_role)
 
@@ -90,82 +96,50 @@ async def validate_guardian_request(request: Request) -> GuardianContext:
 
     api_key = request.headers.get("X-Guardian-Key")
     if not api_key:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="X-Guardian-Key header required"
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="X-Guardian-Key header required")
 
     if not guardian_settings.api_keys:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Guardian keyring not configured"
-        )
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Guardian keyring not configured")
 
     if api_key not in guardian_settings.api_keys:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid Guardian API key"
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Guardian API key")
 
     _enforce_guardian_rate_limit(api_key)
 
     auth_header = request.headers.get("Authorization", "")
     scheme, _, token = auth_header.partition(" ")
     if scheme.lower() != "bearer" or not token:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Guardian bearer token required"
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Guardian bearer token required")
 
     if not guardian_settings.jwt_secret:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Guardian signature validation unavailable"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Guardian signature validation unavailable"
         )
 
     try:
-        decode_kwargs = {
-            "algorithms": [guardian_settings.jwt_algorithm]
-        }
+        decode_kwargs = {"algorithms": [guardian_settings.jwt_algorithm]}
         if guardian_settings.jwt_audience:
             decode_kwargs["audience"] = guardian_settings.jwt_audience
         if guardian_settings.jwt_issuer:
             decode_kwargs["issuer"] = guardian_settings.jwt_issuer
 
-        payload = jwt.decode(
-            token,
-            guardian_settings.jwt_secret,
-            **decode_kwargs
-        )
+        payload = jwt.decode(token, guardian_settings.jwt_secret, **decode_kwargs)
     except JWTError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid Guardian signature"
-        ) from exc
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Guardian signature") from exc
 
     roles = _extract_roles(payload)
     if "guardian" not in roles:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Guardian role required"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Guardian role required")
 
-    guardian_id = (
-        str(payload.get("sub"))
-        or str(payload.get("guardian_id"))
-        or "guardian"
-    )
+    guardian_id = str(payload.get("sub")) or str(payload.get("guardian_id")) or "guardian"
 
-    return GuardianContext(
-        api_key=api_key,
-        guardian_id=guardian_id,
-        roles=roles
-    )
+    return GuardianContext(api_key=api_key, guardian_id=guardian_id, roles=roles)
 
 
 # Pydantic models for API
 class MintRequest(BaseModel):
     """Request to mint ScarCoin"""
+
     transmutation_id: str
     scarindex_before: Decimal = Field(..., ge=0, le=1)
     scarindex_after: Decimal = Field(..., ge=0, le=1)
@@ -176,6 +150,7 @@ class MintRequest(BaseModel):
 
 class MintResponse(BaseModel):
     """Response from minting"""
+
     success: bool
     coin_id: Optional[str] = None
     coin_value: Optional[str] = None
@@ -184,12 +159,14 @@ class MintResponse(BaseModel):
 
 class BurnRequest(BaseModel):
     """Request to burn ScarCoin"""
+
     coin_id: str
     reason: str = Field(default="Failed transmutation", min_length=3, max_length=256)
 
 
 class WalletResponse(BaseModel):
     """Wallet information"""
+
     address: str
     balance: str
     total_minted: str
@@ -199,6 +176,7 @@ class WalletResponse(BaseModel):
 
 class SupplyStatsResponse(BaseModel):
     """Supply statistics"""
+
     total_supply: str
     total_minted: str
     total_burned: str
@@ -209,6 +187,7 @@ class SupplyStatsResponse(BaseModel):
 
 class BlockResponse(BaseModel):
     """VaultNode block information"""
+
     block_number: int
     merkle_root: str
     timestamp: str
@@ -219,6 +198,7 @@ class BlockResponse(BaseModel):
 
 class DissentRequest(BaseModel):
     """Request to file dissent/appeal against F2 refusal"""
+
     refusal_id: str
     appellant_id: str
     grounds: str = Field(..., min_length=10, description="Grounds for appeal (minimum 10 characters)")
@@ -227,6 +207,7 @@ class DissentRequest(BaseModel):
 
 class DissentResponse(BaseModel):
     """Response from dissent filing"""
+
     success: bool
     appeal_id: Optional[str] = None
     refusal_id: str
@@ -236,6 +217,7 @@ class DissentResponse(BaseModel):
 
 class RefusalRequest(BaseModel):
     """Request payload for invoking Right of Refusal"""
+
     action_type: str
     action_id: str
     constitutional_grounds: str = Field(..., min_length=10)
@@ -244,6 +226,7 @@ class RefusalRequest(BaseModel):
 
 class RefusalResponse(BaseModel):
     """Response for Right of Refusal"""
+
     refusal_id: str
     action_type: str
     action_id: str
@@ -256,7 +239,7 @@ class RefusalResponse(BaseModel):
 # Initialize FastAPI
 app = FastAPI(
     title="ScarCoin Bridge API",
-    description="Holo-Economy API for Proof-of-Ache minting and VaultNode blockchain",
+    description=("Holo-Economy API for Proof-of-Ache minting and VaultNode blockchain"),
     version="1.3.0-alpha",
 )
 
@@ -268,7 +251,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-# // CODEX-AUDIT: The bridge exposes privileged mint/burn operations yet permits any origin and lacks API authentication or rate limiting, leaving ScarCoin creation endpoints open to abuse.
+# // CODEX-AUDIT: The bridge exposes privileged mint/burn operations yet permits any origin and lacks API
+# authentication or rate limiting, leaving ScarCoin creation endpoints open to abuse.
 
 # Initialize engines
 minting_engine = ScarCoinMintingEngine(
@@ -295,15 +279,14 @@ async def health_check():
         "status": "healthy",
         "vault_id": vaultnode.vault_id,
         "total_blocks": len(vaultnode.blocks),
-        "chain_valid": vaultnode.verify_chain()
+        "chain_valid": vaultnode.verify_chain(),
     }
 
 
 # ScarCoin endpoints
 @app.post("/api/v1/scarcoin/mint", response_model=MintResponse)
 async def mint_scarcoin(
-    request: MintRequest,
-    guardian_context: GuardianContext = Depends(validate_guardian_request)
+    request: MintRequest, guardian_context: GuardianContext = Depends(validate_guardian_request)
 ) -> MintResponse:
     """Mint ScarCoin for a validated transmutation.
 
@@ -325,27 +308,26 @@ async def mint_scarcoin(
             scarindex_after=request.scarindex_after,
             transmutation_efficiency=request.transmutation_efficiency,
             owner_address=request.owner_address,
-            oracle_signatures=request.oracle_signatures or []
+            oracle_signatures=request.oracle_signatures or [],
         )
-        
+
         if not coin:
             return MintResponse(
-                success=False,
-                message="Minting failed: Proof-of-Ache validation failed or consensus not reached"
+                success=False, message="Minting failed: Proof-of-Ache validation failed or consensus not reached"
             )
-        
+
         # Record in VaultNode
         minting_event = VaultEvent(
             event_type="scarcoin_minted",
             event_data={
-                'coin_id': coin.id,
-                'transmutation_id': coin.transmutation_id,
-                'coin_value': str(coin.coin_value),
-                'owner': coin.owner,
-                'delta_c': str(coin.delta_c),
-                'scarindex_after': str(coin.scarindex_after),
-                'authorized_by': guardian_context.guardian_id
-            }
+                "coin_id": coin.id,
+                "transmutation_id": coin.transmutation_id,
+                "coin_value": str(coin.coin_value),
+                "owner": coin.owner,
+                "delta_c": str(coin.delta_c),
+                "scarindex_after": str(coin.scarindex_after),
+                "authorized_by": guardian_context.guardian_id,
+            },
         )
 
         vaultnode.add_event(minting_event)
@@ -354,20 +336,16 @@ async def mint_scarcoin(
             success=True,
             coin_id=coin.id,
             coin_value=str(coin.coin_value),
-            message=f"Successfully minted {coin.coin_value} ScarCoins"
+            message=f"Successfully minted {coin.coin_value} ScarCoins",
         )
-    
+
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
 @app.post("/api/v1/scarcoin/burn")
 async def burn_scarcoin(
-    request: BurnRequest,
-    guardian_context: GuardianContext = Depends(validate_guardian_request)
+    request: BurnRequest, guardian_context: GuardianContext = Depends(validate_guardian_request)
 ) -> Dict[str, Any]:
     """Burn an existing ScarCoin that violates constitutional constraints.
 
@@ -382,41 +360,36 @@ async def burn_scarcoin(
         HTTPException: If the coin is not found or the burn operation fails.
     """
 
-    success = minting_engine.burn_scarcoin(
-        coin_id=request.coin_id,
-        reason=request.reason
-    )
+    success = minting_engine.burn_scarcoin(coin_id=request.coin_id, reason=request.reason)
 
     if not success:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Coin {request.coin_id} not found or already burned"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Coin {request.coin_id} not found or already burned"
         )
 
     burn_event = VaultEvent(
         event_type="scarcoin_burned",
         event_data={
-            'coin_id': request.coin_id,
-            'reason': request.reason,
-            'authorized_by': guardian_context.guardian_id,
-            'timestamp': datetime.now(timezone.utc).isoformat()
-        }
+            "coin_id": request.coin_id,
+            "reason": request.reason,
+            "authorized_by": guardian_context.guardian_id,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        },
     )
     vaultnode.add_event(burn_event)
 
     return {
-        'success': True,
-        'coin_id': request.coin_id,
-        'message': f"Coin {request.coin_id} burned",
-        'burned_by': guardian_context.guardian_id
+        "success": True,
+        "coin_id": request.coin_id,
+        "message": f"Coin {request.coin_id} burned",
+        "burned_by": guardian_context.guardian_id,
     }
 
 
 @app.post("/api/v1/f2/refusal", response_model=RefusalResponse)
 @app.post("/api/v1/refusal", response_model=RefusalResponse)
 async def invoke_right_of_refusal(
-    request: RefusalRequest,
-    guardian_context: GuardianContext = Depends(validate_guardian_request)
+    request: RefusalRequest, guardian_context: GuardianContext = Depends(validate_guardian_request)
 ) -> RefusalResponse:
     """Invoke the constitutional Right of Refusal via Guardian authorization.
 
@@ -433,18 +406,18 @@ async def invoke_right_of_refusal(
         action_id=request.action_id,
         refusing_judge_id=guardian_context.guardian_id,
         constitutional_grounds=request.constitutional_grounds,
-        evidence=request.evidence
+        evidence=request.evidence,
     )
 
     refusal_event = VaultEvent(
         event_type="f2_refusal",
         event_data={
-            'refusal_id': refusal.id,
-            'action_type': refusal.action_type,
-            'action_id': refusal.action_id,
-            'refusing_judge_id': refusal.refusing_judge_id,
-            'constitutional_grounds': refusal.constitutional_grounds
-        }
+            "refusal_id": refusal.id,
+            "action_type": refusal.action_type,
+            "action_id": refusal.action_id,
+            "refusing_judge_id": refusal.refusing_judge_id,
+            "constitutional_grounds": refusal.constitutional_grounds,
+        },
     )
     vaultnode.add_event(refusal_event)
 
@@ -455,7 +428,7 @@ async def invoke_right_of_refusal(
         constitutional_grounds=refusal.constitutional_grounds,
         appeal_endpoint=refusal.appeal_endpoint,
         appeal_instructions=refusal.appeal_instructions,
-        refused_at=refusal.refused_at.isoformat()
+        refused_at=refusal.refused_at.isoformat(),
     )
 
 
@@ -463,13 +436,10 @@ async def invoke_right_of_refusal(
 async def get_balance(wallet_address: str):
     """Get wallet balance"""
     balance = minting_engine.get_wallet_balance(wallet_address)
-    
+
     if balance is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Wallet {wallet_address} not found"
-        )
-    
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Wallet {wallet_address} not found")
+
     return {"address": wallet_address, "balance": str(balance)}
 
 
@@ -484,19 +454,16 @@ async def get_supply():
 async def get_wallet(address: str):
     """Get wallet information"""
     wallet = minting_engine.get_wallet(address)
-    
+
     if not wallet:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Wallet {address} not found"
-        )
-    
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Wallet {address} not found")
+
     return WalletResponse(
         address=wallet.address,
         balance=str(wallet.balance),
         total_minted=str(wallet.total_minted),
         total_burned=str(wallet.total_burned),
-        transaction_count=wallet.transaction_count
+        transaction_count=wallet.transaction_count,
     )
 
 
@@ -504,13 +471,13 @@ async def get_wallet(address: str):
 async def create_wallet(address: Optional[str] = None):
     """Create new wallet"""
     wallet = minting_engine.create_wallet(address)
-    
+
     return WalletResponse(
         address=wallet.address,
         balance=str(wallet.balance),
         total_minted=str(wallet.total_minted),
         total_burned=str(wallet.total_burned),
-        transaction_count=wallet.transaction_count
+        transaction_count=wallet.transaction_count,
     )
 
 
@@ -519,20 +486,17 @@ async def create_wallet(address: Optional[str] = None):
 async def get_block(block_number: int):
     """Get block by number"""
     block = vaultnode.get_block(block_number)
-    
+
     if not block:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Block {block_number} not found"
-        )
-    
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Block {block_number} not found")
+
     return BlockResponse(
         block_number=block.block_number,
         merkle_root=block.merkle_root,
         timestamp=block.timestamp.isoformat(),
         events_count=len(block.events),
         consensus_reached=block.consensus_reached,
-        block_hash=block.calculate_hash()
+        block_hash=block.calculate_hash(),
     )
 
 
@@ -540,14 +504,14 @@ async def get_block(block_number: int):
 async def get_latest_block():
     """Get latest block"""
     block = vaultnode.get_latest_block()
-    
+
     return BlockResponse(
         block_number=block.block_number,
         merkle_root=block.merkle_root,
         timestamp=block.timestamp.isoformat(),
         events_count=len(block.events),
         consensus_reached=block.consensus_reached,
-        block_hash=block.calculate_hash()
+        block_hash=block.calculate_hash(),
     )
 
 
@@ -561,32 +525,26 @@ async def get_vault_stats():
 async def create_block(oracle_signatures: Dict[str, str]):
     """
     Create new block from pending events
-    
+
     Requires Oracle Council signatures.
     """
     try:
         if not vaultnode.pending_events:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="No pending events to create block"
-            )
-        
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No pending events to create block")
+
         block = vaultnode.create_block(oracle_signatures=oracle_signatures)
-        
+
         return BlockResponse(
             block_number=block.block_number,
             merkle_root=block.merkle_root,
             timestamp=block.timestamp.isoformat(),
             events_count=len(block.events),
             consensus_reached=block.consensus_reached,
-            block_hash=block.calculate_hash()
+            block_hash=block.calculate_hash(),
         )
-    
+
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
 # Proof-of-Ache endpoints
@@ -594,13 +552,12 @@ async def create_block(oracle_signatures: Dict[str, str]):
 async def get_proof(transmutation_id: str):
     """Get Proof-of-Ache for transmutation"""
     proof = minting_engine.proofs.get(transmutation_id)
-    
+
     if not proof:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Proof for transmutation {transmutation_id} not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Proof for transmutation {transmutation_id} not found"
         )
-    
+
     return proof.to_dict()
 
 
@@ -609,7 +566,7 @@ async def get_proof(transmutation_id: str):
 async def get_system_summary():
     """
     Get comprehensive system summary
-    
+
     Returns aggregated status from all SpiralOS components:
     - Core system status
     - ScarCoin economy metrics
@@ -622,10 +579,7 @@ async def get_system_summary():
 @app.get("/api/v1/summary/quick")
 async def get_quick_summary():
     """Get quick one-line system status"""
-    return {
-        "status": system_summary.get_quick_status(),
-        "timestamp": datetime.now(timezone.utc).isoformat()
-    }
+    return {"status": system_summary.get_quick_status(), "timestamp": datetime.now(timezone.utc).isoformat()}
 
 
 # Root endpoint
@@ -639,41 +593,33 @@ async def root():
         "description": "Holo-Economy API for Proof-of-Ache minting and VaultNode blockchain",
         "endpoints": {
             "health": "/health",
-            "summary": {
-                "full": "GET /api/v1/summary",
-                "quick": "GET /api/v1/summary/quick"
-            },
+            "summary": {"full": "GET /api/v1/summary", "quick": "GET /api/v1/summary/quick"},
             "scarcoin": {
                 "mint": "POST /api/v1/scarcoin/mint",
                 "balance": "GET /api/v1/scarcoin/balance/{wallet_address}",
-                "supply": "GET /api/v1/scarcoin/supply"
+                "supply": "GET /api/v1/scarcoin/supply",
             },
-            "wallet": {
-                "get": "GET /api/v1/wallet/{address}",
-                "create": "POST /api/v1/wallet/create"
-            },
+            "wallet": {"get": "GET /api/v1/wallet/{address}", "create": "POST /api/v1/wallet/create"},
             "vault": {
                 "block": "GET /api/v1/vault/block/{block_number}",
                 "latest": "GET /api/v1/vault/latest",
                 "stats": "GET /api/v1/vault/stats",
-                "create_block": "POST /api/v1/vault/create_block"
+                "create_block": "POST /api/v1/vault/create_block",
             },
-            "poa": {
-                "proof": "GET /api/v1/poa/proof/{transmutation_id}"
-            }
+            "poa": {"proof": "GET /api/v1/poa/proof/{transmutation_id}"},
         },
-        "motto": "Where coherence becomes currency 🜂"
+        "motto": "Where coherence becomes currency 🜂",
     }
 
 
 if __name__ == "__main__":
     import uvicorn
-    
+
     print("=" * 70)
     print("ScarCoin Bridge API")
     print("=" * 70)
     print(f"Vault ID: {vaultnode.vault_id}")
-    print(f"Starting server on http://0.0.0.0:8000")
+    print("Starting server on http://127.0.0.1:8000")
     print("=" * 70)
-    
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+    uvicorn.run(app, host="127.0.0.1", port=8000)

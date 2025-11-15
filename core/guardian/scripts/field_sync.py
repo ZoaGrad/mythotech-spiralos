@@ -1,17 +1,27 @@
-
 # File: core/guardian/scripts/field_sync.py
-import os, json, time
+import json
+import os
 import urllib.request
 from datetime import datetime, timezone
+from urllib.parse import urlparse
 
 EDGE_URL = os.getenv("GUARDIAN_EDGE_URL")  # e.g. https://<project>.functions.supabase.co/guardian_sync?hours=24
 DISCORD_WEBHOOK = os.getenv("DISCORD_GUARDIAN_WEBHOOK")
 WINDOW_HOURS = int(os.getenv("GUARDIAN_WINDOW_HOURS", "24"))
 
 
+def _require_https(url: str, label: str) -> str:
+    parsed = urlparse(url)
+    if parsed.scheme.lower() != "https":
+        raise SystemExit(f"{label} must use https://; received {url}")
+    return url
+
+
 def fetch_status():
-    url = f"{EDGE_URL}&hours={WINDOW_HOURS}" if "?" in EDGE_URL else f"{EDGE_URL}?hours={WINDOW_HOURS}"
-    with urllib.request.urlopen(url) as r:
+    safe_edge = _require_https(EDGE_URL, "GUARDIAN_EDGE_URL")
+    url = f"{safe_edge}&hours={WINDOW_HOURS}" if "?" in safe_edge else f"{safe_edge}?hours={WINDOW_HOURS}"
+    # _require_https enforces HTTPS before reaching urllib
+    with urllib.request.urlopen(url) as r:  # nosec B310
         return json.loads(r.read().decode("utf-8"))
 
 
@@ -36,10 +46,10 @@ def format_message(payload: dict) -> dict:
 
 def post_discord(msg: dict):
     data = json.dumps(msg).encode("utf-8")
-    req = urllib.request.Request(
-        DISCORD_WEBHOOK, data=data, headers={"Content-Type": "application/json"}
-    )
-    with urllib.request.urlopen(req) as r:
+    webhook = _require_https(DISCORD_WEBHOOK, "DISCORD_GUARDIAN_WEBHOOK")
+    req = urllib.request.Request(webhook, data=data, headers={"Content-Type": "application/json"})
+    # Discord webhook is validated via _require_https
+    with urllib.request.urlopen(req) as r:  # nosec B310
         return r.status
 
 

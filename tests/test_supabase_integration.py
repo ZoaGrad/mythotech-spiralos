@@ -1,15 +1,20 @@
 import asyncio
-from pathlib import Path
 import sys
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
 
-sys.path.append(str(Path(__file__).resolve().parents[1]))
-
-from core.config import SupabaseSettings
-from core.supabase_integration import PersistenceResponse, SupabaseClient
+try:
+    from core.config import SupabaseSettings
+    from core.supabase_integration import PersistenceResponse, SupabaseClient
+except ModuleNotFoundError:  # pragma: no cover - fallback when executed directly
+    REPO_ROOT = Path(__file__).resolve().parents[1]
+    if str(REPO_ROOT) not in sys.path:
+        sys.path.append(str(REPO_ROOT))
+    from core.config import SupabaseSettings
+    from core.supabase_integration import PersistenceResponse, SupabaseClient
 
 
 def test_insert_ache_event_returns_persistence_response(monkeypatch):
@@ -23,36 +28,33 @@ def test_insert_ache_event_returns_persistence_response(monkeypatch):
             ),
         )
 
-        response_obj = SimpleNamespace(data=[{'id': 'evt-123', 'source': 'guardian'}], status_code=201, error=None)
+        response_obj = SimpleNamespace(data=[{"id": "evt-123", "source": "guardian"}], status_code=201, error=None)
 
         async def fake_execute(func, operation):
             return response_obj
 
-        monkeypatch.setattr(supabase, '_ensure_client', lambda: mock_client)
-        monkeypatch.setattr(supabase, '_execute_with_retry', fake_execute)
+        monkeypatch.setattr(supabase, "_ensure_client", lambda: mock_client)
+        monkeypatch.setattr(supabase, "_execute_with_retry", fake_execute)
 
         return await supabase.insert_ache_event(
-            source='guardian',
-            content={'commit_id': 'abc'},
-            ache_level=0.4,
-            metadata={'region': 'ΔΩ'}
+            source="guardian", content={"commit_id": "abc"}, ache_level=0.4, metadata={"region": "ΔΩ"}
         )
 
     result = asyncio.run(_run())
     assert isinstance(result, PersistenceResponse)
-    assert result.table == 'ache_events'
-    assert result.inserted_id == 'evt-123'
+    assert result.table == "ache_events"
+    assert result.inserted_id == "evt-123"
     assert result.status_code == 201
-    assert result.payload['source'] == 'guardian'
+    assert result.payload["source"] == "guardian"
 
 
 def test_insert_vaultnode_executes_retry_chain(monkeypatch):
     async def _run():
         mock_client = MagicMock()
-        response_obj = SimpleNamespace(data=[{'id': 'vault-1'}], status_code=200, error=None)
+        response_obj = SimpleNamespace(data=[{"id": "vault-1"}], status_code=200, error=None)
 
         async def fake_execute(func, operation):
-            assert operation == 'vaultnodes.insert'
+            assert operation == "vaultnodes.insert"
             return func()
 
         table_builder = MagicMock()
@@ -68,20 +70,20 @@ def test_insert_vaultnode_executes_retry_chain(monkeypatch):
                 service_role_key="service-key",
             ),
         )
-        monkeypatch.setattr(supabase, '_ensure_client', lambda: mock_client)
-        monkeypatch.setattr(supabase, '_execute_with_retry', fake_execute)
+        monkeypatch.setattr(supabase, "_ensure_client", lambda: mock_client)
+        monkeypatch.setattr(supabase, "_execute_with_retry", fake_execute)
 
         return await supabase.insert_vaultnode(
-            node_type='scarindex',
-            reference_id='scar-123',
-            state_hash='hash',
+            node_type="scarindex",
+            reference_id="scar-123",
+            state_hash="hash",
             previous_hash=None,
-            audit_log={'action': 'scarindex'}
+            audit_log={"action": "scarindex"},
         )
 
     result = asyncio.run(_run())
-    assert result.inserted_id == 'vault-1'
-    assert result.table == 'vaultnodes'
+    assert result.inserted_id == "vault-1"
+    assert result.table == "vaultnodes"
 
 
 def test_execute_with_retry_records_panic_on_failure(monkeypatch):
@@ -96,13 +98,15 @@ def test_execute_with_retry_records_panic_on_failure(monkeypatch):
         )
         recorded = []
 
-        monkeypatch.setattr(supabase, '_record_panic_frame', lambda operation, error: recorded.append((operation, str(error))))
+        monkeypatch.setattr(
+            supabase, "_record_panic_frame", lambda operation, error: recorded.append((operation, str(error)))
+        )
 
         with pytest.raises(RuntimeError):
-            await supabase._execute_with_retry(lambda: (_ for _ in ()).throw(RuntimeError('boom')), 'test.op')
+            await supabase._execute_with_retry(lambda: (_ for _ in ()).throw(RuntimeError("boom")), "test.op")
 
         return recorded
 
     recorded = asyncio.run(_run())
-    assert recorded[0][0] == 'test.op'
-    assert 'boom' in recorded[0][1]
+    assert recorded[0][0] == "test.op"
+    assert "boom" in recorded[0][1]
