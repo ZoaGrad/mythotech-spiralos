@@ -37,6 +37,19 @@ class PersistenceResponse:
     payload: Dict[str, Any]
 
 
+logger = logging.getLogger(__name__)
+
+
+@dataclass
+class PersistenceResponse:
+    """Unified response for Supabase persistence operations."""
+
+    table: str
+    status_code: int
+    inserted_id: Optional[str]
+    payload: Dict[str, Any]
+
+
 class SupabaseClient:
     """Client for interacting with Supabase backend resources."""
 

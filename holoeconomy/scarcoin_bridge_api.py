@@ -268,6 +268,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+# // CODEX-AUDIT: The bridge exposes privileged mint/burn operations yet permits any origin and lacks API authentication or rate limiting, leaving ScarCoin creation endpoints open to abuse.
 
 # Initialize engines
 minting_engine = ScarCoinMintingEngine(
