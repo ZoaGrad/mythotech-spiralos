@@ -69,7 +69,8 @@ def test_supabase_service_connection():
     if not url or not service_key:
         pytest.skip("Supabase service credentials not configured")
 
-    assert _test_connection(url, service_key, "SERVICE_KEY")
+    if not _test_connection(url, service_key, "SERVICE_KEY"):
+        pytest.fail("Supabase service key connection failed")
 
 
 @pytest.mark.skipif(create_client is None, reason="supabase package not installed")
@@ -80,7 +81,8 @@ def test_supabase_anon_connection():
     if not url or not anon_key:
         pytest.skip("Supabase anon credentials not configured")
 
-    assert _test_connection(url, anon_key, "ANON_KEY")
+    if not _test_connection(url, anon_key, "ANON_KEY"):
+        pytest.fail("Supabase anon key connection failed")
 
 
 def main():
