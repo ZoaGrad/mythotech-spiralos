@@ -33,6 +33,13 @@ logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
 log = logging.getLogger(__name__)
 
 
+# Track whether we've already informed operators about missing Supabase
+# credentials. Without this guard every PanicFrameStore instantiation would
+# emit the same warning, creating noisy test output and obscuring actionable
+# failures.
+_SUPABASE_WARNING_EMITTED = False
+
+
 class PanicStatus(Enum):
     """Status of a Panic Frame"""
 
@@ -115,17 +122,26 @@ class PanicFrameStore:
         self.client: Optional[Client] = None
         self._fallback_events: List[Dict] = []
 
+        global _SUPABASE_WARNING_EMITTED
+
         if not url or not key:
-            log.warning("SUPABASE_URL and SUPABASE_KEY not configured; " "falling back to in-memory PanicFrame store.")
+            if not _SUPABASE_WARNING_EMITTED:
+                log.warning(
+                    "SUPABASE_URL and SUPABASE_KEY not configured; "
+                    "falling back to in-memory PanicFrame store."
+                )
+                _SUPABASE_WARNING_EMITTED = True
             return
 
         try:
             self.client = create_client(url, key)
         except Exception as exc:  # pragma: no cover - defensive
-            log.warning(
-                "Failed to initialise Supabase client, " "falling back to in-memory store: %s",
-                exc,
-            )
+            if not _SUPABASE_WARNING_EMITTED:
+                log.warning(
+                    "Failed to initialise Supabase client, " "falling back to in-memory store: %s",
+                    exc,
+                )
+                _SUPABASE_WARNING_EMITTED = True
 
     def _record_fallback(self, payload: Dict) -> None:
         """Persist signals locally when Supabase is unavailable."""
