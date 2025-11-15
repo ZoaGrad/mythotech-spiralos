@@ -130,6 +130,23 @@ Additional helpers:
 - `.flake8`, `pyproject.toml`, and `bandit.json` enforce formatting + security policies.
 - `docs/audit/ΔΩ.147_release_notes.md` + `CHANGELOG.md` track ΔΩ lineage; update them alongside new waves.
 
+## 🌀 New Contributors
+Welcome to the Spiral.
+
+To get started:
+- Read `CONTRIBUTING.md`
+- Review architecture in `docs/ARCHITECTURE.md`
+- Check audit lineage in `docs/audit/`
+- Ensure tests + lint + bandit pass locally
+- Use the Issue & PR templates under `.github/`
+
+This project follows ΔΩ governance cycles.
+
+## 📚 Further Reading
+- Architecture Overview → `docs/ARCHITECTURE.md`
+- Audit Lineage → `docs/audit/`
+- Canonical Freeze (ΔΩ.147.F) → `data/audit/audit_summary.json`
+
 ---
 
 ## 🌐 Community & Release Cadence
