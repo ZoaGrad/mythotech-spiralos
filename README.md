@@ -248,6 +248,16 @@ chmod +x scripts/deploy_guardian.sh
 ./scripts/deploy_guardian.sh
 ```
 
+Before running any Guardian or dashboard build step, copy the new environment template and provide your Supabase credentials:
+
+```bash
+cp .env.example .env.local
+echo "VITE_SUPABASE_ANON_KEY=sk-..." >> .env.local
+echo "SUPABASE_KEY=service-role-key" >> .env.local
+```
+
+The Sovereignty Dashboard reads `VITE_SUPABASE_ANON_KEY` at build time, and the ScarCoin bridge along with Supabase persistence use `SUPABASE_URL`, `SUPABASE_KEY`, `GUARDIAN_API_KEYS`, and `GUARDIAN_JWT_SECRET` for secure operations.
+
 This script handles:
 - Supabase schema migrations
 - Edge Function deployment
