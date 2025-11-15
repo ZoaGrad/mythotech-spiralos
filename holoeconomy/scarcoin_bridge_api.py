@@ -7,15 +7,20 @@ and VaultNode blockchain integration.
 Provides programmatic access to the economic validation layer.
 """
 
-from fastapi import FastAPI, HTTPException, status
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
-from typing import Optional, List, Dict
+from collections import defaultdict, deque
+from dataclasses import dataclass
 from decimal import Decimal
 from datetime import datetime, timezone
-import uuid
-import sys
+from typing import Any, Awaitable, Callable, Deque, Dict, List, Optional
 import os
+import sys
+import time
+import uuid
+
+from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi.middleware.cors import CORSMiddleware
+from jose import JWTError, jwt
+from pydantic import BaseModel, Field
 
 # Add core module to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
@@ -23,6 +28,154 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from scarcoin import ScarCoinMintingEngine, ScarCoin, ProofOfAche, Wallet
 from vaultnode import VaultNode, VaultEvent
 from system_summary import SystemSummary
+from core.f2_judges import JudicialSystem
+
+
+GUARDIAN_ALLOWED_ORIGINS = [
+    "https://spiralos.io",
+    "https://guardian.spiralos.io"
+]
+GUARDIAN_API_KEYS = {
+    key.strip()
+    for key in os.getenv("GUARDIAN_API_KEYS", "").split(",")
+    if key.strip()
+}
+GUARDIAN_JWT_SECRET = os.getenv("GUARDIAN_JWT_SECRET")
+GUARDIAN_JWT_ALGORITHM = os.getenv("GUARDIAN_JWT_ALGORITHM", "HS256")
+GUARDIAN_RATE_LIMIT = 10
+GUARDIAN_RATE_WINDOW_SECONDS = 60
+_guardian_rate_state: Dict[str, Deque[float]] = defaultdict(deque)
+
+
+@dataclass
+class GuardianContext:
+    """Authenticated Guardian request context."""
+
+    api_key: str
+    guardian_id: str
+    roles: List[str]
+
+
+def _enforce_guardian_rate_limit(api_key: str) -> None:
+    """Ensure Guardian requests stay within configured bounds."""
+
+    window_start = time.time() - GUARDIAN_RATE_WINDOW_SECONDS
+    rate_window = _guardian_rate_state[api_key]
+
+    while rate_window and rate_window[0] < window_start:
+        rate_window.popleft()
+
+    if len(rate_window) >= GUARDIAN_RATE_LIMIT:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Guardian request rate exceeded"
+        )
+
+    rate_window.append(time.time())
+
+
+def _extract_roles(payload: Dict[str, Any]) -> List[str]:
+    """Normalize Guardian roles from JWT payload."""
+
+    roles: List[str] = []
+    raw_roles = payload.get('roles')
+    if isinstance(raw_roles, list):
+        roles.extend(str(role) for role in raw_roles)
+    elif isinstance(raw_roles, str):
+        roles.append(raw_roles)
+
+    single_role = payload.get('role')
+    if isinstance(single_role, str) and single_role not in roles:
+        roles.append(single_role)
+
+    return roles
+
+
+async def validate_guardian_request(request: Request) -> GuardianContext:
+    """Validate Guardian API key, rate limits, and JWT signature."""
+
+    api_key = request.headers.get('X-Guardian-Key')
+    if not api_key:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="X-Guardian-Key header required"
+        )
+
+    if not GUARDIAN_API_KEYS:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Guardian keyring not configured"
+        )
+
+    if api_key not in GUARDIAN_API_KEYS:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid Guardian API key"
+        )
+
+    _enforce_guardian_rate_limit(api_key)
+
+    auth_header = request.headers.get('Authorization', '')
+    scheme, _, token = auth_header.partition(' ')
+    if scheme.lower() != 'bearer' or not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Guardian bearer token required"
+        )
+
+    if not GUARDIAN_JWT_SECRET:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Guardian signature validation unavailable"
+        )
+
+    try:
+        payload = jwt.decode(
+            token,
+            GUARDIAN_JWT_SECRET,
+            algorithms=[GUARDIAN_JWT_ALGORITHM]
+        )
+    except JWTError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid Guardian signature"
+        ) from exc
+
+    roles = _extract_roles(payload)
+    if 'guardian' not in roles:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Guardian role required"
+        )
+
+    guardian_id = (
+        str(payload.get('sub'))
+        or str(payload.get('guardian_id'))
+        or 'guardian'
+    )
+
+    return GuardianContext(
+        api_key=api_key,
+        guardian_id=guardian_id,
+        roles=roles
+    )
+
+
+def require_guardian_signature(
+    func: Callable[..., Awaitable[Any]]
+) -> Callable[..., Awaitable[Any]]:
+    """Decorator enforcing Guardian authentication for privileged endpoints."""
+
+    async def wrapper(
+        *args: Any,
+        guardian_context: GuardianContext = Depends(validate_guardian_request),
+        **kwargs: Any
+    ) -> Any:
+        return await func(*args, guardian_context=guardian_context, **kwargs)
+
+    wrapper.__name__ = func.__name__
+    wrapper.__doc__ = func.__doc__
+    return wrapper
 
 
 # Pydantic models for API
@@ -42,6 +195,12 @@ class MintResponse(BaseModel):
     coin_id: Optional[str] = None
     coin_value: Optional[str] = None
     message: str
+
+
+class BurnRequest(BaseModel):
+    """Request to burn ScarCoin"""
+    coin_id: str
+    reason: str = Field(default="Failed transmutation", min_length=3, max_length=256)
 
 
 class WalletResponse(BaseModel):
@@ -90,6 +249,14 @@ class DissentResponse(BaseModel):
     message: str
 
 
+class RefusalRequest(BaseModel):
+    """Request payload for invoking Right of Refusal"""
+    action_type: str
+    action_id: str
+    constitutional_grounds: str = Field(..., min_length=10)
+    evidence: Optional[Dict] = None
+
+
 class RefusalResponse(BaseModel):
     """Response for Right of Refusal"""
     refusal_id: str
@@ -111,11 +278,12 @@ app = FastAPI(
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=GUARDIAN_ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+# // CODEX-AUDIT: The bridge exposes privileged mint/burn operations yet permits any origin and lacks API authentication or rate limiting, leaving ScarCoin creation endpoints open to abuse.
 
 # Initialize engines
 minting_engine = ScarCoinMintingEngine(
@@ -130,6 +298,8 @@ system_summary = SystemSummary(
     minting_engine=minting_engine,
     vaultnode=vaultnode
 )
+
+judicial_system = JudicialSystem()
 
 
 # Health check
@@ -146,12 +316,22 @@ async def health_check():
 
 # ScarCoin endpoints
 @app.post("/api/v1/scarcoin/mint", response_model=MintResponse)
-async def mint_scarcoin(request: MintRequest):
-    """
-    Mint ScarCoin for successful transmutation
-    
-    Validates Proof-of-Ache and mints coins if validation passes.
-    Records minting event in VaultNode blockchain.
+@require_guardian_signature
+async def mint_scarcoin(
+    request: MintRequest,
+    guardian_context: GuardianContext
+) -> MintResponse:
+    """Mint ScarCoin for a validated transmutation.
+
+    Args:
+        request: Mint parameters validated by Guardian operators.
+        guardian_context: Authenticated Guardian metadata from JWT.
+
+    Returns:
+        MintResponse describing the outcome of the mint operation.
+
+    Raises:
+        HTTPException: If validation fails or the minting engine errors.
     """
     try:
         # Mint coin
@@ -179,12 +359,13 @@ async def mint_scarcoin(request: MintRequest):
                 'coin_value': str(coin.coin_value),
                 'owner': coin.owner,
                 'delta_c': str(coin.delta_c),
-                'scarindex_after': str(coin.scarindex_after)
+                'scarindex_after': str(coin.scarindex_after),
+                'authorized_by': guardian_context.guardian_id
             }
         )
-        
+
         vaultnode.add_event(minting_event)
-        
+
         return MintResponse(
             success=True,
             coin_id=coin.id,
@@ -197,6 +378,100 @@ async def mint_scarcoin(request: MintRequest):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
         )
+
+
+@app.post("/api/v1/scarcoin/burn")
+@require_guardian_signature
+async def burn_scarcoin(request: BurnRequest, guardian_context: GuardianContext) -> Dict[str, Any]:
+    """Burn an existing ScarCoin that violates constitutional constraints.
+
+    Args:
+        request: Burn payload containing the target coin identifier and reason.
+        guardian_context: Authenticated Guardian metadata used for auditing.
+
+    Returns:
+        Dictionary describing the burn outcome, including auditing metadata.
+
+    Raises:
+        HTTPException: If the coin is not found or the burn operation fails.
+    """
+
+    success = minting_engine.burn_scarcoin(
+        coin_id=request.coin_id,
+        reason=request.reason
+    )
+
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Coin {request.coin_id} not found or already burned"
+        )
+
+    burn_event = VaultEvent(
+        event_type="scarcoin_burned",
+        event_data={
+            'coin_id': request.coin_id,
+            'reason': request.reason,
+            'authorized_by': guardian_context.guardian_id,
+            'timestamp': datetime.now(timezone.utc).isoformat()
+        }
+    )
+    vaultnode.add_event(burn_event)
+
+    return {
+        'success': True,
+        'coin_id': request.coin_id,
+        'message': f"Coin {request.coin_id} burned",
+        'burned_by': guardian_context.guardian_id
+    }
+
+
+@app.post("/api/v1/f2/refusal", response_model=RefusalResponse)
+@app.post("/api/v1/refusal", response_model=RefusalResponse)
+@require_guardian_signature
+async def invoke_right_of_refusal(
+    request: RefusalRequest,
+    guardian_context: GuardianContext
+) -> RefusalResponse:
+    """Invoke the constitutional Right of Refusal via Guardian authorization.
+
+    Args:
+        request: Refusal payload describing the blocked action.
+        guardian_context: Authenticated Guardian metadata.
+
+    Returns:
+        RefusalResponse describing the refusal and appeal instructions.
+    """
+
+    refusal = judicial_system.invoke_right_of_refusal(
+        action_type=request.action_type,
+        action_id=request.action_id,
+        refusing_judge_id=guardian_context.guardian_id,
+        constitutional_grounds=request.constitutional_grounds,
+        evidence=request.evidence
+    )
+
+    refusal_event = VaultEvent(
+        event_type="f2_refusal",
+        event_data={
+            'refusal_id': refusal.id,
+            'action_type': refusal.action_type,
+            'action_id': refusal.action_id,
+            'refusing_judge_id': refusal.refusing_judge_id,
+            'constitutional_grounds': refusal.constitutional_grounds
+        }
+    )
+    vaultnode.add_event(refusal_event)
+
+    return RefusalResponse(
+        refusal_id=refusal.id,
+        action_type=refusal.action_type,
+        action_id=refusal.action_id,
+        constitutional_grounds=refusal.constitutional_grounds,
+        appeal_endpoint=refusal.appeal_endpoint,
+        appeal_instructions=refusal.appeal_instructions,
+        refused_at=refusal.refused_at.isoformat()
+    )
 
 
 @app.get("/api/v1/scarcoin/balance/{wallet_address}")

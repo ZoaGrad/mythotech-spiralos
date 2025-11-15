@@ -1,0 +1,30 @@
+{
+  "ref": "refs/heads/main",
+  "repository": {
+    "full_name": "ZoaGrad/mythotech-spiralos"
+  },
+  "commits": [
+    {
+      "id": "1111111111111111111111111111111111111111",
+      "message": "patch: tighten guardian auth",
+      "author": {
+        "name": "Codex Guardian",
+        "email": "guardian@spiralos.io"
+      },
+      "added": ["core/security.py"],
+      "removed": [],
+      "modified": ["README.md"]
+    },
+    {
+      "id": "2222222222222222222222222222222222222222",
+      "message": "docs: update telemetry",
+      "author": {
+        "name": "Codex Guardian",
+        "email": "guardian@spiralos.io"
+      },
+      "added": [],
+      "removed": [],
+      "modified": ["docs/SECURITY.md", "supabase/functions/github-webhook/index.ts"]
+    }
+  ]
+}

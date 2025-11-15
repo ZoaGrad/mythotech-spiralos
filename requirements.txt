@@ -6,3 +6,4 @@ python-dotenv
 praw>=7.0.0
 numpy
 openai
+python-jose[cryptography]>=3.3.0
