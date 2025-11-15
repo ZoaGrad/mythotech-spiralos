@@ -3,13 +3,17 @@ import sys
 import time
 from pathlib import Path
 
-sys.path.append(str(Path(__file__).resolve().parents[1]))
-
 import pytest
 from fastapi.testclient import TestClient
 from jose import jwt
 
-from core.config import reset_settings_cache
+try:
+    from core.config import reset_settings_cache
+except ModuleNotFoundError:  # pragma: no cover - fallback when executed directly
+    REPO_ROOT = Path(__file__).resolve().parents[1]
+    if str(REPO_ROOT) not in sys.path:
+        sys.path.append(str(REPO_ROOT))
+    from core.config import reset_settings_cache
 
 
 def build_payload(suffix: str = "1") -> dict:

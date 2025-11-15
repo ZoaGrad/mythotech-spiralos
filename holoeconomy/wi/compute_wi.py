@@ -1,9 +1,11 @@
 # holoeconomy/wi/compute_wi.py
 
 import os
+
 import numpy as np
-from supabase import create_client, Client
 from dotenv import load_dotenv
+
+from supabase import Client, create_client
 
 load_dotenv()
 
@@ -17,6 +19,7 @@ if not SUPABASE_URL or not SUPABASE_KEY:
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # --- Helper Functions ---
+
 
 def gini(arr):
     """Calculates the Gini coefficient of a numpy array."""
@@ -33,7 +36,9 @@ def gini(arr):
     B = np.sum(cumx) / (n * np.sum(sorted_arr))
     return 1 + (1 / n) - 2 * B
 
+
 # --- Vitality Components ---
+
 
 def calculate_tv(witnesses: list, attestations: list) -> float:
     """
@@ -45,15 +50,16 @@ def calculate_tv(witnesses: list, attestations: list) -> float:
     if not witnesses or not attestations:
         return 0.0
 
-    attestation_counts = {w['witness_id']: 0 for w in witnesses}
+    attestation_counts = {w["witness_id"]: 0 for w in witnesses}
     for attestation in attestations:
-        if attestation['witness_id'] in attestation_counts:
-            attestation_counts[attestation['witness_id']] += 1
+        if attestation["witness_id"] in attestation_counts:
+            attestation_counts[attestation["witness_id"]] += 1
 
     counts_array = np.array(list(attestation_counts.values()))
 
     # High diversity = low Gini coefficient
     return 1.0 - gini(counts_array)
+
 
 def calculate_cv(attestations: list) -> float:
     """
@@ -65,9 +71,10 @@ def calculate_cv(attestations: list) -> float:
         return 0.0
 
     total_attestations = len(attestations)
-    unique_hashes = len(set(a['data_hash'] for a in attestations))
+    unique_hashes = len(set(a["data_hash"] for a in attestations))
 
     return unique_hashes / total_attestations
+
 
 def calculate_rv(witnesses: list) -> float:
     """
@@ -79,13 +86,14 @@ def calculate_rv(witnesses: list) -> float:
     # TODO: Replace with actual reputation data integration.
     # For now, assume a moderately diverse reputation distribution.
     if len(witnesses) < 2:
-        return 1.0 # Perfect diversity if only one witness
+        return 1.0  # Perfect diversity if only one witness
 
     # Placeholder: dummy reputation scores with some variance
     np.random.seed(42)
     dummy_reputations = np.random.normal(loc=100, scale=20, size=len(witnesses))
 
     return 1.0 - gini(dummy_reputations)
+
 
 def calculate_ev(witnesses: list) -> float:
     """
@@ -105,7 +113,9 @@ def calculate_ev(witnesses: list) -> float:
 
     return 1.0 - gini(dummy_stakes)
 
+
 # --- Main Wᵢ Calculation ---
+
 
 def wi() -> dict:
     """
@@ -114,16 +124,16 @@ def wi() -> dict:
     then combines them into a single index.
     """
     print("Fetching active witnesses...")
-    witness_res = supabase.table('witnesses').select("witness_id").eq('is_active', True).execute()
+    witness_res = supabase.table("witnesses").select("witness_id").eq("is_active", True).execute()
     witnesses = witness_res.data
 
     print("Fetching all attestations...")
-    attestation_res = supabase.table('attestations').select("witness_id, data_hash").execute()
+    attestation_res = supabase.table("attestations").select("witness_id, data_hash").execute()
     attestations = attestation_res.data
 
     if not witnesses:
         print("No active witnesses found.")
-        return {'wi_value': 0, 'tv': 0, 'cv': 0, 'rv': 0, 'ev': 0}
+        return {"wi_value": 0, "tv": 0, "cv": 0, "rv": 0, "ev": 0}
 
     print("Calculating vitality metrics...")
     tv = calculate_tv(witnesses, attestations)
@@ -134,26 +144,22 @@ def wi() -> dict:
     # Wᵢ is the geometric mean of the four components
     wi_value = (tv * cv * rv * ev) ** 0.25
 
-    metrics = {
-        'wi_value': wi_value,
-        'tv': tv,
-        'cv': cv,
-        'rv': rv,
-        'ev': ev
-    }
+    metrics = {"wi_value": wi_value, "tv": tv, "cv": cv, "rv": rv, "ev": ev}
 
     return metrics
+
 
 def store_metrics(metrics: dict):
     """Stores the calculated metrics in the Supabase database."""
     print(f"Storing metrics in database: {metrics}")
     try:
-        data, count = supabase.table('wi_metrics').insert(metrics).execute()
+        data, count = supabase.table("wi_metrics").insert(metrics).execute()
         print("Successfully stored Wᵢ metrics.")
         return data
     except Exception as e:
         print(f"Error storing metrics: {e}")
         return None
+
 
 if __name__ == "__main__":
     print("🌀 Starting Witness Diversity Index (Wᵢ) Calculation...")

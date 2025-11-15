@@ -1,23 +1,23 @@
 # vault_sync.py
 import asyncio
-import json
 import hashlib
-from typing import Dict, List, Optional, Set
+import json
 from dataclasses import dataclass
 from enum import Enum
-import aiohttp
-from Crypto.Signature import eddsa
-from Crypto.Hash import keccak
+from typing import Dict, List, Set
 
-from ..vaultnode import VaultNode
+import aiohttp
+from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
+
 from ..empathy_market import ResonanceEvent
-from ..scarcoin import ScarCoinMintingEngine
+from ..vaultnode import VaultNode
 
 
 class SyncMode(Enum):
-    FULL = "full"           # Genesis + all history
-    DELTA = "delta"         # Events since last sync
-    LIVE = "live"           # Real-time stream
+    FULL = "full"  # Genesis + all history
+    DELTA = "delta"  # Events since last sync
+    LIVE = "live"  # Real-time stream
 
 
 @dataclass
@@ -40,8 +40,9 @@ class VaultSyncEngine:
         self.peers: Dict[str, str] = {}  # vault_id → websocket URL
         self.subscriptions: Set[str] = set()
         self.session = aiohttp.ClientSession()
-        # NOTE: Placeholder EdDSA usage; integrate actual key management in production
-        self.keypair = eddsa.EdDSAKey.generate()
+        # NOTE: Placeholder Ed25519 usage; integrate actual key management in production
+        self.private_key = Ed25519PrivateKey.generate()
+        self.public_key = self.private_key.public_key()
         self.running = False
 
     async def start(self):
@@ -93,18 +94,17 @@ class VaultSyncEngine:
         """Verify message signed by source vault."""
         payload = json.dumps(msg.payload, sort_keys=True).encode()
         try:
-            eddsa.EdDSAKey.verify(
-                self._get_peer_pubkey(msg.source_vault),
-                payload,
-                bytes.fromhex(msg.signature)
-            )
+            peer_key = self._get_peer_pubkey(msg.source_vault)
+            peer_key.verify(bytes.fromhex(msg.signature), payload)
             return True
-        except Exception:
+        except (InvalidSignature, ValueError):
             return False
 
-    def _get_peer_pubkey(self, vault_id: str) -> bytes:
+    def _get_peer_pubkey(self, vault_id: str) -> Ed25519PublicKey:
+        """Fetch peer public key (placeholder uses local key)."""
+
         # In production: fetch from registry
-        return b""  # placeholder
+        return self.public_key
 
     async def _handle_resonance(self, payload: dict, source_vault: str):
         """Replicate resonance event with coherence drift check."""
@@ -120,10 +120,7 @@ class VaultSyncEngine:
         return max(abs(a - b) for a, b in zip(local, foreign_vector))
 
     async def _request_recalibration(self, vault_id: str, event_id: str):
-        msg = self._craft_message(
-            type="RECALIBRATE",
-            payload={"event_id": event_id, "request": "resync"}
-        )
+        msg = self._craft_message(type="RECALIBRATE", payload={"event_id": event_id, "request": "resync"})
         await self._send_to(vault_id, msg)
 
     async def _handle_scar_tunnel(self, payload: dict, source_vault: str):
@@ -134,10 +131,7 @@ class VaultSyncEngine:
             await self._notify_mint(source_vault, amount, tx_id)
 
     async def _notify_mint(self, dest_vault: str, amount: float, origin_tx: str):
-        msg = self._craft_message(
-            type="SCAR_MINT",
-            payload={"amount": amount, "origin_tx": origin_tx}
-        )
+        msg = self._craft_message(type="SCAR_MINT", payload={"amount": amount, "origin_tx": origin_tx})
         await self._send_to(dest_vault, msg)
 
     async def _handle_shard_migrate(self, payload: dict, source_vault: str):
@@ -162,10 +156,10 @@ class VaultSyncEngine:
             payload=payload,
             coherence_proof=self.local_vault.measure_coherence_local(),
             timestamp=asyncio.get_event_loop().time(),
-            signature=""
+            signature="",
         )
         payload_str = json.dumps(payload, sort_keys=True).encode()
-        msg.signature = eddsa.EdDSAKey.sign(self.keypair, payload_str).hex()
+        msg.signature = self.private_key.sign(payload_str).hex()
         return msg
 
     async def _send_to(self, vault_id: str, msg: BridgeMessage):

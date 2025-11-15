@@ -2,10 +2,12 @@
 Tests for the VaultNode Registry CLI.
 """
 
-import unittest
 import io
+import unittest
 from unittest.mock import MagicMock, patch
+
 from holoeconomy import vaultnode_registry
+
 
 class TestVaultNodeRegistry(unittest.TestCase):
     """Test cases for the VaultNode Registry CLI."""
@@ -15,11 +17,11 @@ class TestVaultNodeRegistry(unittest.TestCase):
         # Arrange
         mock_client = MagicMock()
         mock_response = MagicMock()
-        mock_response.data = [{'id': '123', 'node_type': 'test'}]
+        mock_response.data = [{"id": "123", "node_type": "test"}]
         mock_client.table.return_value.select.return_value.execute.return_value = mock_response
 
         # Act
-        with patch('sys.stdout', new_callable=io.StringIO) as mock_stdout:
+        with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
             vaultnode_registry.list_vaultnodes(mock_client)
 
         # Assert
@@ -32,12 +34,12 @@ class TestVaultNodeRegistry(unittest.TestCase):
         # Arrange
         mock_client = MagicMock()
         mock_response = MagicMock()
-        mock_response.data = [{'id': '123', 'node_type': 'test'}]
+        mock_response.data = [{"id": "123", "node_type": "test"}]
         mock_client.table.return_value.select.return_value.eq.return_value.execute.return_value = mock_response
 
         # Act
-        with patch('sys.stdout', new_callable=io.StringIO) as mock_stdout:
-            vaultnode_registry.get_vaultnode(mock_client, '123')
+        with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
+            vaultnode_registry.get_vaultnode(mock_client, "123")
 
         # Assert
         output = mock_stdout.getvalue()
@@ -53,8 +55,8 @@ class TestVaultNodeRegistry(unittest.TestCase):
         mock_client.table.return_value.select.return_value.eq.return_value.execute.return_value = mock_response
 
         # Act
-        with patch('sys.stdout', new_callable=io.StringIO) as mock_stdout:
-            vaultnode_registry.get_vaultnode(mock_client, '456')
+        with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
+            vaultnode_registry.get_vaultnode(mock_client, "456")
 
         # Assert
         output = mock_stdout.getvalue()
@@ -65,13 +67,13 @@ class TestVaultNodeRegistry(unittest.TestCase):
         # Arrange
         mock_client = MagicMock()
         mock_response = MagicMock()
-        mock_response.data = [{'id': '123', 'node_type': 'test_ref', 'reference_id': 'ref123'}]
+        mock_response.data = [{"id": "123", "node_type": "test_ref", "reference_id": "ref123"}]
         mock_response.error = None
         mock_client.rpc.return_value.execute.return_value = mock_response
 
         # Act
-        with patch('sys.stdout', new_callable=io.StringIO) as mock_stdout:
-            vaultnode_registry.create_vaultnode(mock_client, 'ref123', 'test_ref')
+        with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
+            vaultnode_registry.create_vaultnode(mock_client, "ref123", "test_ref")
 
         # Assert
         output = mock_stdout.getvalue()
@@ -90,8 +92,8 @@ class TestVaultNodeRegistry(unittest.TestCase):
         mock_client.rpc.return_value.execute.return_value = mock_response
 
         # Act
-        with patch('sys.stdout', new_callable=io.StringIO) as mock_stdout:
-            vaultnode_registry.create_vaultnode(mock_client, 'ref123', 'test_ref')
+        with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
+            vaultnode_registry.create_vaultnode(mock_client, "ref123", "test_ref")
 
         # Assert
         output = mock_stdout.getvalue()
@@ -99,5 +101,5 @@ class TestVaultNodeRegistry(unittest.TestCase):
         self.assertIn("Error: An error occurred", output)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

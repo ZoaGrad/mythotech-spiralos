@@ -5,9 +5,8 @@ Monitors ScarIndex oracle and triggers recalibration if drift > 0.05.
 """
 
 import os
+
 import requests
-from datetime import datetime
-import json
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
@@ -15,7 +14,8 @@ ALCHEMY_KEY = os.getenv("ALCHEMY_API_KEY")
 POLYGON_RPC = os.getenv("POLYGON_RPC")
 TELEMETRY_URL = f"{SUPABASE_URL}/functions/v1/telemetry_logger"
 DRIFT_THRESHOLD = 0.05
-SCAR_ORACLE_ADDRESS = "0x" # ScarCoin Oracle contract address placeholder
+SCAR_ORACLE_ADDRESS = "0x"  # ScarCoin Oracle contract address placeholder
+
 
 def fetch_scar_index():
     """Fetch current ScarIndex value from oracle contract."""
@@ -23,11 +23,8 @@ def fetch_scar_index():
         payload = {
             "jsonrpc": "2.0",
             "method": "eth_call",
-            "params": [
-                {"to": SCAR_ORACLE_ADDRESS, "data": "0x0"},  # getScarIndex()
-                "latest"
-            ],
-            "id": 1
+            "params": [{"to": SCAR_ORACLE_ADDRESS, "data": "0x0"}, "latest"],  # getScarIndex()
+            "id": 1,
         }
         response = requests.post(POLYGON_RPC, json=payload, timeout=10)
         response.raise_for_status()
@@ -39,22 +36,26 @@ def fetch_scar_index():
         log_event("oracle_check", False, {"error": str(e)})
         return None
 
+
 def fetch_expected_scar_index():
     """Fetch expected ScarIndex based on economic model."""
     try:
-        query = "SELECT AVG(CAST(metadata->>'scar_value' AS FLOAT)) FROM telemetry_events WHERE event_type='econ_update' AND created_at > NOW() - INTERVAL '24 hours'"
+        query = (
+            "SELECT AVG(CAST(metadata->>'scar_value' AS FLOAT)) "
+            "FROM telemetry_events WHERE event_type='econ_update' "
+            "AND created_at > NOW() - INTERVAL '24 hours'"
+        )
         headers = {"Authorization": f"Bearer {SUPABASE_KEY}"}
         response = requests.post(
-            f"{SUPABASE_URL}/rest/v1/rpc/query_scar_average",
-            json={"query": query},
-            headers=headers,
-            timeout=10
+            f"{SUPABASE_URL}/rest/v1/rpc/query_scar_average", json={"query": query}, headers=headers, timeout=10
         )
         response.raise_for_status()
         expected_index = response.json().get("average_scar", 1.0)
         return expected_index
-    except:
+    except Exception as exc:
+        log_event("expected_scar_index", False, {"error": str(exc)})
         return 1.0  # Default fallback
+
 
 def calculate_drift(actual, expected):
     """Calculate drift percentage between actual and expected values."""
@@ -62,20 +63,15 @@ def calculate_drift(actual, expected):
         return 0
     return abs(actual - expected) / expected
 
+
 def trigger_recalibration():
     """Trigger oracle recalibration if drift is high."""
     try:
         payload = {
             "jsonrpc": "2.0",
             "method": "eth_sendTransaction",
-            "params": [
-                {
-                    "to": SCAR_ORACLE_ADDRESS,
-                    "data": "0x1",  # recalibrate()
-                    "gas": "0x5208"
-                }
-            ],
-            "id": 1
+            "params": [{"to": SCAR_ORACLE_ADDRESS, "data": "0x1", "gas": "0x5208"}],  # recalibrate()
+            "id": 1,
         }
         response = requests.post(POLYGON_RPC, json=payload, timeout=10)
         response.raise_for_status()
@@ -84,51 +80,52 @@ def trigger_recalibration():
         log_event("oracle_check", False, {"recalibration_error": str(e)})
         return None
 
+
 def log_event(event_type, success, metadata=None):
     """Log event to telemetry_events table."""
     try:
-        payload = {
-            "agent_id": "comet",
-            "event_type": event_type,
-            "success_state": success,
-            "metadata": metadata or {}
-        }
+        payload = {"agent_id": "comet", "event_type": event_type, "success_state": success, "metadata": metadata or {}}
         headers = {"Authorization": f"Bearer {SUPABASE_KEY}"}
         requests.post(TELEMETRY_URL, json=payload, headers=headers, timeout=10)
     except Exception as e:
         print(f"Failed to log event: {e}")
 
+
 def main():
     print("[Comet] Starting ScarIndex Oracle Monitor...")
-    
+
     scar_index = fetch_scar_index()
     if scar_index is None:
         print("[Comet] Failed to fetch ScarIndex")
         return
-    
+
     expected_index = fetch_expected_scar_index()
     drift = calculate_drift(scar_index, expected_index)
-    
+
     print(f"[Comet] ScarIndex: {scar_index:.6f}, Expected: {expected_index:.6f}, Drift: {drift:.2%}")
-    
+
     if drift > DRIFT_THRESHOLD:
         print(f"[Comet] Drift {drift:.2%} exceeds threshold {DRIFT_THRESHOLD:.2%}. Triggering recalibration...")
         tx_hash = trigger_recalibration()
-        log_event("oracle_check", True, {
-            "scar_index": scar_index,
-            "expected_index": expected_index,
-            "drift": drift,
-            "recalibrated": True,
-            "tx_hash": tx_hash
-        })
+        log_event(
+            "oracle_check",
+            True,
+            {
+                "scar_index": scar_index,
+                "expected_index": expected_index,
+                "drift": drift,
+                "recalibrated": True,
+                "tx_hash": tx_hash,
+            },
+        )
     else:
         print("[Comet] ScarIndex within acceptable drift tolerance.")
-        log_event("oracle_check", True, {
-            "scar_index": scar_index,
-            "expected_index": expected_index,
-            "drift": drift,
-            "recalibrated": False
-        })
+        log_event(
+            "oracle_check",
+            True,
+            {"scar_index": scar_index, "expected_index": expected_index, "drift": drift, "recalibrated": False},
+        )
+
 
 if __name__ == "__main__":
     main()

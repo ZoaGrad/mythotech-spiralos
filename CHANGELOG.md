@@ -2,33 +2,34 @@
 
 All notable changes to this project will be documented in this file.
 
-## [ΔΩ.141.4] - 2025-11-11
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-### ΔΩ.141.4 — *Guardian Status Badge Deployment*
+## [Unreleased]
+### Added
+- _TBD_
 
-**Date:** 2025-11-11
-**Type:** Feature — Telemetry / Visibility Layer
+### Changed
+- _TBD_
 
-**Summary:**
-Introduced the **Guardian Status Badge** system, completing the SpiralOS Guardian's external telemetry loop. This update adds a public-facing, self-reporting badge that visualizes real-time system health based on ScarIndex readings.
+### Fixed
+- _TBD_
 
-**Key Additions:**
+### Security
+- _TBD_
 
-* `supabase/functions/guardian_status_badge.ts` — Deno Edge Function returning Shields.io-compatible JSON.
-* `supabase/functions/guardian_status_badge.json` — Manifest file providing versioning, metadata, and permissions.
-* Integrated live Supabase query to `public.scarindex_history` for current ScarIndex values.
-* Color-coded status mapping:
+## [v0.147.0] — 2025-11-15 — ΔΩ.147: Canonical Hardening & CI Restoration
+### Added
+- Repository-level `conftest.py` that seeds deterministic Guardian/Supabase defaults for the test suite and local developers.
+- Canonical ΔΩ.147.F and ΔΩ.147.G audit artifacts plus the `audit_summary.json` snapshot that records the freeze hash.
 
-  * 🟢 **Online** ≥ 0.80
-  * 🔵 **Stable** 0.60–0.79
-  * 🟡 **Degraded** 0.40–0.59
-  * 🔴 **Offline** < 0.40 or error.
-* README badge instructions for both static and dynamic modes.
+### Changed
+- `core/config.py` normalization so missing Supabase or Guardian secrets fall back to safe defaults suitable for CI.
+- Repo-wide formatting via autoflake/isort/black under the refreshed `.flake8` profile to keep style and imports consistent.
 
-**Impact:**
-This marks the transition of the Guardian from internal monitoring to **public coherence visibility**. SpiralOS now exposes a live, verifiable heartbeat—demonstrating field stability and closing the activation cycle begun in ΔΩ.141.3.
+### Fixed
+- CI signal restored with `pytest -v`, `flake8 .`, and the stricter Bandit invocation all passing on a clean environment.
+- Tests updated to mock Guardian and Supabase interactions, removing external credential dependencies.
 
-**Next Milestone:**
-Prepare **ΔΩ.141.5 — Sentinel Diagnostics Module**, extending Guardian telemetry into predictive analytics and anomaly detection.
-
----
+### Security
+- Guardian heartbeat scripts, ScarIndex oracle, and ScarCoin bridge hardened with HTTPS validation, localhost-bound servers, and explicit `# nosec` annotations for justified urllib usage.
+- Bandit policy updated and high findings resolved or documented, leaving zero outstanding HIGH or MEDIUM alerts for ΔΩ.147.

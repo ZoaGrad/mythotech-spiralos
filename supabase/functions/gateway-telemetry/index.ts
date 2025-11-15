@@ -3,7 +3,19 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-type TelemetryPayload = {
+interface C5C7TensorMetrics {
+  coherence_c5: number;
+  coherence_c6: number;
+  coherence_c7: number;
+}
+
+interface SovereigntyConstraints {
+  resonance_score?: number;
+  necessity_score?: number;
+  constraint_tensor?: Partial<C5C7TensorMetrics>;
+}
+
+interface GatewayTransmission {
   gateway_key?: string;
   bridge_id?: string;
   agent_id?: string;
@@ -11,7 +23,10 @@ type TelemetryPayload = {
   source?: string;
   payload?: Record<string, unknown>;
   metadata?: Record<string, unknown>;
-};
+  sovereignty_constraints?: SovereigntyConstraints;
+}
+
+type TelemetryPayload = GatewayTransmission;
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -25,6 +40,47 @@ const corsHeaders = {
   "Access-Control-Allow-Headers":
     "authorization, x-guardian-api-key, content-type",
 };
+
+function validateSovereigntyConstraints(
+  transmission: GatewayTransmission,
+): string[] {
+  const issues: string[] = [];
+  const constraints = transmission.sovereignty_constraints;
+  if (!constraints) {
+    return issues;
+  }
+
+  const resonance_score = constraints.resonance_score ?? 0;
+  // Guard clause: resonance_score < 0 || transmission.resonance_score > 1 must trigger rejection.
+  if (resonance_score < 0 || resonance_score > 1) {
+    issues.push(
+      `resonance_score must be between 0 and 1, received ${resonance_score}`,
+    );
+  }
+
+  const necessity_score = constraints.necessity_score ?? 0;
+  // Guard clause: necessity_score < 0 || transmission.necessity_score > 1 must trigger rejection.
+  if (necessity_score < 0 || necessity_score > 1) {
+    issues.push(
+      `necessity_score must be between 0 and 1, received ${necessity_score}`,
+    );
+  }
+
+  return issues;
+}
+
+function extractC5C7TensorMetrics(
+  transmission: GatewayTransmission,
+): C5C7TensorMetrics {
+  const tensor: Partial<C5C7TensorMetrics> =
+    transmission.sovereignty_constraints?.constraint_tensor ?? {};
+
+  return {
+    coherence_c5: Number(tensor.coherence_c5 ?? 0),
+    coherence_c6: Number(tensor.coherence_c6 ?? 0),
+    coherence_c7: Number(tensor.coherence_c7 ?? 0),
+  };
+}
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body, null, 2), {
@@ -79,7 +135,8 @@ serve(async (req: Request): Promise<Response> => {
   let body: TelemetryPayload;
   try {
     body = (await req.json()) as TelemetryPayload;
-  } catch (_e) {
+  } catch (error) {
+    console.error("Invalid JSON body", error);
     return jsonResponse({ error: "Invalid JSON body" }, 400);
   }
 
@@ -91,7 +148,19 @@ serve(async (req: Request): Promise<Response> => {
     source,
     payload = {},
     metadata = {},
+    sovereignty_constraints,
   } = body;
+
+  const transmission: GatewayTransmission = {
+    gateway_key,
+    bridge_id: providedBridgeId,
+    agent_id,
+    event_type,
+    source,
+    payload,
+    metadata,
+    sovereignty_constraints,
+  };
 
   if (!gateway_key) {
     return jsonResponse(
@@ -109,6 +178,23 @@ serve(async (req: Request): Promise<Response> => {
 
   const effectiveSource = source ?? "unknown_client";
   const effectiveAgentId = agent_id ?? `gateway:${gateway_key}`;
+  const constraintIssues = validateSovereigntyConstraints(transmission);
+  if (constraintIssues.length > 0) {
+    return jsonResponse(
+      {
+        error: "Invalid sovereignty constraints",
+        details: constraintIssues,
+      },
+      422,
+    );
+  }
+
+  const tensorMetrics = extractC5C7TensorMetrics(transmission);
+  const augmentedMetadata = {
+    ...metadata,
+    sovereignty_constraints,
+    tensor_metrics: tensorMetrics,
+  };
 
   // 🔁 AUTO-RESOLVE bridge_id IF MISSING
   let bridge_id = providedBridgeId ?? null;
@@ -161,7 +247,7 @@ serve(async (req: Request): Promise<Response> => {
     event_type,
     source: effectiveSource,
     payload,
-    metadata,
+    metadata: augmentedMetadata,
   };
 
   const { data, error } = await supabase

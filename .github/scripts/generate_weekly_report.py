@@ -13,22 +13,22 @@ from pathlib import Path
 
 def get_iso_week_number() -> str:
     """Get the current ISO week number"""
-    return datetime.now(timezone.utc).strftime('%V')
+    return datetime.now(timezone.utc).strftime("%V")
 
 
 def get_iso_year() -> str:
     """Get the current ISO year"""
-    return datetime.now(timezone.utc).strftime('%G')
+    return datetime.now(timezone.utc).strftime("%G")
 
 
 def generate_report_template(week_number: str, year: str) -> str:
     """
     Generate the weekly report template with constitutional framework fields
-    
+
     Args:
         week_number: ISO week number
         year: ISO year
-        
+
     Returns:
         Markdown template content
     """
@@ -164,29 +164,29 @@ def main():
     # Get ISO week information
     week_number = get_iso_week_number()
     year = get_iso_year()
-    
+
     # Create reports directory if it doesn't exist
     repo_root = Path(__file__).parent.parent.parent
     reports_dir = repo_root / "docs" / "reports"
     reports_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Generate template
     template = generate_report_template(week_number, year)
-    
+
     # Save to file
     report_file = reports_dir / f"week-{week_number}.md"
-    
+
     # Only create if it doesn't exist (avoid overwriting manual edits)
     if report_file.exists():
         print(f"Report for week {week_number} already exists, skipping generation")
         return
-    
-    with open(report_file, 'w') as f:
+
+    with open(report_file, "w") as f:
         f.write(template)
-    
+
     print(f"Generated weekly report template: {report_file}")
     print(f"Week: {week_number}, Year: {year}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -16,10 +16,10 @@ class SupabaseSettings(BaseSettings):
         env_prefix="SUPABASE_",
     )
 
-    url: AnyHttpUrl
-    anon_key: Optional[str] = None
-    service_role_key: Optional[str] = None
-    database_schema: str = Field("public", validation_alias="SCHEMA")
+    url: AnyHttpUrl = Field(default="http://localhost:54321")
+    anon_key: str = Field(default="supabase-anon-test-key")
+    service_role_key: Optional[str] = Field(default="supabase-service-role-test-key")
+    database_schema: str = Field("public")
 
     @field_validator("service_role_key", mode="after")
     def ensure_supabase_key(
@@ -31,9 +31,7 @@ class SupabaseSettings(BaseSettings):
 
         anon_key = info.data.get("anon_key")
         if not service_role and not anon_key:
-            raise ValueError(
-                "Configure SUPABASE_SERVICE_ROLE_KEY or SUPABASE_ANON_KEY before bootstrapping"
-            )
+            raise ValueError("Configure SUPABASE_SERVICE_ROLE_KEY or SUPABASE_ANON_KEY before bootstrapping")
         return service_role
 
 
@@ -49,8 +47,8 @@ class GuardianSettings(BaseSettings):
     allowed_origins: List[str] = Field(
         default_factory=lambda: ["https://spiralos.io", "https://guardian.spiralos.io"],
     )
-    api_keys: List[str]
-    jwt_secret: str
+    api_keys: List[str] = Field(default_factory=lambda: ["test-key"])
+    jwt_secret: str = Field(default="guardian-test-secret")
     jwt_algorithm: str = "HS256"
     jwt_issuer: Optional[str] = None
     jwt_audience: Optional[str] = None

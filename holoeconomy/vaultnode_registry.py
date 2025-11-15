@@ -6,12 +6,14 @@ A command-line interface to interact with the VaultNode registry in Supabase.
 
 import argparse
 import os
-from supabase import create_client, Client
+
+from supabase import Client, create_client
 
 # Supabase configuration
 # It's recommended to use environment variables for these
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+
 
 def get_supabase_client() -> Client:
     """Creates and returns a Supabase client."""
@@ -19,31 +21,36 @@ def get_supabase_client() -> Client:
         raise ValueError("Supabase URL and Key must be set in environment variables.")
     return create_client(SUPABASE_URL, SUPABASE_KEY)
 
+
 def list_vaultnodes(client: Client):
     """Lists all VaultNodes."""
     print("Listing all VaultNodes...")
-    response = client.table('vaultnodes').select('*').execute()
+    response = client.table("vaultnodes").select("*").execute()
     if response.data:
         for node in response.data:
             print(node)
     else:
         print("No VaultNodes found.")
 
+
 def get_vaultnode(client: Client, node_id: str):
     """Retrieves a specific VaultNode by its ID."""
     print(f"Getting VaultNode with ID: {node_id}...")
-    response = client.table('vaultnodes').select('*').eq('id', node_id).execute()
+    response = client.table("vaultnodes").select("*").eq("id", node_id).execute()
     if response.data:
         print(response.data[0])
     else:
         print(f"VaultNode with ID {node_id} not found.")
+
 
 def create_vaultnode(client: Client, ref_id: str, ref_type: str, commit_sha: str = None):
     """Creates a new VaultNode."""
     print("Creating a new VaultNode...")
     try:
         # Assuming 'seal_vaultnode' is a function in your Supabase instance
-        response = client.rpc('seal_vaultnode', {'ref_id': ref_id, 'ref_type': ref_type, 'commit_sha': commit_sha}).execute()
+        response = client.rpc(
+            "seal_vaultnode", {"ref_id": ref_id, "ref_type": ref_type, "commit_sha": commit_sha}
+        ).execute()
         if response.data:
             print("Successfully created VaultNode:")
             print(response.data[0])
@@ -53,6 +60,7 @@ def create_vaultnode(client: Client, ref_id: str, ref_type: str, commit_sha: str
                 print(f"Error: {response.error.message}")
     except Exception as e:
         print(f"An error occurred: {e}")
+
 
 def main():
     """Main function to handle CLI arguments."""
@@ -73,7 +81,9 @@ def main():
     parser_create.add_argument("--ref-id", required=True, type=str, help="The reference ID for the new VaultNode")
     parser_create.add_argument("--ref-type", required=True, type=str, help="The reference type for the new VaultNode")
     parser_create.add_argument("--commit-sha", type=str, help="The commit SHA for the new VaultNode")
-    parser_create.set_defaults(func=lambda args, client: create_vaultnode(client, args.ref_id, args.ref_type, args.commit_sha))
+    parser_create.set_defaults(
+        func=lambda args, client: create_vaultnode(client, args.ref_id, args.ref_type, args.commit_sha)
+    )
 
     args = parser.parse_args()
 
@@ -89,6 +99,7 @@ def main():
         print(e)
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
+
 
 if __name__ == "__main__":
     main()

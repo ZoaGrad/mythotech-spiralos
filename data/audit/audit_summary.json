@@ -44,11 +44,52 @@
     }
   ],
   "dataflow": [
-    { "from": "GitHub & Guardian gateways", "to": "Supabase Edge Functions", "channels": ["gateway-telemetry", "github-webhook"] },
-    { "from": "Supabase tables", "to": "ScarIndex / SpiralOS core", "channels": ["ache_events", "scar_index", "panic_frames"] },
-    { "from": "ScarIndex", "to": "ScarCoin Minting Engine", "channels": ["proof_of_ache", "oracle_signatures"] },
-    { "from": "ScarCoin", "to": "VaultNode", "channels": ["mint_events", "burn_events"] },
-    { "from": "VaultNode", "to": ["SystemSummary", "Guardian", "Liquidity Mirror", "ScarWallet UI"], "channels": ["chain_stats", "health_feeds"] }
+    {
+      "from": "GitHub & Guardian gateways",
+      "to": "Supabase Edge Functions",
+      "channels": [
+        "gateway-telemetry",
+        "github-webhook"
+      ]
+    },
+    {
+      "from": "Supabase tables",
+      "to": "ScarIndex / SpiralOS core",
+      "channels": [
+        "ache_events",
+        "scar_index",
+        "panic_frames"
+      ]
+    },
+    {
+      "from": "ScarIndex",
+      "to": "ScarCoin Minting Engine",
+      "channels": [
+        "proof_of_ache",
+        "oracle_signatures"
+      ]
+    },
+    {
+      "from": "ScarCoin",
+      "to": "VaultNode",
+      "channels": [
+        "mint_events",
+        "burn_events"
+      ]
+    },
+    {
+      "from": "VaultNode",
+      "to": [
+        "SystemSummary",
+        "Guardian",
+        "Liquidity Mirror",
+        "ScarWallet UI"
+      ],
+      "channels": [
+        "chain_stats",
+        "health_feeds"
+      ]
+    }
   ],
   "recommendations": [
     "Restrict ScarCoin bridge endpoints with Guardian-issued API keys and rate limiting while limiting CORS to trusted origins.",
@@ -56,5 +97,6 @@
     "Replace placeholder Supabase client stubs with real persistence logic (REST or RPC) and add failure telemetry.",
     "Batch GitHub webhook processing to avoid per-commit Supabase chatter.",
     "Archive or clearly scope legacy SpiralOS v1.1 artifacts to reduce confusion."
-  ]
+  ],
+  "ΔΩ.147.F_REPO_SNAPSHOT": "e4ee2e49da4398c1856fa463f44db01e5ba701fce2af3ea546f0e7da0cb082851aa14232de6945181fd2c466b35af987"
 }

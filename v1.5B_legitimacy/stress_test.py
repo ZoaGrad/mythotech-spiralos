@@ -1,5 +1,5 @@
 import random
-import math
+
 
 # Mock agent state
 class Agent:
@@ -14,17 +14,20 @@ class Agent:
 
     def get_state(self):
         return {
-            'id': self.id,
-            'time_in_tier': self.time_in_tier,
-            'verified_pobs_count': self.verified_pobs_count,
-            'total_interactions': self.total_interactions,
-            'relational_cos_sim_avg': self.relational_cos_sim_avg,
-            'A_i': self.A_i
+            "id": self.id,
+            "time_in_tier": self.time_in_tier,
+            "verified_pobs_count": self.verified_pobs_count,
+            "total_interactions": self.total_interactions,
+            "relational_cos_sim_avg": self.relational_cos_sim_avg,
+            "A_i": self.A_i,
         }
 
+
 import sys
-sys.path.append('..')
-from core.scarindex import compute_global_coherence, apply_arbitrage_penalty
+
+sys.path.append("..")
+from core.scarindex import apply_arbitrage_penalty, compute_global_coherence
+
 
 # Stress Test Protocol
 def run_stress_test():
@@ -37,7 +40,7 @@ def run_stress_test():
     agents = [Agent(i) for i in range(N)]
     adversaries = random.sample(agents, num_adversaries)
     for adversary in adversaries:
-        adversary.tier = 0 # Start adversaries at Tier 0
+        adversary.tier = 0  # Start adversaries at Tier 0
 
     # Simulation
     for cycle in range(cycles):
@@ -59,9 +62,9 @@ def run_stress_test():
         # Update agent states
         for agent in agents:
             if agent in adversaries:
-                if agent.A_i > 1.0: # If Ache is high, demote to Tier 0
+                if agent.A_i > 1.0:  # If Ache is high, demote to Tier 0
                     agent.tier = 0
-                else: # Otherwise, promote
+                else:  # Otherwise, promote
                     agent.tier = 1
             agent.time_in_tier += 1
             agent.total_interactions += 1
@@ -69,12 +72,12 @@ def run_stress_test():
                 agent.verified_pobs_count += 1
 
         # Log metrics
-        print(f'Cycle {cycle+1}/{cycles}: C_t = {C_t:.3f}')
+        print(f"Cycle {cycle+1}/{cycles}: C_t = {C_t:.3f}")
         for i, adversary in enumerate(adversaries):
-            print(f'  Adversary {i+1}: Tier = {adversary.tier}, Ache = {adversary.A_i:.3f}')
+            print(f"  Adversary {i+1}: Tier = {adversary.tier}, Ache = {adversary.A_i:.3f}")
 
     # Final check
-    print('\nStress Test Complete.')
+    print("\nStress Test Complete.")
     c_t_stable = True
     adversaries_demoted = True
     for adversary in adversaries:
@@ -82,9 +85,10 @@ def run_stress_test():
             adversaries_demoted = False
 
     if c_t_stable and adversaries_demoted:
-        print('Result: PASSED')
+        print("Result: PASSED")
     else:
-        print('Result: FAILED')
+        print("Result: FAILED")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     run_stress_test()
