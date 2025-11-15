@@ -7,43 +7,37 @@ and VaultNode blockchain integration.
 Provides programmatic access to the economic validation layer.
 """
 
+# VaultNode Seal: ΔΩ.147.C — Guardian authentication canonical build
+
 from collections import defaultdict, deque
 from dataclasses import dataclass
-from decimal import Decimal
 from datetime import datetime, timezone
-from typing import Any, Awaitable, Callable, Deque, Dict, List, Optional
+from decimal import Decimal
 import os
 import sys
 import time
-import uuid
+from typing import Any, Awaitable, Callable, Deque, Dict, List, Optional
 
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from jose import JWTError, jwt
 from pydantic import BaseModel, Field
 
-# Add core module to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+# Add module and core directories to path for imports
+MODULE_DIR = os.path.dirname(__file__)
+sys.path.insert(0, MODULE_DIR)
+sys.path.insert(0, os.path.join(MODULE_DIR, ".."))
 
-from scarcoin import ScarCoinMintingEngine, ScarCoin, ProofOfAche, Wallet
-from vaultnode import VaultNode, VaultEvent
-from system_summary import SystemSummary
+from core.config import get_guardian_settings, get_vaultnode_settings
 from core.f2_judges import JudicialSystem
+from scarcoin import ScarCoinMintingEngine
+from system_summary import SystemSummary
+from vaultnode import VaultEvent, VaultNode
 
 
-GUARDIAN_ALLOWED_ORIGINS = [
-    "https://spiralos.io",
-    "https://guardian.spiralos.io"
-]
-GUARDIAN_API_KEYS = {
-    key.strip()
-    for key in os.getenv("GUARDIAN_API_KEYS", "").split(",")
-    if key.strip()
-}
-GUARDIAN_JWT_SECRET = os.getenv("GUARDIAN_JWT_SECRET")
-GUARDIAN_JWT_ALGORITHM = os.getenv("GUARDIAN_JWT_ALGORITHM", "HS256")
-GUARDIAN_RATE_LIMIT = 10
-GUARDIAN_RATE_WINDOW_SECONDS = 60
+guardian_settings = get_guardian_settings()
+vaultnode_settings = get_vaultnode_settings()
+
 _guardian_rate_state: Dict[str, Deque[float]] = defaultdict(deque)
 
 
@@ -59,13 +53,13 @@ class GuardianContext:
 def _enforce_guardian_rate_limit(api_key: str) -> None:
     """Ensure Guardian requests stay within configured bounds."""
 
-    window_start = time.time() - GUARDIAN_RATE_WINDOW_SECONDS
+    window_start = time.time() - guardian_settings.rate_window_seconds
     rate_window = _guardian_rate_state[api_key]
 
     while rate_window and rate_window[0] < window_start:
         rate_window.popleft()
 
-    if len(rate_window) >= GUARDIAN_RATE_LIMIT:
+    if len(rate_window) >= guardian_settings.rate_limit_per_minute:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="Guardian request rate exceeded"
@@ -94,20 +88,20 @@ def _extract_roles(payload: Dict[str, Any]) -> List[str]:
 async def validate_guardian_request(request: Request) -> GuardianContext:
     """Validate Guardian API key, rate limits, and JWT signature."""
 
-    api_key = request.headers.get('X-Guardian-Key')
+    api_key = request.headers.get("X-Guardian-Key")
     if not api_key:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="X-Guardian-Key header required"
         )
 
-    if not GUARDIAN_API_KEYS:
+    if not guardian_settings.api_keys:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Guardian keyring not configured"
         )
 
-    if api_key not in GUARDIAN_API_KEYS:
+    if api_key not in guardian_settings.api_keys:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid Guardian API key"
@@ -115,25 +109,33 @@ async def validate_guardian_request(request: Request) -> GuardianContext:
 
     _enforce_guardian_rate_limit(api_key)
 
-    auth_header = request.headers.get('Authorization', '')
-    scheme, _, token = auth_header.partition(' ')
-    if scheme.lower() != 'bearer' or not token:
+    auth_header = request.headers.get("Authorization", "")
+    scheme, _, token = auth_header.partition(" ")
+    if scheme.lower() != "bearer" or not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Guardian bearer token required"
         )
 
-    if not GUARDIAN_JWT_SECRET:
+    if not guardian_settings.jwt_secret:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Guardian signature validation unavailable"
         )
 
     try:
+        decode_kwargs = {
+            "algorithms": [guardian_settings.jwt_algorithm]
+        }
+        if guardian_settings.jwt_audience:
+            decode_kwargs["audience"] = guardian_settings.jwt_audience
+        if guardian_settings.jwt_issuer:
+            decode_kwargs["issuer"] = guardian_settings.jwt_issuer
+
         payload = jwt.decode(
             token,
-            GUARDIAN_JWT_SECRET,
-            algorithms=[GUARDIAN_JWT_ALGORITHM]
+            guardian_settings.jwt_secret,
+            **decode_kwargs
         )
     except JWTError as exc:
         raise HTTPException(
@@ -142,16 +144,16 @@ async def validate_guardian_request(request: Request) -> GuardianContext:
         ) from exc
 
     roles = _extract_roles(payload)
-    if 'guardian' not in roles:
+    if "guardian" not in roles:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Guardian role required"
         )
 
     guardian_id = (
-        str(payload.get('sub'))
-        or str(payload.get('guardian_id'))
-        or 'guardian'
+        str(payload.get("sub"))
+        or str(payload.get("guardian_id"))
+        or "guardian"
     )
 
     return GuardianContext(
@@ -159,23 +161,6 @@ async def validate_guardian_request(request: Request) -> GuardianContext:
         guardian_id=guardian_id,
         roles=roles
     )
-
-
-def require_guardian_signature(
-    func: Callable[..., Awaitable[Any]]
-) -> Callable[..., Awaitable[Any]]:
-    """Decorator enforcing Guardian authentication for privileged endpoints."""
-
-    async def wrapper(
-        *args: Any,
-        guardian_context: GuardianContext = Depends(validate_guardian_request),
-        **kwargs: Any
-    ) -> Any:
-        return await func(*args, guardian_context=guardian_context, **kwargs)
-
-    wrapper.__name__ = func.__name__
-    wrapper.__doc__ = func.__doc__
-    return wrapper
 
 
 # Pydantic models for API
@@ -272,13 +257,13 @@ class RefusalResponse(BaseModel):
 app = FastAPI(
     title="ScarCoin Bridge API",
     description="Holo-Economy API for Proof-of-Ache minting and VaultNode blockchain",
-    version="1.3.0-alpha"
+    version="1.3.0-alpha",
 )
 
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=GUARDIAN_ALLOWED_ORIGINS,
+    allow_origins=guardian_settings.allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -287,16 +272,16 @@ app.add_middleware(
 
 # Initialize engines
 minting_engine = ScarCoinMintingEngine(
-    multiplier=Decimal('1000'),
-    min_delta_c=Decimal('0.01')
+    multiplier=Decimal("1000"),
+    min_delta_c=Decimal("0.01"),
 )
 
-vaultnode = VaultNode(vault_id="ΔΩ.122.0")
+vaultnode = VaultNode(vault_id=vaultnode_settings.default_id)
 
 # Initialize system summary
 system_summary = SystemSummary(
     minting_engine=minting_engine,
-    vaultnode=vaultnode
+    vaultnode=vaultnode,
 )
 
 judicial_system = JudicialSystem()
@@ -316,10 +301,9 @@ async def health_check():
 
 # ScarCoin endpoints
 @app.post("/api/v1/scarcoin/mint", response_model=MintResponse)
-@require_guardian_signature
 async def mint_scarcoin(
     request: MintRequest,
-    guardian_context: GuardianContext
+    guardian_context: GuardianContext = Depends(validate_guardian_request)
 ) -> MintResponse:
     """Mint ScarCoin for a validated transmutation.
 
@@ -381,8 +365,10 @@ async def mint_scarcoin(
 
 
 @app.post("/api/v1/scarcoin/burn")
-@require_guardian_signature
-async def burn_scarcoin(request: BurnRequest, guardian_context: GuardianContext) -> Dict[str, Any]:
+async def burn_scarcoin(
+    request: BurnRequest,
+    guardian_context: GuardianContext = Depends(validate_guardian_request)
+) -> Dict[str, Any]:
     """Burn an existing ScarCoin that violates constitutional constraints.
 
     Args:
@@ -428,10 +414,9 @@ async def burn_scarcoin(request: BurnRequest, guardian_context: GuardianContext)
 
 @app.post("/api/v1/f2/refusal", response_model=RefusalResponse)
 @app.post("/api/v1/refusal", response_model=RefusalResponse)
-@require_guardian_signature
 async def invoke_right_of_refusal(
     request: RefusalRequest,
-    guardian_context: GuardianContext
+    guardian_context: GuardianContext = Depends(validate_guardian_request)
 ) -> RefusalResponse:
     """Invoke the constitutional Right of Refusal via Guardian authorization.
 

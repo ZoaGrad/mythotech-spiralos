@@ -8,13 +8,20 @@ import pytest
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
+from core.config import SupabaseSettings
 from core.supabase_integration import PersistenceResponse, SupabaseClient
 
 
 def test_insert_ache_event_returns_persistence_response(monkeypatch):
     async def _run() -> PersistenceResponse:
         mock_client = MagicMock()
-        supabase = SupabaseClient(client=mock_client)
+        supabase = SupabaseClient(
+            client=mock_client,
+            settings=SupabaseSettings(
+                url="https://example.supabase.co",
+                service_role_key="service-key",
+            ),
+        )
 
         response_obj = SimpleNamespace(data=[{'id': 'evt-123', 'source': 'guardian'}], status_code=201, error=None)
 
@@ -54,7 +61,13 @@ def test_insert_vaultnode_executes_retry_chain(monkeypatch):
         table_builder.insert.return_value = insert_builder
         mock_client.table.return_value = table_builder
 
-        supabase = SupabaseClient(client=mock_client)
+        supabase = SupabaseClient(
+            client=mock_client,
+            settings=SupabaseSettings(
+                url="https://example.supabase.co",
+                service_role_key="service-key",
+            ),
+        )
         monkeypatch.setattr(supabase, '_ensure_client', lambda: mock_client)
         monkeypatch.setattr(supabase, '_execute_with_retry', fake_execute)
 
@@ -73,7 +86,14 @@ def test_insert_vaultnode_executes_retry_chain(monkeypatch):
 
 def test_execute_with_retry_records_panic_on_failure(monkeypatch):
     async def _run():
-        supabase = SupabaseClient(client=MagicMock(), max_retries=1)
+        supabase = SupabaseClient(
+            client=MagicMock(),
+            max_retries=1,
+            settings=SupabaseSettings(
+                url="https://example.supabase.co",
+                service_role_key="service-key",
+            ),
+        )
         recorded = []
 
         monkeypatch.setattr(supabase, '_record_panic_frame', lambda operation, error: recorded.append((operation, str(error))))

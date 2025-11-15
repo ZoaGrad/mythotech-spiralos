@@ -8,13 +8,12 @@ Integrates SpiralOS with Supabase backend for:
 - Real-time coherence monitoring
 """
 
-from typing import Dict, List, Optional, Any, Callable
-from dataclasses import dataclass
-import os
-import json
-from datetime import datetime, timezone
 import asyncio
+import json
 import logging
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from typing import Any, Callable, Dict, List, Optional
 
 from postgrest import APIError
 from supabase import Client, create_client
@@ -22,6 +21,20 @@ from supabase import Client, create_client
 from .scarindex import ScarIndexResult, CoherenceComponents, AcheMeasurement, ScarIndexOracle
 from .panic_frames import PanicFrameEvent, PanicFrameManager
 from .ache_pid_controller import PIDState
+from .config import SupabaseSettings, get_supabase_settings
+
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass
+class PersistenceResponse:
+    """Unified response for Supabase persistence operations."""
+
+    table: str
+    status_code: int
+    inserted_id: Optional[str]
+    payload: Dict[str, Any]
 
 
 logger = logging.getLogger(__name__)
@@ -38,31 +51,34 @@ class PersistenceResponse:
 
 
 class SupabaseClient:
-    """
-    Client for interacting with Supabase backend
-    
-    Provides methods for storing and retrieving SpiralOS data.
-    """
-    
+    """Client for interacting with Supabase backend resources."""
+
     def __init__(
         self,
-        project_id: str = "xlmrnjatawslawquwzpf",
         client: Optional[Client] = None,
-        max_retries: int = 3
-    ):
+        max_retries: int = 3,
+        settings: Optional[SupabaseSettings] = None,
+    ) -> None:
         """Initialize Supabase client with Guardian panic logging."""
 
-        self.project_id = project_id
-        self.base_url = f"https://{project_id}.supabase.co"
-        self.client: Optional[Client] = client or self._build_client()
+        self._settings = settings
+        self.client: Optional[Client] = client
         self.max_retries = max_retries
         self.panic_manager = PanicFrameManager()
+
+    @property
+    def settings(self) -> SupabaseSettings:
+        """Lazily resolve Supabase settings to allow injection in tests."""
+
+        if self._settings is None:
+            self._settings = get_supabase_settings()
+        return self._settings
 
     def _build_client(self) -> Optional[Client]:
         """Create a Supabase client from environment credentials."""
 
-        url = os.getenv('SUPABASE_URL') or self.base_url
-        key = os.getenv('SUPABASE_KEY') or os.getenv('SUPABASE_SERVICE_ROLE_KEY')
+        url = str(self.settings.url)
+        key = self.settings.service_role_key or self.settings.anon_key
 
         if not url or not key:
             logger.warning('Supabase credentials missing; persistence disabled')
@@ -75,6 +91,8 @@ class SupabaseClient:
             return None
 
     def _ensure_client(self) -> Client:
+        if not self.client:
+            self.client = self._build_client()
         if not self.client:
             raise RuntimeError('Supabase client not configured')
         return self.client
@@ -208,6 +226,28 @@ class SupabaseClient:
             )
             for row in payloads
         ]
+
+    async def process_commit_batch(
+        self,
+        commits: List[Dict[str, Any]]
+    ) -> PersistenceResponse:
+        """Invoke the process_push_batch RPC with retry semantics."""
+
+        if not isinstance(commits, list) or not commits:
+            raise ValueError('Commits payload is required for process_push_batch')
+
+        client = self._ensure_client()
+        result = await self._execute_with_retry(
+            lambda: client.rpc('process_push_batch', {'commits': commits}).execute(),
+            'process_push_batch.rpc'
+        )
+        payload = self._extract_first_row(result)
+        return PersistenceResponse(
+            table='process_push_batch',
+            status_code=getattr(result, 'status_code', 200),
+            inserted_id=payload.get('batch_id'),
+            payload=payload or {'commits': len(commits)}
+        )
 
     async def insert_panic_frame(
         self,

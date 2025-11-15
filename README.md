@@ -89,6 +89,16 @@ ScarIndex = (0.4 * C_narrative) + (0.3 * C_social) + (0.2 * C_economic) + (0.1 *
 ### Option 1: Local Development
 
 ```bash
+cp .env.example .env.local  # populate GUARDIAN_* + SUPABASE_* secrets before running APIs
+```
+
+Required env keys:
+
+- `GUARDIAN_API_KEYS`, `GUARDIAN_JWT_SECRET`, `GUARDIAN_ALLOWED_ORIGINS`
+- `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (or `SUPABASE_ANON_KEY` for read-only flows)
+- `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` for the Sovereignty Dashboard build
+
+```bash
 # Dependencies (minimal)
 pip3 install fastapi uvicorn pydantic
 
@@ -114,6 +124,18 @@ python3 scarcoin_bridge_api.py
 - GitHub webhook → Ache → ScarIndex → ScarCoin pipeline  
 
 See [Deployment Guide](./holoeconomy/DEPLOYMENT.md) and [Automation](./docs/AUTOMATION.md).
+
+---
+
+## 🔐 Authentication
+
+- **Guardian API keys** — define a comma-delimited list in `GUARDIAN_API_KEYS`. Every request to `/api/v1/scarcoin/*` must send `X-Guardian-Key` with one of those values.
+- **Guardian API keys** — provide a JSON array in `GUARDIAN_API_KEYS` (e.g., `["ops","staging"]`). Every request to `/api/v1/scarcoin/*` must send `X-Guardian-Key` with one of those values.
+- **JWT validation** — ScarCoin Bridge validates `Authorization: Bearer <token>` against `GUARDIAN_JWT_SECRET` (HS256 by default). Optional issuer/audience enforcement is available through `GUARDIAN_JWT_ISSUER` and `GUARDIAN_JWT_AUDIENCE`.
+- **Rate limiting** — Each Guardian key is capped at `GUARDIAN_RATE_LIMIT_PER_MINUTE` requests per `GUARDIAN_RATE_WINDOW_SECONDS` (default: 10 req/min). Exceeding the quota returns HTTP 429.
+- **Configuration hub** — `core/config.py` centralizes environment loading with Pydantic `BaseSettings`, ensuring fail-fast errors if mandatory fields are missing. Multi-value settings like `GUARDIAN_ALLOWED_ORIGINS` and `GUARDIAN_API_KEYS` should use JSON arrays to match the strict parser.
+
+See `.env.example` for the canonical list of environment variables and copy it to `.env.local` (frontend) or export the variables for backend services.
 
 ---
 

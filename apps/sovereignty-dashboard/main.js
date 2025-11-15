@@ -1,8 +1,7 @@
 // Sovereignty Metrics Dashboard - Main Logic
-// VaultNode Seal: ΔΩ.147.3
+// VaultNode Seal: ΔΩ.147.C
 
 // Supabase Configuration
-const SUPABASE_URL = 'https://xlmrnjatawslawquwzpf.supabase.co';
 const ENV = (() => {
     try {
         return import.meta.env || {};
@@ -11,11 +10,12 @@ const ENV = (() => {
         return window.__SPIRALOS_ENV__ || {};
     }
 })();
+const SUPABASE_URL = ENV.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = ENV.VITE_SUPABASE_ANON_KEY;
 
-if (!SUPABASE_ANON_KEY) {
-    const missingKeyMessage = 'Missing VITE_SUPABASE_ANON_KEY. Configure .env.local before building Sovereignty Dashboard.';
-    console.error(missingKeyMessage);
+function failMissingEnv(variableName) {
+    const message = `Missing ${variableName}. Copy .env.example to .env.local and provide the required Supabase credentials.`;
+    console.error(message);
     document.addEventListener('DOMContentLoaded', () => {
         updateStatus('error', 'Missing credentials');
         const banner = document.getElementById('statusText');
@@ -23,7 +23,15 @@ if (!SUPABASE_ANON_KEY) {
             banner.textContent = 'Supabase credentials missing';
         }
     });
-    throw new Error(missingKeyMessage);
+    throw new Error(message);
+}
+
+if (!SUPABASE_URL) {
+    failMissingEnv('VITE_SUPABASE_URL');
+}
+
+if (!SUPABASE_ANON_KEY) {
+    failMissingEnv('VITE_SUPABASE_ANON_KEY');
 }
 
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
