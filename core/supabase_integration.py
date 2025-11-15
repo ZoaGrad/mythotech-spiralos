@@ -8,37 +8,131 @@ Integrates SpiralOS with Supabase backend for:
 - Real-time coherence monitoring
 """
 
-from typing import Dict, List, Optional, Any
-import os
-import json
-from datetime import datetime, timezone
 import asyncio
-import httpx
+import json
+import logging
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from typing import Any, Callable, Dict, List, Optional
+
+from postgrest import APIError
+from supabase import Client, create_client
 
 from .scarindex import ScarIndexResult, CoherenceComponents, AcheMeasurement, ScarIndexOracle
 from .panic_frames import PanicFrameEvent, PanicFrameManager
 from .ache_pid_controller import PIDState
+from .config import SupabaseSettings, get_supabase_settings
+
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass
+class PersistenceResponse:
+    """Unified response for Supabase persistence operations."""
+
+    table: str
+    status_code: int
+    inserted_id: Optional[str]
+    payload: Dict[str, Any]
 
 
 class SupabaseClient:
-    """
-    Client for interacting with Supabase backend
-    
-    Provides methods for storing and retrieving SpiralOS data.
-    """
-    
-    def __init__(self, project_id: str = "xlmrnjatawslawquwzpf"):
-        """
-        Initialize Supabase client
-        
-        Args:
-            project_id: Supabase project ID
-        """
-        self.project_id = project_id
-        self.base_url = f"https://{project_id}.supabase.co"
-        
-        # Note: In production, API keys would be retrieved from environment
-        # For now, we'll use the MCP server for database operations
+    """Client for interacting with Supabase backend resources."""
+
+    def __init__(
+        self,
+        client: Optional[Client] = None,
+        max_retries: int = 3,
+        settings: Optional[SupabaseSettings] = None,
+    ) -> None:
+        """Initialize Supabase client with Guardian panic logging."""
+
+        self._settings = settings
+        self.client: Optional[Client] = client
+        self.max_retries = max_retries
+        self.panic_manager = PanicFrameManager()
+
+    @property
+    def settings(self) -> SupabaseSettings:
+        """Lazily resolve Supabase settings to allow injection in tests."""
+
+        if self._settings is None:
+            self._settings = get_supabase_settings()
+        return self._settings
+
+    def _build_client(self) -> Optional[Client]:
+        """Create a Supabase client from environment credentials."""
+
+        url = str(self.settings.url)
+        key = self.settings.service_role_key or self.settings.anon_key
+
+        if not url or not key:
+            logger.warning('Supabase credentials missing; persistence disabled')
+            return None
+
+        try:
+            return create_client(url, key)
+        except Exception as exc:  # pragma: no cover - external dependency
+            logger.error('Failed to initialize Supabase client: %s', exc)
+            return None
+
+    def _ensure_client(self) -> Client:
+        if not self.client:
+            self.client = self._build_client()
+        if not self.client:
+            raise RuntimeError('Supabase client not configured')
+        return self.client
+
+    def _record_panic_frame(self, operation: str, error: Exception) -> None:
+        """Log persistence failures through the PanicFrame pipeline."""
+
+        metadata = {
+            'operation': operation,
+            'error': str(error),
+            'timestamp': datetime.now(timezone.utc).isoformat()
+        }
+        self.panic_manager.store.insert_signal(
+            level='CRITICAL',
+            key='persistence.supabase_error',
+            meta=metadata
+        )
+
+    def _handle_supabase_error(self, operation: str, error: Exception) -> None:
+        logger.error('Supabase operation %s failed: %s', operation, error)
+        self._record_panic_frame(operation, error)
+
+    async def _execute_with_retry(
+        self,
+        func: Callable[[], Any],
+        operation: str
+    ) -> Any:
+        attempt = 0
+        delay = 0.5
+
+        while True:
+            try:
+                result = await asyncio.to_thread(func)
+                response_error = getattr(result, 'error', None)
+                if response_error:
+                    raise APIError(message=str(response_error))
+                return result
+            except Exception as exc:
+                self._handle_supabase_error(operation, exc)
+                attempt += 1
+                if attempt >= self.max_retries:
+                    raise
+                await asyncio.sleep(delay)
+                delay *= 2
+
+    @staticmethod
+    def _extract_first_row(result: Any) -> Dict[str, Any]:
+        data = getattr(result, 'data', None)
+        if isinstance(data, list) and data:
+            return data[0]
+        if isinstance(data, dict):
+            return data
+        return {}
     
     async def insert_ache_event(
         self,
@@ -46,127 +140,142 @@ class SupabaseClient:
         content: Dict,
         ache_level: float,
         metadata: Optional[Dict] = None
-    ) -> Dict:
-        """
-        Insert an Ache event into the database
-        
-        Args:
-            source: Source of the Ache event
-            content: Raw Ache content
-            ache_level: Entropy measure (0-1)
-            metadata: Optional metadata
-            
-        Returns:
-            Inserted record
-        """
-        # Defensive defaults for payloads
-        record = {
+    ) -> PersistenceResponse:
+        """Insert an Ache event into Supabase with retries and auditing."""
+
+        client = self._ensure_client()
+        payload = {
             'source': source or 'unknown',
+            'source_id': content.get('commit_id'),
             'content': content or {},
-            'ache_level': max(0.0, min(1.0, ache_level)),  # Clamp to [0,1]
+            'ache_level': max(0.0, min(1.0, ache_level)),
             'metadata': metadata or {}
         }
-        
-        # In production, this would use the Supabase REST API or Python client
-        # with robust error handling
-        try:
-            # Placeholder for actual database write
-            # In production:
-            # result = await self.supabase_client.table('ache_events').insert(record).execute()
-            # if result.error:
-            #     raise Exception(f"Database write failed: {result.error}")
-            return record
-        except Exception as e:
-            # Log error and return fallback
-            print(f"Error inserting ache event: {e}")
-            # Return record with error metadata
-            record['metadata']['error'] = str(e)
-            record['metadata']['failed_at'] = datetime.now(timezone.utc).isoformat()
-            return record
+
+        result = await self._execute_with_retry(
+            lambda: client.table('ache_events').insert(payload).execute(),
+            'ache_events.insert'
+        )
+        row = self._extract_first_row(result)
+        return PersistenceResponse(
+            table='ache_events',
+            status_code=getattr(result, 'status_code', 200),
+            inserted_id=row.get('id'),
+            payload=row or payload
+        )
     
     async def insert_scarindex_calculation(
         self,
         result: ScarIndexResult,
         ache_event_id: Optional[str] = None
-    ) -> Dict:
-        """
-        Insert a ScarIndex calculation into the database
-        
-        Args:
-            result: ScarIndexResult to store
-            ache_event_id: Optional reference to Ache event
-            
-        Returns:
-            Inserted record
-        """
-        try:
-            record = result.to_dict()
-            if ache_event_id:
-                record['ache_event_id'] = ache_event_id
-            
-            # Add defensive defaults
-            record['metadata'] = record.get('metadata', {})
-            
-            # In production:
-            # result = await self.supabase_client.table('scarindex_calculations').insert(record).execute()
-            # if result.error:
-            #     raise Exception(f"Database write failed: {result.error}")
-            
-            return record
-        except Exception as e:
-            print(f"Error inserting scarindex calculation: {e}")
-            # Return fallback with error metadata
-            return {
-                'error': str(e),
-                'failed_at': datetime.now(timezone.utc).isoformat(),
-                'metadata': {}
-            }
-    
+    ) -> PersistenceResponse:
+        """Insert a ScarIndex calculation row."""
+
+        client = self._ensure_client()
+        record = result.to_dict()
+        if ache_event_id:
+            record['ache_event_id'] = ache_event_id
+        record['metadata'] = record.get('metadata', {})
+
+        supabase_result = await self._execute_with_retry(
+            lambda: client.table('scarindex_calculations').insert(record).execute(),
+            'scarindex_calculations.insert'
+        )
+        row = self._extract_first_row(supabase_result)
+        return PersistenceResponse(
+            table='scarindex_calculations',
+            status_code=getattr(supabase_result, 'status_code', 200),
+            inserted_id=row.get('id'),
+            payload=row or record
+        )
+
     async def insert_verification_records(
         self,
         records: List[Dict]
-    ) -> List[Dict]:
-        """
-        Insert verification records for consensus protocol
-        
-        Args:
-            records: List of verification records
-            
-        Returns:
-            List of inserted records
-        """
-        return records
-    
+    ) -> List[PersistenceResponse]:
+        """Batch insert verification records."""
+
+        if not records:
+            return []
+
+        client = self._ensure_client()
+        result = await self._execute_with_retry(
+            lambda: client.table('verification_records').insert(records).execute(),
+            'verification_records.insert'
+        )
+        payloads = getattr(result, 'data', []) or []
+        return [
+            PersistenceResponse(
+                table='verification_records',
+                status_code=getattr(result, 'status_code', 200),
+                inserted_id=row.get('id'),
+                payload=row
+            )
+            for row in payloads
+        ]
+
+    async def process_commit_batch(
+        self,
+        commits: List[Dict[str, Any]]
+    ) -> PersistenceResponse:
+        """Invoke the process_push_batch RPC with retry semantics."""
+
+        if not isinstance(commits, list) or not commits:
+            raise ValueError('Commits payload is required for process_push_batch')
+
+        client = self._ensure_client()
+        result = await self._execute_with_retry(
+            lambda: client.rpc('process_push_batch', {'commits': commits}).execute(),
+            'process_push_batch.rpc'
+        )
+        payload = self._extract_first_row(result)
+        return PersistenceResponse(
+            table='process_push_batch',
+            status_code=getattr(result, 'status_code', 200),
+            inserted_id=payload.get('batch_id'),
+            payload=payload or {'commits': len(commits)}
+        )
+
     async def insert_panic_frame(
         self,
         event: PanicFrameEvent
-    ) -> Dict:
-        """
-        Insert a Panic Frame event
-        
-        Args:
-            event: PanicFrameEvent to store
-            
-        Returns:
-            Inserted record
-        """
-        return event.to_dict()
-    
+    ) -> PersistenceResponse:
+        """Insert a Panic Frame event into Supabase."""
+
+        client = self._ensure_client()
+        payload = event.to_dict()
+        result = await self._execute_with_retry(
+            lambda: client.table('panic_frames').insert(payload).execute(),
+            'panic_frames.insert'
+        )
+        row = self._extract_first_row(result)
+        return PersistenceResponse(
+            table='panic_frames',
+            status_code=getattr(result, 'status_code', 200),
+            inserted_id=row.get('id'),
+            payload=row or payload
+        )
+
     async def update_pid_state(
         self,
         state: PIDState
-    ) -> Dict:
-        """
-        Update PID controller state
-        
-        Args:
-            state: Current PID state
-            
-        Returns:
-            Updated record
-        """
-        return state.to_dict()
-    
+    ) -> PersistenceResponse:
+        """Upsert PID controller state."""
+
+        client = self._ensure_client()
+        payload = state.to_dict()
+        result = await self._execute_with_retry(
+            lambda: client.table('pid_controller_state').upsert(payload).execute(),
+            'pid_controller_state.upsert'
+        )
+        row = self._extract_first_row(result)
+        return PersistenceResponse(
+            table='pid_controller_state',
+            status_code=getattr(result, 'status_code', 200),
+            inserted_id=row.get('id'),
+            payload=row or payload
+        )
+
     async def insert_vaultnode(
         self,
         node_type: str,
@@ -176,49 +285,32 @@ class SupabaseClient:
         audit_log: Dict,
         github_commit_sha: Optional[str] = None,
         github_path: Optional[str] = None
-    ) -> Dict:
-        """
-        Insert a VaultNode ledger entry
-        
-        Args:
-            node_type: Type of node
-            reference_id: ID of referenced record
-            state_hash: Hash of current state
-            previous_hash: Hash of previous VaultNode
-            audit_log: Audit trail data
-            github_commit_sha: Optional GitHub commit SHA
-            github_path: Optional GitHub path
-            
-        Returns:
-            Inserted record
-        """
-        try:
-            # Defensive defaults for all fields
-            record = {
-                'node_type': node_type or 'unknown',
-                'reference_id': reference_id or 'unknown',
-                'state_hash': state_hash or '',
-                'previous_hash': previous_hash,
-                'audit_log': audit_log or {},
-                'github_commit_sha': github_commit_sha,
-                'github_path': github_path,
-                'metadata': {}
-            }
-            
-            # In production:
-            # result = await self.supabase_client.table('vaultnodes').insert(record).execute()
-            # if result.error:
-            #     raise Exception(f"Database write failed: {result.error}")
-            
-            return record
-        except Exception as e:
-            print(f"Error inserting vaultnode: {e}")
-            return {
-                'error': str(e),
-                'failed_at': datetime.now(timezone.utc).isoformat(),
-                'metadata': {'error_type': 'vaultnode_insert_failed'}
-            }
-    
+    ) -> PersistenceResponse:
+        """Insert a VaultNode ledger entry."""
+
+        client = self._ensure_client()
+        record = {
+            'node_type': node_type or 'unknown',
+            'reference_id': reference_id or 'unknown',
+            'state_hash': state_hash or '',
+            'previous_hash': previous_hash,
+            'audit_log': audit_log or {},
+            'github_commit_sha': github_commit_sha,
+            'github_path': github_path
+        }
+
+        result = await self._execute_with_retry(
+            lambda: client.table('vaultnodes').insert(record).execute(),
+            'vaultnodes.insert'
+        )
+        row = self._extract_first_row(result)
+        return PersistenceResponse(
+            table='vaultnodes',
+            status_code=getattr(result, 'status_code', 200),
+            inserted_id=row.get('id'),
+            payload=row or record
+        )
+
     async def insert_smart_contract_txn(
         self,
         txn_type: str,
@@ -227,21 +319,10 @@ class SupabaseClient:
         scarcoin_delta: Optional[float] = None,
         is_frozen: bool = False,
         frozen_by: Optional[str] = None
-    ) -> Dict:
-        """
-        Insert a Smart Contract transaction
-        
-        Args:
-            txn_type: Type of transaction
-            from_state: Previous state reference
-            to_state: New state reference
-            scarcoin_delta: Change in ScarCoin balance
-            is_frozen: Whether transaction is frozen
-            frozen_by: ID of Panic Frame that froze this
-            
-        Returns:
-            Inserted record
-        """
+    ) -> PersistenceResponse:
+        """Insert a smart contract transaction row."""
+
+        client = self._ensure_client()
         record = {
             'txn_type': txn_type,
             'from_state': from_state,
@@ -252,9 +333,19 @@ class SupabaseClient:
             'frozen_by': frozen_by,
             'metadata': {}
         }
-        
-        return record
-    
+
+        result = await self._execute_with_retry(
+            lambda: client.table('smart_contract_txns').insert(record).execute(),
+            'smart_contract_txns.insert'
+        )
+        row = self._extract_first_row(result)
+        return PersistenceResponse(
+            table='smart_contract_txns',
+            status_code=getattr(result, 'status_code', 200),
+            inserted_id=row.get('id'),
+            payload=row or record
+        )
+
     async def get_current_coherence_status(self) -> Optional[Dict]:
         """
         Get current system coherence status
@@ -397,12 +488,13 @@ class SpiralOSBackend:
             Complete processing result
         """
         # 1. Store Ache event
-        ache_event = await self.supabase.insert_ache_event(
+        ache_event_response = await self.supabase.insert_ache_event(
             source=source,
             content=content,
             ache_level=ache_level
         )
-        
+        ache_event = ache_event_response.payload
+
         # 2. Calculate and store ScarIndex
         ache_measurement = AcheMeasurement(
             before=ache_level,
@@ -418,18 +510,19 @@ class SpiralOSBackend:
             ache=ache_measurement
         )
         
-        scarindex_record = await self.supabase.insert_scarindex_calculation(
+        scarindex_record_response = await self.supabase.insert_scarindex_calculation(
             result=scarindex_result,
-            ache_event_id=ache_event.get('id')
+            ache_event_id=ache_event_response.inserted_id
         )
-        
+        scarindex_record = scarindex_record_response.payload
+
         # 3. Create VaultNode
         import hashlib
         state_hash = hashlib.sha256(
             json.dumps(scarindex_record, sort_keys=True).encode()
         ).hexdigest()
-        
-        vaultnode = await self.supabase.insert_vaultnode(
+
+        vaultnode_response = await self.supabase.insert_vaultnode(
             node_type='scarindex',
             reference_id=scarindex_result.id,
             state_hash=state_hash,
@@ -440,6 +533,7 @@ class SpiralOSBackend:
                 'result': scarindex_record
             }
         )
+        vaultnode = vaultnode_response.payload
         
         # 4. Commit to GitHub
         github_audit = await self.github.create_audit_trail(
@@ -456,7 +550,7 @@ class SpiralOSBackend:
             )
             
             await self.supabase.insert_panic_frame(panic_frame)
-        
+
         return {
             'ache_event': ache_event,
             'scarindex': scarindex_record,

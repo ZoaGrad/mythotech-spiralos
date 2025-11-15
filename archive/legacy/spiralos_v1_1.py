@@ -1,3 +1,4 @@
+# ARCHIVE: Deprecated as of ΔΩ.147.3 — use core/spiralos.py
 """
 SpiralOS v1.1 - Enhanced Mythotechnical Synthesis System
 

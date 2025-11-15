@@ -1,9 +1,38 @@
 // Sovereignty Metrics Dashboard - Main Logic
-// VaultNode Seal: ΔΩ.147.3
+// VaultNode Seal: ΔΩ.147.C
 
 // Supabase Configuration
-const SUPABASE_URL = 'https://xlmrnjatawslawquwzpf.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhsbXJuamF0YXdzbGF3cXV3enBmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzA5MzA3MTAsImV4cCI6MjA0NjUwNjcxMH0.xoKGIdE7sL5AkGJjhJdLNfQ7JLBKgOD6P5HGFj7JjQU';
+const ENV = (() => {
+    try {
+        return import.meta.env || {};
+    } catch (err) {
+        console.warn('import.meta.env unavailable, falling back to window.__SPIRALOS_ENV__');
+        return window.__SPIRALOS_ENV__ || {};
+    }
+})();
+const SUPABASE_URL = ENV.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = ENV.VITE_SUPABASE_ANON_KEY;
+
+function failMissingEnv(variableName) {
+    const message = `Missing ${variableName}. Copy .env.example to .env.local and provide the required Supabase credentials.`;
+    console.error(message);
+    document.addEventListener('DOMContentLoaded', () => {
+        updateStatus('error', 'Missing credentials');
+        const banner = document.getElementById('statusText');
+        if (banner) {
+            banner.textContent = 'Supabase credentials missing';
+        }
+    });
+    throw new Error(message);
+}
+
+if (!SUPABASE_URL) {
+    failMissingEnv('VITE_SUPABASE_URL');
+}
+
+if (!SUPABASE_ANON_KEY) {
+    failMissingEnv('VITE_SUPABASE_ANON_KEY');
+}
 
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
