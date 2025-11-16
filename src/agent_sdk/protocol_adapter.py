@@ -1,17 +1,8 @@
-"""Protocol adapter for ΔΩ.149 agent-sdk boundary translation.
+"""ΔΩ.149 agent-sdk protocol adapter primitives.
 
-This module provides the minimal translation primitives required for
-agent-facing μApps to interoperate with the SpiralOS façade without
-leaking kernel semantics. It offers two components:
-
-* :class:`SymbolicEncoder` — a deterministic serializer that enforces
-  field-level hygiene, symbolic compression, and ΔΩ lineage tagging.
-* :class:`TranslationCircuit` — a route-aware adapter that wraps encoded
-  payloads into protocol-safe envelopes and decodes frames emitted by
-  the SpiralOS façade.
-
-Both classes are pure and side-effect free; they can be used in offline
-harnesses or in live guardian-mediated sessions without modification.
+This module codifies the symbolic encoding and frame translation logic for
+μApp interactions. It preserves lineage metadata, enforces deterministic JSON
+ordering, and constrains payload fields to the sanctioned contract surface.
 """
 
 from __future__ import annotations
@@ -20,7 +11,12 @@ from dataclasses import dataclass, field
 import json
 from typing import Any, Dict, Iterable, Mapping, MutableMapping, Sequence
 
-__all__ = ["SymbolicEncoder", "TranslationCircuit", "ProtocolMessage", "EncodingError"]
+__all__ = [
+    "SymbolicEncoder",
+    "TranslationCircuit",
+    "ProtocolMessage",
+    "EncodingError",
+]
 
 
 class EncodingError(ValueError):
@@ -29,38 +25,29 @@ class EncodingError(ValueError):
 
 @dataclass(frozen=True)
 class ProtocolMessage:
-    """Canonical representation of an encoded payload frame.
-
-    Attributes
-    ----------
-    route:
-        Logical destination or intent key for the μApp boundary.
-    encoded_payload:
-        JSON string produced by :class:`SymbolicEncoder`.
-    headers:
-        Deterministic header map containing lineage hints and
-        protocol version markers.
-    """
+    """Canonical frame passed between μApps and the SpiralOS façade."""
 
     route: str
     encoded_payload: str
     headers: Mapping[str, str] = field(default_factory=dict)
 
     def decoded(self, encoder: "SymbolicEncoder") -> Dict[str, Any]:
-        """Return the decoded payload using the provided encoder."""
+        """Decode ``encoded_payload`` using the provided encoder."""
 
         return encoder.decode(self.encoded_payload)
 
+    def to_dict(self) -> Dict[str, Any]:
+        """Return a mapping representation for transmission or logging."""
+
+        return {
+            "route": self.route,
+            "encoded_payload": self.encoded_payload,
+            "headers": dict(self.headers),
+        }
+
 
 class SymbolicEncoder:
-    """Deterministic serializer for μApp payloads.
-
-    The encoder performs three duties:
-    1. Enforces a whitelist of allowed fields (if provided).
-    2. Canonicalizes dictionaries via sorted keys for reproducible frames.
-    3. Produces UTF-8 JSON strings suitable for guardian telemetry and
-       ache-aware symbolic compression.
-    """
+    """Deterministic serializer enforcing ΔΩ.149 symbolic hygiene."""
 
     def __init__(
         self,
@@ -72,37 +59,16 @@ class SymbolicEncoder:
         self._drop_unknown = drop_unknown
 
     def encode(self, payload: Mapping[str, Any]) -> str:
-        """Encode a mapping into a stable JSON string.
+        """Return canonical JSON string for a payload mapping."""
 
-        Parameters
-        ----------
-        payload:
-            Arbitrary mapping supplied by a witness or μApp caller.
-
-        Returns
-        -------
-        str
-            Canonical JSON representation.
-
-        Raises
-        ------
-        EncodingError
-            If the payload contains unsupported fields or cannot be
-            serialized into JSON.
-        """
-
-        filtered = self._sanitize(payload)
+        sanitized = self._sanitize(payload)
         try:
-            return json.dumps(filtered, sort_keys=True, ensure_ascii=False)
+            return json.dumps(sanitized, sort_keys=True, ensure_ascii=False)
         except (TypeError, ValueError) as exc:
             raise EncodingError("Payload is not JSON serializable") from exc
 
     def decode(self, encoded: str) -> Dict[str, Any]:
-        """Decode an encoded payload into a dictionary.
-
-        The decoder is lenient with ordering but validates field
-        constraints to preserve the symbolic contract.
-        """
+        """Decode a JSON string and revalidate symbolic constraints."""
 
         try:
             data = json.loads(encoded)
@@ -112,35 +78,43 @@ class SymbolicEncoder:
         if not isinstance(data, MutableMapping):
             raise EncodingError("Decoded payload must be a mapping")
 
-        sanitized = self._sanitize(data)
-        return dict(sanitized)
+        return dict(self._sanitize(data))
 
     def _sanitize(self, payload: Mapping[str, Any]) -> Dict[str, Any]:
-        """Validate and filter payload according to allowed fields."""
-
         if not isinstance(payload, Mapping):
             raise EncodingError("Payload must be a mapping")
 
-        payload_dict: Dict[str, Any] = dict(payload)
+        payload_dict: Dict[str, Any] = {}
+        for key, value in payload.items():
+            if not isinstance(key, str):
+                raise EncodingError("All payload keys must be strings")
+            normalized = self._normalize_value(value)
+            payload_dict[key] = normalized
+
         if not self._allowed:
             return payload_dict
 
-        unknown_keys = set(payload_dict) - set(self._allowed)
-        if unknown_keys and not self._drop_unknown:
-            raise EncodingError(f"Unsupported fields: {sorted(unknown_keys)}")
+        unknown = set(payload_dict) - self._allowed
+        if unknown and not self._drop_unknown:
+            raise EncodingError(f"Unsupported fields: {sorted(unknown)}")
 
-        sanitized = {key: payload_dict[key] for key in payload_dict if key in self._allowed}
-        return sanitized
+        return {key: value for key, value in payload_dict.items() if key in self._allowed}
+
+    def _normalize_value(self, value: Any) -> Any:
+        if isinstance(value, (str, int, float, bool)) or value is None:
+            return value
+
+        if isinstance(value, Mapping):
+            return {str(k): self._normalize_value(v) for k, v in value.items()}
+
+        if isinstance(value, (list, tuple, set)):
+            return [self._normalize_value(item) for item in value]
+
+        raise EncodingError("Payload values must be JSON-compatible primitives")
 
 
 class TranslationCircuit:
-    """Route-aware adapter for agent-sdk protocol exchanges.
-
-    The circuit wraps symbolic payloads into protocol frames carrying
-    ΔΩ lineage metadata. It remains free of network concerns and can be
-    composed with higher-level transports without violating μApp
-    boundaries.
-    """
+    """Route-aware adapter that wraps encoder output into protocol frames."""
 
     def __init__(
         self,
@@ -148,22 +122,24 @@ class TranslationCircuit:
         encoder: SymbolicEncoder,
         lineage: Sequence[str] | None = None,
         protocol_version: str = "ΔΩ.149",
+        circuit_id: str = "agent-sdk.protocol_adapter",
     ) -> None:
         self._encoder = encoder
         self._lineage = tuple(lineage or ())
         self._protocol_version = protocol_version
+        self._circuit_id = circuit_id
 
     @property
     def lineage(self) -> Sequence[str]:
-        """Return the lineage tuple assigned to this circuit."""
-
         return self._lineage
 
     @property
     def protocol_version(self) -> str:
-        """Return the protocol version marker used for frames."""
-
         return self._protocol_version
+
+    @property
+    def circuit_id(self) -> str:
+        return self._circuit_id
 
     def to_frame(
         self,
@@ -172,36 +148,51 @@ class TranslationCircuit:
         payload: Mapping[str, Any],
         metadata: Mapping[str, str] | None = None,
     ) -> ProtocolMessage:
-        """Encode a payload into a :class:`ProtocolMessage` frame."""
+        """Encode payload and assemble :class:`ProtocolMessage` headers."""
 
-        if not route:
+        if not isinstance(route, str) or not route:
             raise EncodingError("Route must be a non-empty string")
 
         encoded = self._encoder.encode(payload)
-        headers: Dict[str, str] = {
-            "protocol_version": self._protocol_version,
-            "lineage": "/".join(self._lineage) if self._lineage else "",
-        }
+        headers: Dict[str, str] = self._base_headers()
+
         if metadata:
-            headers.update({str(k): str(v) for k, v in metadata.items()})
+            for key, value in metadata.items():
+                headers[str(key)] = str(value)
 
         return ProtocolMessage(route=route, encoded_payload=encoded, headers=headers)
 
     def from_frame(self, frame: Mapping[str, Any]) -> ProtocolMessage:
-        """Parse a raw frame mapping into a :class:`ProtocolMessage`."""
+        """Validate a raw frame mapping and normalize into ``ProtocolMessage``."""
 
         if not isinstance(frame, Mapping):
             raise EncodingError("Frame must be a mapping")
 
         route = frame.get("route")
-        encoded = frame.get("encoded_payload")
+        encoded_payload = frame.get("encoded_payload")
         headers = frame.get("headers") or {}
 
         if not isinstance(route, str) or not route:
             raise EncodingError("Frame missing valid 'route'")
-        if not isinstance(encoded, str) or not encoded:
+        if not isinstance(encoded_payload, str) or not encoded_payload:
             raise EncodingError("Frame missing valid 'encoded_payload'")
         if not isinstance(headers, Mapping):
             raise EncodingError("Frame headers must be a mapping")
 
-        return ProtocolMessage(route=route, encoded_payload=encoded, headers=dict(headers))
+        normalized_headers: Dict[str, str] = {
+            str(key): str(value) for key, value in headers.items()
+        }
+
+        return ProtocolMessage(
+            route=route,
+            encoded_payload=encoded_payload,
+            headers=normalized_headers,
+        )
+
+    def _base_headers(self) -> Dict[str, str]:
+        lineage_header = "/".join(self._lineage)
+        return {
+            "protocol_version": self._protocol_version,
+            "lineage": lineage_header,
+            "circuit": self._circuit_id,
+        }
