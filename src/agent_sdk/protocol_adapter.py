@@ -107,8 +107,11 @@ class SymbolicEncoder:
         if isinstance(value, Mapping):
             return {str(k): self._normalize_value(v) for k, v in value.items()}
 
-        if isinstance(value, (list, tuple, set)):
+        if isinstance(value, (list, tuple)):
             return [self._normalize_value(item) for item in value]
+
+        if isinstance(value, set):
+            raise EncodingError("Payload values must be JSON-compatible primitives")
 
         raise EncodingError("Payload values must be JSON-compatible primitives")
 
@@ -179,13 +182,15 @@ class TranslationCircuit:
         if not isinstance(headers, Mapping):
             raise EncodingError("Frame headers must be a mapping")
 
+        decoded_payload = self._encoder.decode(encoded_payload)
+        canonical_payload = self._encoder.encode(decoded_payload)
         normalized_headers: Dict[str, str] = {
             str(key): str(value) for key, value in headers.items()
         }
 
         return ProtocolMessage(
             route=route,
-            encoded_payload=encoded_payload,
+            encoded_payload=canonical_payload,
             headers=normalized_headers,
         )
 
