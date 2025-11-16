@@ -11,6 +11,10 @@ from unittest.mock import MagicMock
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent
+SRC_PATH = REPO_ROOT / "src"
+
+if str(SRC_PATH) not in sys.path:
+    sys.path.append(str(SRC_PATH))
 
 try:
     from core.config import reset_settings_cache
