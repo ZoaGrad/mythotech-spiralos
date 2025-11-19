@@ -1,31 +1,13 @@
-"""Immutable system event logger stored inside SQLite."""
-
-from __future__ import annotations
-
-import json
 import os
 import sqlite3
 import time
-from dataclasses import dataclass
-from typing import Any, Iterable, Optional, Union
+import json
+from typing import Optional
 
 SPIRAL_DATA_DIR = os.path.join(os.getcwd(), "spiral_data")
 VAULT_DB_PATH = os.path.join(SPIRAL_DATA_DIR, "vault.db")
 
-
-@dataclass
-class VaultEvent:
-    id: int
-    ts: float
-    event_type: str
-    delta: Optional[float]
-    payload_json: Optional[str]
-    meta_json: Optional[str]
-
-
 class VaultEventLogger:
-    """Append-only immutable event log."""
-
     def __init__(self, db_path: str = VAULT_DB_PATH):
         os.makedirs(os.path.dirname(db_path), exist_ok=True)
         self.db_path = db_path
@@ -35,8 +17,7 @@ class VaultEventLogger:
 
     def _init_schema(self) -> None:
         cur = self.conn.cursor()
-        cur.execute(
-            """
+        cur.execute("""
             CREATE TABLE IF NOT EXISTS vault_events (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 ts REAL NOT NULL,
@@ -45,46 +26,15 @@ class VaultEventLogger:
                 payload_json TEXT,
                 meta_json TEXT
             )
-            """
-        )
+        """)
         self.conn.commit()
 
-    def log_event(
-        self,
-        event_type: str,
-        delta: Optional[float] = None,
-        payload: Optional[Union[str, Dict[str, Any]]] = None,
-        meta: Optional[Union[str, Dict[str, Any]]] = None,
-    ) -> int:
+    def log_event(self, event_type: str, delta: float = None, payload_json: str = None, meta_json: str = None) -> int:
         ts = time.time()
-        payload_json = self._serialize(payload)
-        meta_json = self._serialize(meta)
         cur = self.conn.cursor()
         cur.execute(
             "INSERT INTO vault_events (ts, event_type, delta, payload_json, meta_json) VALUES (?, ?, ?, ?, ?)",
-            (ts, event_type, delta, payload_json, meta_json),
+            (ts, event_type, delta, payload_json, meta_json)
         )
         self.conn.commit()
         return cur.lastrowid
-
-    def iter_events(self) -> Iterable[VaultEvent]:
-        cur = self.conn.cursor()
-        for row in cur.execute("SELECT * FROM vault_events ORDER BY id ASC"):
-            yield VaultEvent(
-                id=row["id"],
-                ts=row["ts"],
-                event_type=row["event_type"],
-                delta=row["delta"],
-                payload_json=row["payload_json"],
-                meta_json=row["meta_json"],
-            )
-
-    def close(self) -> None:
-        self.conn.close()
-
-    def _serialize(self, data: Optional[Union[str, Dict[str, Any]]]) -> Optional[str]:
-        if data is None:
-            return None
-        if isinstance(data, str):
-            return data
-        return json.dumps(data)
