@@ -3,11 +3,15 @@ import sqlite3
 import pandas as pd
 import os
 import time
+import json
 
 # CONFIG
 st.set_page_config(page_title="SpiralOS Overwatch", layout="wide")
 st.title("🌀 SpiralOS Overwatch")
 st.markdown("Constitutional Cognitive Sovereignty | Real-Time Economic Monitoring")
+
+# Live update notice
+st.info("💡 **Live Updates**: Dashboard auto-refreshes every 3 seconds. WebSocket API available at http://localhost:8001/ws/events")
 
 # PATHS
 BASE_DIR = os.path.join(os.getcwd(), "spiral_data")
@@ -79,6 +83,8 @@ st.dataframe(get_feed(), use_container_width=True)
 st.subheader("🔐 The Logs: Vault Activity")
 st.dataframe(get_logs(), use_container_width=True)
 
-# AUTO REFRESH (The Pulse)
-if st.button("🔄 Refresh Signal"):
-    st.rerun()
+# AUTO REFRESH (The Pulse) - Auto-refresh every 3 seconds
+st.markdown("---")
+st.markdown("🔄 **Auto-refreshing every 3 seconds...**")
+time.sleep(3)
+st.rerun()
