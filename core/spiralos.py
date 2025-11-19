@@ -13,7 +13,7 @@ This system implements:
 
 import asyncio
 from datetime import datetime, timezone
-from typing import Dict, Optional
+from typing import Callable, Dict, Optional
 
 from .ache_pid_controller import AchePIDController, ScarDiffusionController
 from .coherence_protocol import AgentFusionStack
@@ -35,7 +35,13 @@ class SpiralOS:
     - VSM System 3/4 PID Controller for stability
     """
 
-    def __init__(self, target_scarindex: float = 0.7, enable_consensus: bool = True, enable_panic_frames: bool = True):
+    def __init__(
+        self,
+        target_scarindex: float = 0.7,
+        enable_consensus: bool = True,
+        enable_panic_frames: bool = True,
+        on_coherence_transmuted: Optional[Callable[[float, Dict], None]] = None,
+    ):
         """
         Initialize SpiralOS
 
@@ -62,6 +68,9 @@ class SpiralOS:
         self.current_scarindex = target_scarindex
         self.enable_consensus = enable_consensus
         self.enable_panic_frames = enable_panic_frames
+
+        # Callback integration
+        self.on_coherence_transmuted = on_coherence_transmuted
 
         # Metrics
         self.total_transmutations = 0
@@ -126,6 +135,7 @@ class SpiralOS:
 
         # Step 2: Calculate ScarIndex
         ache_measurement = AcheMeasurement(before=ache_before, after=ache_after)
+        coherence_gain = ache_measurement.coherence_gain
 
         c_i_list = [components.narrative, components.social, components.economic, components.technical]
         scarindex_result = self.oracle.calculate(
@@ -159,6 +169,25 @@ class SpiralOS:
         # Track success
         if scarindex_result.is_valid:
             self.successful_transmutations += 1
+            if self.on_coherence_transmuted and coherence_gain > 0:
+                callback_context = {
+                    "source": source,
+                    "scarindex_id": scarindex_result.id,
+                    "scarindex": scarindex_result.scarindex,
+                    "components": {
+                        "operational": components.operational,
+                        "audit": components.audit,
+                        "constitutional": components.constitutional,
+                        "symbolic": components.symbolic,
+                    },
+                    "ache": {
+                        "before": ache_before,
+                        "after": ache_after,
+                        "coherence_gain": coherence_gain,
+                    },
+                    "consensus_used": use_consensus,
+                }
+                self.on_coherence_transmuted(delta=coherence_gain, context=callback_context)
 
         # Return complete result
         return {
