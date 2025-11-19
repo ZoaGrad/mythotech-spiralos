@@ -169,6 +169,12 @@ class SpiralOS:
         # Track success
         if scarindex_result.is_valid:
             self.successful_transmutations += 1
+
+            # Trigger persistent minting callback if registered
+
+            if self.on_coherence_transmuted and coherence_gain > 0:
+
+                self.on_coherence_transmuted(delta=coherence_gain, context={"source": "spiralos_transmutation", "scar_index": self.scar_index})
             if self.on_coherence_transmuted and coherence_gain > 0:
                 callback_context = {
                     "source": source,

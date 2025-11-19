@@ -1,7 +1,7 @@
 import asyncio
 import sys
 from pathlib import Path
-from types import SimpleNamespace
+from spiral_types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
