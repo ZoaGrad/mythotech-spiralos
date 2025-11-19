@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+import json
 import os
 import sqlite3
 import time
 from dataclasses import dataclass
-from typing import Iterable, Optional
+from typing import Any, Iterable, Optional, Union
 
 SPIRAL_DATA_DIR = os.path.join(os.getcwd(), "spiral_data")
 VAULT_DB_PATH = os.path.join(SPIRAL_DATA_DIR, "vault.db")
@@ -52,10 +53,12 @@ class VaultEventLogger:
         self,
         event_type: str,
         delta: Optional[float] = None,
-        payload_json: Optional[str] = None,
-        meta_json: Optional[str] = None,
+        payload: Optional[Union[str, Dict[str, Any]]] = None,
+        meta: Optional[Union[str, Dict[str, Any]]] = None,
     ) -> int:
         ts = time.time()
+        payload_json = self._serialize(payload)
+        meta_json = self._serialize(meta)
         cur = self.conn.cursor()
         cur.execute(
             "INSERT INTO vault_events (ts, event_type, delta, payload_json, meta_json) VALUES (?, ?, ?, ?, ?)",
@@ -78,3 +81,10 @@ class VaultEventLogger:
 
     def close(self) -> None:
         self.conn.close()
+
+    def _serialize(self, data: Optional[Union[str, Dict[str, Any]]]) -> Optional[str]:
+        if data is None:
+            return None
+        if isinstance(data, str):
+            return data
+        return json.dumps(data)

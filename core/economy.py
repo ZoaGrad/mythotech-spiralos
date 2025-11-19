@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+import json
 import os
 import sqlite3
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, Optional
+from typing import Any, Dict, Iterable, Optional, Union
 
 SPIRAL_DATA_DIR = os.path.join(os.getcwd(), "spiral_data")
 ECONOMY_DB_PATH = os.path.join(SPIRAL_DATA_DIR, "economy.db")
@@ -66,11 +67,12 @@ class ScarCoinMintingEngine:
         amount: float,
         delta: float,
         reason: Optional[str] = None,
-        context_json: Optional[str] = None,
+        context: Optional[Union[str, Dict[str, Any]]] = None,
     ) -> int:
         if amount <= 0:
             return 0
         ts = time.time()
+        context_json = self._serialize_context(context)
         cur = self.conn.cursor()
         cur.execute(
             "INSERT INTO mint_events (ts, amount, delta, reason, context_json) VALUES (?, ?, ?, ?, ?)",
@@ -102,3 +104,10 @@ class ScarCoinMintingEngine:
 
     def close(self) -> None:
         self.conn.close()
+
+    def _serialize_context(self, context: Optional[Union[str, Dict[str, Any]]]) -> Optional[str]:
+        if context is None:
+            return None
+        if isinstance(context, str):
+            return context
+        return json.dumps(context)

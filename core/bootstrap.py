@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 import asyncio
-import json
 from typing import Any, Dict
 
-from core.governance.airlock import AirlockManager
+from core.airlock import AirlockManager
 from core.economy import ScarCoinMintingEngine
 from core.vault import VaultEventLogger
 from core.spiralos import SpiralOS
@@ -22,18 +21,17 @@ def main() -> None:
     def on_coherence_transmuted(delta: float, context: Dict[str, Any] | None = None) -> None:
         if delta <= 0:
             return
-        ctx_json = json.dumps(context or {})
         event_id = mint_engine.mint(
             amount=delta,
             delta=delta,
             reason="transmutation",
-            context_json=ctx_json,
+            context=context,
         )
         vault.log_event(
             "SCAR_MINT",
             delta=delta,
-            payload_json=json.dumps({"event_id": event_id, "amount": delta}),
-            meta_json=ctx_json,
+            payload={"event_id": event_id, "amount": delta},
+            meta=context,
         )
         print(f"   [✨] MINTED {delta:.4f} SCAR | Total Supply: {mint_engine.total_supply:.4f}")
 
