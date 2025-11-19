@@ -53,3 +53,7 @@ htmlcov/
 /tmp/
 artifacts/
 cache/
+
+# Local database files
+spiral_data/*.db
+spiral_data/*.db-*
