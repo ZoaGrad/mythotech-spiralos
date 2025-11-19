@@ -37,7 +37,7 @@ async def get_latest_events():
         cursor = conn.cursor()
         cursor.execute(
             "SELECT datetime(ts, 'unixepoch', 'localtime') as time, "
-            "amount, COALESCE(reason, context, 'N/A') as reason "
+            "amount, COALESCE(reason, context, 'N/A') as reason, neural_signature "
             "FROM mint_events ORDER BY ts DESC LIMIT 1"
         )
         mint_row = cursor.fetchone()
@@ -48,7 +48,7 @@ async def get_latest_events():
         cursor = conn.cursor()
         cursor.execute(
             "SELECT datetime(ts, 'unixepoch', 'localtime') as time, "
-            "event_type, payload_json "
+            "event_type, payload_json, neural_signature "
             "FROM vault_events ORDER BY ts DESC LIMIT 1"
         )
         vault_row = cursor.fetchone()
@@ -60,11 +60,13 @@ async def get_latest_events():
                 "time": mint_row[0] if mint_row else None,
                 "amount": mint_row[1] if mint_row else 0,
                 "reason": mint_row[2] if mint_row else "N/A",
+                "neural_signature": mint_row[3][:16] + "..." if mint_row and mint_row[3] else "N/A",
             } if mint_row else None,
             "vault_event": {
                 "time": vault_row[0] if vault_row else None,
                 "event_type": vault_row[1] if vault_row else "N/A",
                 "payload": vault_row[2] if vault_row else "{}",
+                "neural_signature": vault_row[3][:16] + "..." if vault_row and vault_row[3] else "N/A",
             } if vault_row else None,
         }
     except Exception as e:

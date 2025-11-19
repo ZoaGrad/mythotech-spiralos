@@ -47,7 +47,8 @@ def get_feed():
         df = pd.read_sql_query(
             "SELECT datetime(ts, 'unixepoch', 'localtime') as Time, "
             "amount as SCAR, "
-            "COALESCE(reason, context, 'N/A') as Reason "
+            "COALESCE(reason, context, 'N/A') as Reason, "
+            "SUBSTR(neural_signature, 1, 12) || '...' as Neural_Sig "
             "FROM mint_events ORDER BY ts DESC LIMIT 10", 
             conn
         )
@@ -61,7 +62,14 @@ def get_logs():
     try:
         conn = sqlite3.connect(VAULT_DB)
         # Correct Schema: vault_events
-        df = pd.read_sql_query("SELECT datetime(ts, 'unixepoch', 'localtime') as Time, event_type as Event, payload_json as Payload FROM vault_events ORDER BY ts DESC LIMIT 10", conn)
+        df = pd.read_sql_query(
+            "SELECT datetime(ts, 'unixepoch', 'localtime') as Time, "
+            "event_type as Event, "
+            "SUBSTR(payload_json, 1, 40) || '...' as Payload, "
+            "SUBSTR(neural_signature, 1, 12) || '...' as Neural_Sig "
+            "FROM vault_events ORDER BY ts DESC LIMIT 10", 
+            conn
+        )
         conn.close()
         return df
     except Exception as e:

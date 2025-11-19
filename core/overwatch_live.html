@@ -102,6 +102,9 @@
                             <div class="timestamp">${data.mint_event.time}</div>
                             <div class="amount">${data.mint_event.amount} SCAR</div>
                             <div>Reason: ${data.mint_event.reason}</div>
+                            <div style="font-size: 0.8em; color: #888; margin-top: 5px;">
+                                Neural Sig: ${data.mint_event.neural_signature}
+                            </div>
                         `;
                         document.getElementById('mint-event').innerHTML = mintHtml;
                     }
@@ -113,6 +116,9 @@
                             <div>Event: ${data.vault_event.event_type}</div>
                             <div style="font-size: 0.8em; margin-top: 5px;">
                                 Payload: ${data.vault_event.payload.substring(0, 100)}...
+                            </div>
+                            <div style="font-size: 0.8em; color: #888; margin-top: 5px;">
+                                Neural Sig: ${data.vault_event.neural_signature}
                             </div>
                         `;
                         document.getElementById('vault-event').innerHTML = vaultHtml;

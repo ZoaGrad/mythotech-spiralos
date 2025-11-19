@@ -1,4 +1,4 @@
-import os, sqlite3, time, json
+import os, sqlite3, time, json, hashlib
 SPIRAL_DATA_DIR = os.path.join(os.getcwd(), "spiral_data")
 ECONOMY_DB_PATH = os.path.join(SPIRAL_DATA_DIR, "economy.db")
 class ScarCoinMintingEngine:
@@ -7,7 +7,7 @@ class ScarCoinMintingEngine:
         self.conn = sqlite3.connect(db_path, check_same_thread=False)
         self.conn.row_factory = sqlite3.Row
         self.conn.execute("CREATE TABLE IF NOT EXISTS economy_meta (key TEXT PRIMARY KEY, value TEXT)")
-        self.conn.execute("CREATE TABLE IF NOT EXISTS mint_events (id INTEGER PRIMARY KEY, ts REAL, amount REAL, reason TEXT, context TEXT)")
+        self.conn.execute("CREATE TABLE IF NOT EXISTS mint_events (id INTEGER PRIMARY KEY, ts REAL, amount REAL, reason TEXT, context TEXT, neural_signature TEXT)")
         self.conn.execute("INSERT OR IGNORE INTO economy_meta VALUES ('total_supply', '0')")
         self._migrate_schema()
         self.conn.commit()
@@ -35,6 +35,18 @@ class ScarCoinMintingEngine:
             except sqlite3.OperationalError:
                 # Column might already exist in some cases
                 pass
+        
+        if 'neural_signature' not in columns:
+            # Add neural_signature column
+            try:
+                self.conn.execute("ALTER TABLE mint_events ADD COLUMN neural_signature TEXT")
+                # Generate signatures for existing records
+                cursor.execute("SELECT id, ts, amount FROM mint_events WHERE neural_signature IS NULL")
+                for row in cursor.fetchall():
+                    sig = hashlib.sha256(f"MINT{row[1]}{row[2]}".encode()).hexdigest()
+                    self.conn.execute("UPDATE mint_events SET neural_signature = ? WHERE id = ?", (sig, row[0]))
+            except sqlite3.OperationalError:
+                pass
     @property
     def total_supply(self):
         row = self.conn.execute("SELECT value FROM economy_meta WHERE key='total_supply'").fetchone()
@@ -47,8 +59,13 @@ class ScarCoinMintingEngine:
                 reason = context.get('source', context.get('reason', 'Ache transmutation'))
             elif isinstance(context, str):
                 reason = context
-        self.conn.execute("INSERT INTO mint_events (ts, amount, reason, context) VALUES (?, ?, ?, ?)", 
-                         (time.time(), amount, reason, json.dumps(context)))
+        
+        # Generate neural signature
+        ts = time.time()
+        neural_signature = hashlib.sha256(f"MINT{ts}{amount}".encode()).hexdigest()
+        
+        self.conn.execute("INSERT INTO mint_events (ts, amount, reason, context, neural_signature) VALUES (?, ?, ?, ?, ?)", 
+                         (ts, amount, reason, json.dumps(context), neural_signature))
         new_total = self.total_supply + amount
         self.conn.execute("UPDATE economy_meta SET value=? WHERE key='total_supply'", (str(new_total),))
         self.conn.commit()
