@@ -8,6 +8,7 @@ class ScarCoinMintingEngine:
         self.conn.row_factory = sqlite3.Row
         self.conn.execute("CREATE TABLE IF NOT EXISTS economy_meta (key TEXT PRIMARY KEY, value TEXT)")
         self.conn.execute("CREATE TABLE IF NOT EXISTS mint_events (id INTEGER PRIMARY KEY, ts REAL, amount REAL, reason TEXT, context TEXT, neural_signature TEXT)")
+        self.conn.execute("CREATE TABLE IF NOT EXISTS neural_graph (id INTEGER PRIMARY KEY, parent_sig TEXT, child_sig TEXT, ts REAL)")
         self.conn.execute("INSERT OR IGNORE INTO economy_meta VALUES ('total_supply', '0')")
         self._migrate_schema()
         self.conn.commit()
@@ -64,8 +65,18 @@ class ScarCoinMintingEngine:
         ts = time.time()
         neural_signature = hashlib.sha256(f"MINT{ts}{amount}".encode()).hexdigest()
         
+        # Get previous signature
+        prev_sig = None
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT neural_signature FROM mint_events ORDER BY ts DESC LIMIT 1")
+        row = cursor.fetchone()
+        if row and row[0]:
+            prev_sig = row[0]
+        # Insert event
         self.conn.execute("INSERT INTO mint_events (ts, amount, reason, context, neural_signature) VALUES (?, ?, ?, ?, ?)", 
                          (ts, amount, reason, json.dumps(context), neural_signature))
+        # Insert neural_graph link
+        self.conn.execute("INSERT INTO neural_graph (parent_sig, child_sig, ts) VALUES (?, ?, ?)", (prev_sig, neural_signature, ts))
         new_total = self.total_supply + amount
         self.conn.execute("UPDATE economy_meta SET value=? WHERE key='total_supply'", (str(new_total),))
         self.conn.commit()

@@ -5,6 +5,7 @@ class VaultEventLogger:
         os.makedirs(os.path.dirname(db_path), exist_ok=True)
         self.conn = sqlite3.connect(db_path, check_same_thread=False)
         self.conn.execute("CREATE TABLE IF NOT EXISTS vault_events (id INTEGER PRIMARY KEY, ts REAL, event_type TEXT, payload_json TEXT, neural_signature TEXT)")
+        self.conn.execute("CREATE TABLE IF NOT EXISTS neural_graph (id INTEGER PRIMARY KEY, parent_sig TEXT, child_sig TEXT, ts REAL)")
         self._migrate_schema()
         self.conn.commit()
     
@@ -46,6 +47,16 @@ class VaultEventLogger:
         delta = payload.get('delta', 0) if isinstance(payload, dict) else 0
         neural_signature = hashlib.sha256(f"{event_type}{ts}{delta}".encode()).hexdigest()
         
+        # Get previous signature
+        prev_sig = None
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT neural_signature FROM vault_events ORDER BY ts DESC LIMIT 1")
+        row = cursor.fetchone()
+        if row and row[0]:
+            prev_sig = row[0]
+        # Insert event
         self.conn.execute("INSERT INTO vault_events (ts, event_type, payload_json, neural_signature) VALUES (?, ?, ?, ?)", 
                          (ts, event_type, json.dumps(payload), neural_signature))
+        # Insert neural_graph link
+        self.conn.execute("INSERT INTO neural_graph (parent_sig, child_sig, ts) VALUES (?, ?, ?)", (prev_sig, neural_signature, ts))
         self.conn.commit()
