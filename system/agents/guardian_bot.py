@@ -5,7 +5,7 @@ import asyncio
 from supabase import create_client
 from holoeconomy.wi.compute_wi import calculate_wi
 
-# ΔΩ: LENS CONFIGURATION
+# ΔΩ: GUARDIAN CONFIGURATION
 intents = discord.Intents.default()
 intents.message_content = True 
 bot = commands.Bot(command_prefix="!", intents=intents)
