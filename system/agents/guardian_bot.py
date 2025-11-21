@@ -3,6 +3,7 @@ from discord.ext import commands
 import os
 import asyncio
 from supabase import create_client
+from holoeconomy.wi.compute_wi import calculate_wi
 
 # ΔΩ: LENS CONFIGURATION
 intents = discord.Intents.default()
@@ -38,6 +39,40 @@ async def status(ctx):
             await ctx.send(">> [LENS] LEDGER EMPTY.")
     except Exception as e:
         await ctx.send(f"ERROR: {e}")
+
+@bot.command(name="log")
+async def log_work(ctx, volume: int, complexity: float, *, description: str):
+        """
+            ΔΩ: MANUAL INJECTION
+                Usage: !log [volume] [complexity] [description]
+                    Example: !log 1 5.0 "Strategic Planning Session"
+                        """
+        print(f">> [LENS] LOG REQUEST: Vol={volume} Cpx={complexity} Desc={description}")
+
+    try:
+                # 1. Calculate Thermodynamics
+                final_wi = calculate_wi(volume, complexity, 0.1)
+
+        # 2. Inscribe to Ledger
+        sb = get_supabase()
+        sb.table("attestations").insert({
+                        "volume": volume,
+                        "complexity": complexity,
+                        "entropy": 0.1,
+                        "source": "discord_manual",
+                        "description": description
+                    }).execute()
+
+        # 3. Report to Architect
+        embed = discord.Embed(title="ΔΩ.LEDGER_UPDATE // MANUAL", color=0x9B59B6)
+        embed.add_field(name="Energy Captured", value=f"`{final_wi:.4f}` J", inline=True)
+        embed.add_field(name="Entry", value=description, inline=False)
+        embed.set_footer(text=f"Logged by {ctx.author.name}")
+
+        await ctx.send(embed=embed)
+
+    except Exception as e:
+        await ctx.send(f"**INJECTION FAILED:** {str(e)}")
 
 async def start_guardian():
     token = os.environ.get("DISCORD_BOT_TOKEN")
