@@ -1,0 +1,23 @@
+graph TD
+    subgraph "The Reflex"
+        GH[GitHub Push] -->|Webhook| SC[Spinal Cord]
+    end
+    
+    subgraph "The Command"
+        User[User] -->|!log| Bot[Guardian Bot]
+        Bot -->|Insert| DB
+    end
+    
+    subgraph "The Truth"
+        SC -->|Calculate WI| DB[(Supabase Ledger)]
+    end
+    
+    subgraph "The Visage"
+        DB -->|Fetch Data| Dash[Dashboard]
+        Dash -->|Render| Screen[Single-Pane Glass]
+    end
+    
+    style GH fill:#f9f,stroke:#333,stroke-width:2px
+    style DB fill:#ff9,stroke:#333,stroke-width:4px
+    style Dash fill:#9ff,stroke:#333,stroke-width:2px
+    style Bot fill:#9f9,stroke:#333,stroke-width:2px
