@@ -49,18 +49,18 @@ async def log_work(ctx, volume: int, complexity: float, *, description: str):
     print(f">> [LENS] LOG REQUEST: Vol={volume} Cpx={complexity} Desc={description}")
     
     try:
-        # 1. Calculate Thermodynamics
+        # 1. Calculate Thermodynamics (For Display Only)
         final_wi = calculate_wi(volume, complexity, 0.1)
         
-        # 2. Inscribe to Ledger
+        # 2. Inscribe to Ledger (Raw Ingredients Only)
         sb = get_supabase()
         data = {
             "volume": volume,
             "complexity": complexity,
             "entropy": 0.1,
             "source": "discord_manual",
-            "description": f"[MANUAL] {description}",
-            "final_wi_score": final_wi
+            "description": f"[MANUAL] {description}"
+            # ΔΩ: REMOVED final_wi_score to respect DB Generated Column
         }
         
         sb.table("attestations").insert(data).execute()
