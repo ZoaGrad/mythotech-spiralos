@@ -8,6 +8,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'
 
 from supabase import create_client
 from holoeconomy.wi.compute_wi import calculate_wi
+from system.nerves.discord_pulse import send_pulse
 
 app = FastAPI(title="SpiralOS Spinal Cord")
 
@@ -69,6 +70,29 @@ async def handle_github_push(request: Request):
         supabase.table("attestations").insert(data).execute()
         
         print(f">> [SPINAL_CORD] TRANSMUTED: WI={final_wi} (Vol={volume}, Cpx={avg_complexity}, Ent={avg_entropy})")
+
+        # ΔΩ: THE SCREAM
+        if final_wi > 5.0:
+            severity = "GOLD"
+            emoji = "⚡"
+        elif avg_entropy > 0.5:
+            severity = "RED"
+            emoji = "🔥"
+        else:
+            severity = "PURPLE"
+            emoji = "🧬"
+
+        msg = (
+            f"**Reflex Arc Triggered** {emoji}\n"
+            f"---------------------------\n"
+            f"**Source:** GitHub Push\n"
+            f"**Volume:** {volume} | **Complexity:** {avg_complexity:.2f}\n"
+            f"**WI Energy:** `{final_wi:.4f}`\n\n"
+            f"_{commits[0]['message'][:100]}_"
+        )
+
+        # Fire and Forget (Async)
+        await send_pulse(msg, severity=severity)
         
         return {"status": "transmuted", "wi_score": final_wi}
         

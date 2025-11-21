@@ -20,6 +20,7 @@ try:
     from core.governance.shadow_witness import ShadowWitness, SystemState
     from scripts.guardian_v2 import send_discord_pulse
     from supabase import create_client, Client
+    from holoeconomy.wi.compute_wi import fetch_latest_attestation
 except ImportError as e:
     print(f"❌ CRITICAL: Import failed. {e}")
     print("   Ensure you are running this from the project root or that paths are correct.")
@@ -56,41 +57,25 @@ def get_poetic_status(scar_index: float, state: str) -> str:
 
 def get_real_scar_index() -> Tuple[Optional[float], Optional[str], str]:
     """
-    Connects to Supabase and fetches the latest ScarIndex.
+    Connects to the Work Interaction (WI) Engine to calculate the ScarIndex.
     Returns (scar_index, narrative_status, state_color)
     """
-    url: str = os.environ.get("SUPABASE_URL")
-    key: str = os.environ.get("SUPABASE_SERVICE_KEY") or os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_KEY")
-
-    if not url or not key:
-        print(f">>> [ERROR] Supabase credentials missing. URL found: {bool(url)}, Key found: {bool(key)}")
-        return None, None, "GRAY"
-
     try:
-        print(">>> [CONNECT] Establishing Uplink to Supabase...")
-        supabase: Client = create_client(url, key)
+        # ΔΩ: Fetching thermodynamic work energy
+        print(">>> [CONNECT] Bridging to Work Interaction Engine...")
+        data = fetch_latest_attestation()
+        wi_score = data.get("current_wi", 0.0)
         
-        # Query the 'scar_index' table for the latest entry
-        response = supabase.table("scar_index").select("*").order("created_at", desc=True).limit(1).execute()
+        # Normalize: Assume a WI of 20 is a "Perfect 1.0" day for now
+        normalized_index = min(wi_score / 20.0, 1.0)
         
-        if not response.data:
-            print(">>> [WARNING] No data found in 'scar_index' table.")
-            return None, None, "GRAY"
-            
-        record = response.data[0]
-        # Try to find the value column
-        val = record.get("value") or record.get("index") or record.get("scar_index")
-        narrative = record.get("narrative_status")
+        print(f">>> [WI_ENGINE] Raw WI: {wi_score} -> Normalized: {normalized_index}")
         
-        if val is None:
-             print(f">>> [ERROR] Could not find value column in record: {record.keys()}")
-             return None, None, "GRAY"
-             
-        return float(val), narrative, "OK"
+        return normalized_index, "SYSTEM_ONLINE", "GREEN"
 
     except Exception as e:
-        print(f">>> [ERROR] Supabase Uplink Failed: {e}")
-        return None, None, "GRAY"
+        print(f">>> [ERROR] WI Bridge Failed: {e}")
+        return 0.0, "ERROR", "GRAY"
 
 def main():
     print("-" * 40)
