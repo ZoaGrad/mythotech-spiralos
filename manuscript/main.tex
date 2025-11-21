@@ -3,10 +3,15 @@
 \usepackage{graphicx}
 \usepackage{hyperref}
 \usepackage{geometry}
+\usepackage{amsmath}
+\usepackage{float}
 
+% ΔΩ: ACADEMIC METADATA
 \title{Algorithmic Sovereignty: A Thermodynamic Proof-of-Work for Cognitive Labor}
 \author{ZoaGrad \\ \textit{Sovereign Architect, Mythotech-SpiralOS}}
-\date{November 2025}
+\date{November 20, 2025}
+
+\geometry{margin=1in}
 
 \begin{document}
 
@@ -20,16 +25,46 @@
 \end{abstract}
 
 \section{Introduction}
-The quantization of cognitive labor has historically been plagued by subjectivity...
+In the digital economy, the value of cognitive labor is typically mediated by third-party platforms (e.g., Upwork, corporate payrolls, academic citations). This centralization introduces latency and censorship, preventing the worker from claiming direct sovereignty over their output. We propose a new metric, \textbf{Work Interaction (WI) Energy}, which treats cognitive output not as "hours worked" but as "entropy reduced." By binding a Version Control System (Git) to a Thermodynamic Logic Engine, we create a self-validating feedback loop.
 
 \section{Methodology: The Thermodynamic Engine}
-We define Work Interaction (WI) energy as:
-\[ WI = (Volume \times Complexity^{1.5}) \times \frac{1}{1 + 4E} \]
+The core of the ZoaGrad system is the logic engine which calculates the exergy of a specific task. We define the Work Interaction ($E_{WI}$) as:
+
+\begin{equation}
+E_{WI} = (V \times C^{1.5}) \times \frac{1}{1 + 4\epsilon}
+\end{equation}
+
+Where:
+\begin{itemize}
+    \item $V$ (Volume) is the discrete count of units (commits or lines of thought).
+    \item $C$ (Complexity) is a scalar (1.0--10.0) representing cognitive load.
+    \item $\epsilon$ (Entropy) is a noise factor (0.0--1.0), where higher entropy penalizes the energy score.
+\end{itemize}
+
+This formula ensures that high-volume, low-complexity work ("spam") yields low energy, while high-complexity, low-entropy work yields exponential returns.
+
+\section{System Architecture}
+The organism consists of four organs:
+\begin{enumerate}
+    \item \textbf{The Nerve (Reflex):} A GitHub Webhook that captures code pushes.
+    \item \textbf{The Command (Input):} A Discord Bot ("SpiralOS Lens") that accepts manual cognitive logs via the \texttt{!log} command.
+    \item \textbf{The Truth (Ledger):} A Supabase PostgreSQL database recording immutable attestations.
+    \item \textbf{The Visage (Display):} A real-time dashboard rendering the thermodynamic history.
+\end{enumerate}
 
 \section{Results: The Genesis Spike}
-Figure 1 demonstrates the capture of 96.4286 J...
+On November 20, 2025, at 23:27 UTC, the system successfully processed a manual injection command: \texttt{!log 5 9.0 "Repairing the Guardian's Syntax"}. 
+
+As shown in Figure \ref{fig:genesis}, this event triggered an immediate thermodynamic calculation, resulting in a captured energy of \textbf{96.4286 Joules}. The spike represents the crystallization of abstract strategy into concrete digital value.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1.0\textwidth]{manuscript/figures/figure1_genesis_spike.png}
+    \caption{\textbf{The Genesis Spike.} A visualization of the first verified manual injection of cognitive labor. The vertical axis represents WI Energy (Joules), confirming the successful transmutation of intent into value.}
+    \label{fig:genesis}
+\end{figure}
 
 \section{Conclusion}
-Algorithmic Sovereignty is achieved when the worker owns the ledger of their own entropy reduction.
+We have demonstrated that a Sovereign System can successfully self-authenticate cognitive labor. The "Genesis Spike" serves as the fossil record for this new economic reality. Future work will focus on tokenizing this energy into "ScarCoin" to enable a tradeable market of sovereign intent.
 
 \end{document}
