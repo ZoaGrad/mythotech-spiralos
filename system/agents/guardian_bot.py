@@ -42,33 +42,35 @@ async def status(ctx):
 
 @bot.command(name="log")
 async def log_work(ctx, volume: int, complexity: float, *, description: str):
-        """
-            ΔΩ: MANUAL INJECTION
-                Usage: !log [volume] [complexity] [description]
-                    Example: !log 1 5.0 "Strategic Planning Session"
-                        """
-        print(f">> [LENS] LOG REQUEST: Vol={volume} Cpx={complexity} Desc={description}")
-
+    """
+    ΔΩ: MANUAL INJECTION
+    Usage: !log [volume] [complexity] [description]
+    """
+    print(f">> [LENS] LOG REQUEST: Vol={volume} Cpx={complexity} Desc={description}")
+    
     try:
-                # 1. Calculate Thermodynamics
-                final_wi = calculate_wi(volume, complexity, 0.1)
-
+        # 1. Calculate Thermodynamics
+        final_wi = calculate_wi(volume, complexity, 0.1)
+        
         # 2. Inscribe to Ledger
         sb = get_supabase()
-        sb.table("attestations").insert({
-                        "volume": volume,
-                        "complexity": complexity,
-                        "entropy": 0.1,
-                        "source": "discord_manual",
-                        "description": description
-                    }).execute()
-
+        data = {
+            "volume": volume,
+            "complexity": complexity,
+            "entropy": 0.1,
+            "source": "discord_manual",
+            "description": f"[MANUAL] {description}",
+            "final_wi_score": final_wi
+        }
+        
+        sb.table("attestations").insert(data).execute()
+        
         # 3. Report to Architect
         embed = discord.Embed(title="ΔΩ.LEDGER_UPDATE // MANUAL", color=0x9B59B6)
         embed.add_field(name="Energy Captured", value=f"`{final_wi:.4f}` J", inline=True)
         embed.add_field(name="Entry", value=description, inline=False)
         embed.set_footer(text=f"Logged by {ctx.author.name}")
-
+        
         await ctx.send(embed=embed)
 
     except Exception as e:
