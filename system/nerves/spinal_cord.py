@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Request, HTTPException
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 import os
 import sys
@@ -11,6 +12,23 @@ from holoeconomy.wi.compute_wi import calculate_wi
 from system.nerves.discord_pulse import send_pulse
 
 app = FastAPI(title="SpiralOS Spinal Cord")
+
+@app.get("/", response_class=HTMLResponse)
+async def read_root():
+    with open("system/interface/dashboard.html", "r") as f:
+        return f.read()
+
+@app.get("/api/pulse")
+async def get_pulse():
+    url = os.environ.get("SUPABASE_URL")
+    key = os.environ.get("SUPABASE_KEY")
+    if not url or not key:
+        raise HTTPException(status_code=500, detail="Missing Supabase credentials")
+    
+    supabase = create_client(url, key)
+    # Fetch last 30 attestations
+    response = supabase.table("attestations").select("*").order("created_at", desc=True).limit(30).execute()
+    return response.data
 
 @app.post("/webhook/github")
 async def handle_github_push(request: Request):
