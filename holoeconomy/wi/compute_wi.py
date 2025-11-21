@@ -11,7 +11,7 @@ load_dotenv()
 
 # --- Environment Setup ---
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
-SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_KEY")
 
 if not SUPABASE_URL or not SUPABASE_KEY:
     raise ValueError("Supabase credentials not found in environment variables.")
@@ -160,6 +160,58 @@ def store_metrics(metrics: dict):
         print(f"Error storing metrics: {e}")
         return None
 
+
+from typing import Dict
+
+def fetch_latest_attestation() -> Dict[str, float]:
+    """
+    Fetches the most recent 'Proof of Work' from the live Supabase ledger.
+    """
+    try:
+        url = os.environ.get("SUPABASE_URL")
+        key = os.environ.get("SUPABASE_KEY")
+        if not url or not key:
+            print(">> [WI_ENGINE] MISSING SUPABASE CREDENTIALS")
+            return {"current_wi": 0.0}
+
+        supabase: Client = create_client(url, key)
+        
+        # Fetch the latest entry
+        response = supabase.table("attestations")\
+            .select("final_wi_score, volume, complexity")\
+            .order("created_at", desc=True)\
+            .limit(1)\
+            .execute()
+        
+        if response.data and len(response.data) > 0:
+            latest = response.data[0]
+            print(f">> [WI_ENGINE] LEDGER READ: {latest}")
+            return {
+                "current_wi": float(latest.get("final_wi_score", 0.0)),
+                "volume": latest.get("volume")
+            }
+        else:
+            print(">> [WI_ENGINE] LEDGER EMPTY")
+            return {"current_wi": 0.0}
+            
+    except Exception as e:
+        print(f">> [WI_ENGINE] CONNECTION FAILED: {e}")
+        return {"current_wi": 0.0}
+
+
+def calculate_wi(volume: int, complexity: float, entropy: float) -> float:
+    """
+    Calculates the WI Score based on Volume, Complexity, and Entropy.
+    Mirrors the generated column logic in the 'attestations' table.
+    
+    Formula: (Volume * (Complexity ^ 1.5)) * (1 / (1 + (Entropy * 4)))
+    """
+    # Clamp complexity between 0.1 and 10.0
+    clamped_complexity = max(0.1, min(complexity, 10.0))
+    
+    # Calculate
+    score = (volume * (clamped_complexity ** 1.5)) * (1.0 / (1.0 + (entropy * 4)))
+    return score
 
 if __name__ == "__main__":
     print("🌀 Starting Witness Diversity Index (Wᵢ) Calculation...")
