@@ -1,0 +1,172 @@
+name: SpiralOS Self-Healing Pipeline
+on:
+  workflow_run:
+    workflows: ["SpiralOS Activation Pipeline"]
+    types: [completed]
+  schedule:
+    - cron: '*/15 * * * *'  # Run every 15 minutes
+  workflow_dispatch:
+
+jobs:
+  health_check:
+    runs-on: ubuntu-latest
+    name: System Health Diagnosis
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Check Database Connection
+        id: db_check
+        run: |
+          python -c "
+          import os, sys
+          try:
+            import psycopg2
+            conn = psycopg2.connect(
+              host=os.environ.get('SUPABASE_HOST'),
+              user=os.environ.get('SUPABASE_USER'),
+              password=os.environ.get('SUPABASE_PASSWORD'),
+              database='postgres'
+            )
+            print('Database connection successful')
+            conn.close()
+          except Exception as e:
+            print(f'Database connection failed: {e}')
+            sys.exit(1)
+          "
+        env:
+          SUPABASE_HOST: ${{ secrets.SUPABASE_HOST }}
+          SUPABASE_USER: ${{ secrets.SUPABASE_USER }}
+          SUPABASE_PASSWORD: ${{ secrets.SUPABASE_PASSWORD }}
+
+      - name: Check RPC Reachability
+        id: rpc_check
+        run: |
+          python -c "
+          import requests, os
+          try:
+            response = requests.post(
+              os.environ.get('ETH_RPC_URL'),
+              json={'jsonrpc':'2.0', 'method':'eth_chainId', 'params':[], 'id':1},
+              timeout=10
+            )
+            if response.status_code == 200:
+              print('RPC endpoint healthy')
+            else:
+              print(f'RPC endpoint returned {response.status_code}')
+              exit(1)
+          except Exception as e:
+            print(f'RPC check failed: {e}')
+            exit(1)
+          "
+        env:
+          ETH_RPC_URL: ${{ secrets.ETH_RPC_URL }}
+
+      - name: Send Discord Heartbeat
+        if: always()
+        run: |
+          python -c "
+          import requests, os
+          webhook = os.environ.get('DISCORD_WEBHOOK')
+          status = 'healthy' if '${{ steps.db_check.outcome }}' == 'success' else 'degraded'
+          requests.post(webhook, json={
+            'content': f'SpiralOS Heartbeat: System {status}',
+            'embeds': [{
+              'title': 'SpiralOS Health Report',
+              'description': f'Database: {status}\nRPC: ${{{{ steps.rpc_check.outcome }}}}'  
+            }]
+          })
+          "
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+
+  auto_remediate:
+    needs: health_check
+    if: failure()
+    runs-on: ubuntu-latest
+    name: Auto-Remediation Handler
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Restart Failed Services
+        run: |
+          python -c "
+          import subprocess, sys
+          services = ['database', 'rpc', 'cache']
+          for svc in services:
+            try:
+              result = subprocess.run([f'systemctl', 'restart', f'spiralos-{svc}'], capture_output=True)
+              print(f'{svc} restart: {result.returncode}')
+            except:
+              print(f'Could not restart {svc}')
+          "
+
+      - name: Clear Database Locks
+        run: |
+          python -c "
+          import os, psycopg2
+          try:
+            conn = psycopg2.connect(
+              host=os.environ.get('SUPABASE_HOST'),
+              user=os.environ.get('SUPABASE_USER'),
+              password=os.environ.get('SUPABASE_PASSWORD'),
+              database='postgres'
+            )
+            cur = conn.cursor()
+            cur.execute('SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE state = \'idle\';')
+            conn.commit()
+            conn.close()
+            print('Cleared idle connections')
+          except Exception as e:
+            print(f'Cleanup failed: {e}')
+          "
+        env:
+          SUPABASE_HOST: ${{ secrets.SUPABASE_HOST }}
+          SUPABASE_USER: ${{ secrets.SUPABASE_USER }}
+          SUPABASE_PASSWORD: ${{ secrets.SUPABASE_PASSWORD }}
+
+      - name: Trigger Recovery Workflow
+        run: |
+          gh workflow run spiralos_activate.yml --ref main
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log Recovery Event
+        if: success()
+        run: |
+          python -c "
+          import os, psycopg2, json
+          from datetime import datetime
+          try:
+            conn = psycopg2.connect(
+              host=os.environ.get('SUPABASE_HOST'),
+              user=os.environ.get('SUPABASE_USER'),
+              password=os.environ.get('SUPABASE_PASSWORD'),
+              database='postgres'
+            )
+            cur = conn.cursor()
+            cur.execute(
+              'INSERT INTO telemetry_events (agent_id, event_type, success_state, metadata) VALUES (%s, %s, %s, %s)',
+              ('selfheal_agent', 'auto_recovery', True, json.dumps({'workflow': 'selfheal', 'timestamp': datetime.now().isoformat()}))
+            )
+            conn.commit()
+            conn.close()
+            print('Recovery event logged')
+          except Exception as e:
+            print(f'Failed to log event: {e}')
+          "
+        env:
+          SUPABASE_HOST: ${{ secrets.SUPABASE_HOST }}
+          SUPABASE_USER: ${{ secrets.SUPABASE_USER }}
+          SUPABASE_PASSWORD: ${{ secrets.SUPABASE_PASSWORD }}

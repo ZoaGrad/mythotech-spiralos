@@ -1,0 +1,91 @@
+{
+  "version": "2.0",
+  "agent": "Comet",
+  "description": "Autonomous Operator Layer for SpiralOS — Tier 2 Autonomy",
+  "default_env": {
+    "SUPABASE_URL": "${SUPABASE_URL}",
+    "SUPABASE_SERVICE_KEY": "${SUPABASE_SERVICE_KEY}",
+    "DISCORD_TOKEN": "${DISCORD_TOKEN}",
+    "ALCHEMY_API_KEY": "${ALCHEMY_API_KEY}",
+    "POLYGON_RPC": "${POLYGON_RPC}"
+  },
+  "logging": {
+    "mode": "structured",
+    "level": "info",
+    "destination": "supabase:functions/v1/telemetry_logger",
+    "metadata": {
+      "agent_id": "comet",
+      "context": "autonomy_cycle"
+    }
+  },
+  "tasks": [
+    {
+      "id": "governance_digest",
+      "name": "Generate Governance Digest",
+      "schedule": "0 9 * * *",
+      "command": "python scripts/gen_gov_digest.py",
+      "description": "Summarize daily commits and push digest to /docs/governance/reports/",
+      "on_failure": "log"
+    },
+    {
+      "id": "oracle_check",
+      "name": "ScarIndex Oracle Recalibration",
+      "schedule": "0 */6 * * *",
+      "command": "python scripts/scarindex_monitor.py",
+      "description": "Query ScarIndexOracle; recalibrate if drift > 0.05",
+      "on_failure": "log"
+    },
+    {
+      "id": "telemetry_plot",
+      "name": "Render Telemetry Graph",
+      "schedule": "*/60 * * * *",
+      "command": "python scripts/plot_telemetry.py",
+      "description": "Fetch telemetry_events and render rolling 24-hour coherence chart",
+      "on_failure": "retry"
+    },
+    {
+      "id": "security_audit",
+      "name": "Security Autoguard",
+      "schedule": "0 2 * * *",
+      "command": "python scripts/security_autoguard.py",
+      "description": "Check Supabase RLS and secret integrity; open GitHub issue if anomaly",
+      "on_failure": "alert"
+    },
+    {
+      "id": "agent_update",
+      "name": "Agent Model Version Check",
+      "schedule": "0 6 * * 1",
+      "command": "python scripts/check_agent_versions.py",
+      "description": "Compare model versions (GPT-5, DeepSeek, etc.) and open PR if improved",
+      "on_failure": "log"
+    },
+    {
+      "id": "selfheal_reflection",
+      "name": "Self-Healing Reflection Log",
+      "schedule": "*/15 * * * *",
+      "command": "python scripts/selfheal_reflection.py",
+      "description": "Scrape latest selfheal logs and post summaries to Supabase reflection_logs",
+      "on_failure": "log"
+    },
+    {
+      "id": "witness_dashboard_refresh",
+      "name": "Refresh Witness Dashboard",
+      "schedule": "0 */12 * * *",
+      "command": "npm run build && npx vercel deploy --prod --yes",
+      "description": "Regenerate and redeploy the Witness Dashboard front-end",
+      "on_failure": "retry"
+    }
+  ],
+  "safety": {
+    "max_parallel_tasks": 3,
+    "max_retries": 2,
+    "cooldown_seconds": 30,
+    "fail_safe": "disable_and_notify"
+  },
+  "notifications": {
+    "discord_channel": "system-alerts",
+    "webhook": "${DISCORD_WEBHOOK_URL}",
+    "on_success": false,
+    "on_failure": true
+  }
+}

@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SpiralOS Overwatch - Live Feed</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #0a0e27;
+            color: #00ff88;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            color: #00ffff;
+            text-shadow: 0 0 10px #00ffff;
+        }
+        .status {
+            text-align: center;
+            margin: 20px 0;
+            padding: 10px;
+            border: 1px solid #00ff88;
+            border-radius: 5px;
+        }
+        .connected { background: #002200; }
+        .disconnected { background: #220000; color: #ff4444; }
+        .events {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .event-box {
+            border: 1px solid #00ff88;
+            padding: 15px;
+            border-radius: 5px;
+            background: #0f1729;
+        }
+        .event-box h2 {
+            margin-top: 0;
+            color: #00ffff;
+        }
+        .event-data {
+            margin: 10px 0;
+            padding: 10px;
+            background: #1a1f3a;
+            border-left: 3px solid #00ff88;
+        }
+        .timestamp {
+            color: #888;
+            font-size: 0.9em;
+        }
+        .amount {
+            font-size: 1.5em;
+            color: #ffaa00;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>🌀 SpiralOS Overwatch - Live Feed</h1>
+    
+    <div id="status" class="status disconnected">
+        ⚠️ Connecting to WebSocket...
+    </div>
+    
+    <div class="events">
+        <div class="event-box">
+            <h2>💰 Latest Mint Event</h2>
+            <div id="mint-event" class="event-data">
+                Waiting for data...
+            </div>
+        </div>
+        
+        <div class="event-box">
+            <h2>🔐 Latest Vault Event</h2>
+            <div id="vault-event" class="event-data">
+                Waiting for data...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let ws;
+        
+        function connect() {
+            ws = new WebSocket('ws://localhost:8001/ws/events');
+            
+            ws.onopen = function() {
+                document.getElementById('status').className = 'status connected';
+                document.getElementById('status').innerHTML = '✅ Connected to SpiralOS Overwatch';
+            };
+            
+            ws.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                
+                if (data.type === 'update') {
+                    // Update mint event
+                    if (data.mint_event) {
+                        const mintHtml = `
+                            <div class="timestamp">${data.mint_event.time}</div>
+                            <div class="amount">${data.mint_event.amount} SCAR</div>
+                            <div>Reason: ${data.mint_event.reason}</div>
+                            <div style="font-size: 0.8em; color: #888; margin-top: 5px;">
+                                Neural Sig: ${data.mint_event.neural_signature}
+                            </div>
+                        `;
+                        document.getElementById('mint-event').innerHTML = mintHtml;
+                    }
+                    
+                    // Update vault event
+                    if (data.vault_event) {
+                        const vaultHtml = `
+                            <div class="timestamp">${data.vault_event.time}</div>
+                            <div>Event: ${data.vault_event.event_type}</div>
+                            <div style="font-size: 0.8em; margin-top: 5px;">
+                                Payload: ${data.vault_event.payload.substring(0, 100)}...
+                            </div>
+                            <div style="font-size: 0.8em; color: #888; margin-top: 5px;">
+                                Neural Sig: ${data.vault_event.neural_signature}
+                            </div>
+                        `;
+                        document.getElementById('vault-event').innerHTML = vaultHtml;
+                    }
+                }
+            };
+            
+            ws.onclose = function() {
+                document.getElementById('status').className = 'status disconnected';
+                document.getElementById('status').innerHTML = '⚠️ Disconnected. Reconnecting...';
+                setTimeout(connect, 3000);
+            };
+            
+            ws.onerror = function(error) {
+                console.error('WebSocket error:', error);
+            };
+        }
+        
+        connect();
+    </script>
+</body>
+</html>

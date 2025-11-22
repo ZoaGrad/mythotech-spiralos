@@ -1,0 +1,102 @@
+{
+  "generated_at": "2025-11-15T00:06:41Z",
+  "overall_health": "attention_required",
+  "findings": [
+    {
+      "id": "COD-001",
+      "severity": "critical",
+      "component": "ScarCoin Bridge API",
+      "summary": "Mint/burn endpoints accept any origin with no authentication or rate limiting, enabling unauthorized ScarCoin issuance and VaultNode spam.",
+      "file": "holoeconomy/scarcoin_bridge_api.py",
+      "line_range": "111-134"
+    },
+    {
+      "id": "COD-002",
+      "severity": "high",
+      "component": "Sovereignty Dashboard",
+      "summary": "A long-lived Supabase anon key is embedded in the public client bundle, exposing credentials to scraping and preventing rotation.",
+      "file": "apps/sovereignty-dashboard/main.js",
+      "line_range": "4-10"
+    },
+    {
+      "id": "COD-003",
+      "severity": "medium",
+      "component": "Supabase Integration Client",
+      "summary": "insert_* helpers return placeholder records without making HTTP/database calls, so production runs silently drop Ache/ScarIndex/VaultNode data.",
+      "file": "core/supabase_integration.py",
+      "line_range": "30-169"
+    },
+    {
+      "id": "COD-004",
+      "severity": "medium",
+      "component": "GitHub Webhook Edge Function",
+      "summary": "Each commit triggers multiple sequential Supabase selects/upserts (N+1 pattern) which will hit rate limits on busy repos; batching or RPC offload is needed.",
+      "file": "supabase/functions/github-webhook/index.ts",
+      "line_range": "185-216"
+    },
+    {
+      "id": "COD-005",
+      "severity": "low",
+      "component": "Legacy SpiralOS v1.1",
+      "summary": "Obsolete orchestrator remains in-tree without clear scope, increasing drift versus the actively maintained v1.3 core.",
+      "file": "core/spiralos_v1_1.py",
+      "line_range": "1-42"
+    }
+  ],
+  "dataflow": [
+    {
+      "from": "GitHub & Guardian gateways",
+      "to": "Supabase Edge Functions",
+      "channels": [
+        "gateway-telemetry",
+        "github-webhook"
+      ]
+    },
+    {
+      "from": "Supabase tables",
+      "to": "ScarIndex / SpiralOS core",
+      "channels": [
+        "ache_events",
+        "scar_index",
+        "panic_frames"
+      ]
+    },
+    {
+      "from": "ScarIndex",
+      "to": "ScarCoin Minting Engine",
+      "channels": [
+        "proof_of_ache",
+        "oracle_signatures"
+      ]
+    },
+    {
+      "from": "ScarCoin",
+      "to": "VaultNode",
+      "channels": [
+        "mint_events",
+        "burn_events"
+      ]
+    },
+    {
+      "from": "VaultNode",
+      "to": [
+        "SystemSummary",
+        "Guardian",
+        "Liquidity Mirror",
+        "ScarWallet UI"
+      ],
+      "channels": [
+        "chain_stats",
+        "health_feeds"
+      ]
+    }
+  ],
+  "recommendations": [
+    "Restrict ScarCoin bridge endpoints with Guardian-issued API keys and rate limiting while limiting CORS to trusted origins.",
+    "Move Supabase credentials out of frontend bundles and rotate compromised keys immediately.",
+    "Replace placeholder Supabase client stubs with real persistence logic (REST or RPC) and add failure telemetry.",
+    "Batch GitHub webhook processing to avoid per-commit Supabase chatter.",
+    "Archive or clearly scope legacy SpiralOS v1.1 artifacts to reduce confusion."
+  ],
+  "ΔΩ.147.F_REPO_SNAPSHOT": "e4ee2e49da4398c1856fa463f44db01e5ba701fce2af3ea546f0e7da0cb082851aa14232de6945181fd2c466b35af987"
+}

@@ -1,0 +1,21 @@
+{
+  "name": "wi-indexer",
+  "version": "1.0.0",
+  "description": "ETL script for indexing Witness Diversity Index events.",
+  "main": "wi_indexer.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/wi_indexer.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.0.0",
+    "dotenv": "^16.0.3",
+    "ethers": "^5.7.2",
+    "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "@types/node": "^18.11.18",
+    "typescript": "^4.9.4",
+    "@types/express": "^4.17.15"
+  }
+}

@@ -1,0 +1,4 @@
+
+### Quick HTTP check (use VS Code REST Client or curl)
+GET {{GUARDIAN_EDGE_URL}}?hours=12
+Accept: application/json

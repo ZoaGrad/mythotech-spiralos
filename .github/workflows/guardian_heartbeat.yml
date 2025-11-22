@@ -1,0 +1,59 @@
+name: Guardian Heartbeat
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  heartbeat:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Check Guardian Status
+        id: guardian_check
+        run: |
+          RESPONSE=$(curl -s "${{ secrets.GUARDIAN_EDGE_URL }}?hours=24")
+          echo "response=$RESPONSE" >> $GITHUB_OUTPUT
+          
+          STATUS=$(echo "$RESPONSE" | jq -r '.scar_status // "❓"')
+          SCORE=$(echo "$RESPONSE" | jq -r '.scar_score // "N/A"')
+          
+          echo "status=$STATUS" >> $GITHUB_OUTPUT
+          echo "score=$SCORE" >> $GITHUB_OUTPUT
+      - name: Send Discord Notification
+        if: always()
+        run: |
+          STATUS="${{ steps.guardian_check.outputs.status }}"
+          SCORE="${{ steps.guardian_check.outputs.score }}"
+          RESPONSE='${{ steps.guardian_check.outputs.response }}'
+          
+          if [[ "$STATUS" == "🟢" ]]; then
+            COLOR="3066993"
+          elif [[ "$STATUS" == "🟠" ]]; then
+            COLOR="15105570"
+          else
+            COLOR="15158332"
+          fi
+          
+          # Create JSON payload file to avoid escaping issues
+          cat > /tmp/discord_payload.json << EOF
+          {
+            "embeds": [{
+              "title": "Guardian System Heartbeat",
+              "description": "Status: $STATUS\nScarIndex Score: $SCORE",
+              "color": $COLOR,
+              "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%S.000Z)",
+              "fields": [
+                {
+                  "name": "Response",
+                  "value": "\`\`\`json\n${RESPONSE}\n\`\`\`"
+                }
+              ]
+            }]
+          }
+          EOF
+          
+          curl -X POST "${{ secrets.DISCORD_WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -d @/tmp/discord_payload.json

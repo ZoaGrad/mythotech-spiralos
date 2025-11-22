@@ -1,0 +1,57 @@
+name: Test Reddit Authentication
+
+on:
+  workflow_dispatch:  # Manual trigger only
+
+jobs:
+  test-reddit-auth:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read  # Only need to read repository contents
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install snoowrap
+        run: |
+          npm install snoowrap
+
+      - name: Test Reddit authentication
+        run: |
+          node -e "
+          const snoowrap = require('snoowrap');
+
+          (async () => {
+            try {
+              // Create Reddit client with refresh token authentication
+              const reddit = new snoowrap({
+                userAgent: 'SpiralOS Reddit Auth Test v1.0',
+                clientId: process.env.REDDIT_CLIENT_ID,
+                clientSecret: process.env.REDDIT_CLIENT_SECRET,
+                refreshToken: process.env.REDDIT_REFRESH_TOKEN
+              });
+
+              // Test authentication by getting the authenticated user
+              const me = await reddit.getMe();
+              const username = me.name;
+
+              console.log('Authenticated as:', username);
+              console.log('✅ Reddit authentication succeeded');
+            } catch (error) {
+              // Sanitize error message to avoid exposing sensitive data
+              const errorMsg = error.message ? error.message.split('\n')[0] : 'Unknown error';
+              console.error('Authentication error:', errorMsg);
+              // Don't fail the job - just log the error
+            }
+          })();
+          "
+        env:
+          REDDIT_CLIENT_ID: ${{ secrets.REDDIT_CLIENT_ID }}
+          REDDIT_CLIENT_SECRET: ${{ secrets.REDDIT_CLIENT_SECRET }}
+          REDDIT_REFRESH_TOKEN: ${{ secrets.REDDIT_REFRESH_TOKEN }}

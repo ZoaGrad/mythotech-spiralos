@@ -1,0 +1,35 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+### Added
+- _TBD_
+
+### Changed
+- _TBD_
+
+### Fixed
+- _TBD_
+
+### Security
+- _TBD_
+
+## [v0.147.0] — 2025-11-15 — ΔΩ.147: Canonical Hardening & CI Restoration
+### Added
+- Repository-level `conftest.py` that seeds deterministic Guardian/Supabase defaults for the test suite and local developers.
+- Canonical ΔΩ.147.F and ΔΩ.147.G audit artifacts plus the `audit_summary.json` snapshot that records the freeze hash.
+
+### Changed
+- `core/config.py` normalization so missing Supabase or Guardian secrets fall back to safe defaults suitable for CI.
+- Repo-wide formatting via autoflake/isort/black under the refreshed `.flake8` profile to keep style and imports consistent.
+
+### Fixed
+- CI signal restored with `pytest -v`, `flake8 .`, and the stricter Bandit invocation all passing on a clean environment.
+- Tests updated to mock Guardian and Supabase interactions, removing external credential dependencies.
+
+### Security
+- Guardian heartbeat scripts, ScarIndex oracle, and ScarCoin bridge hardened with HTTPS validation, localhost-bound servers, and explicit `# nosec` annotations for justified urllib usage.
+- Bandit policy updated and high findings resolved or documented, leaving zero outstanding HIGH or MEDIUM alerts for ΔΩ.147.

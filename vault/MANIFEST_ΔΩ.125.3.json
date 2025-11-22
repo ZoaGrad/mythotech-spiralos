@@ -1,0 +1,822 @@
+{
+  "vault_id": "ΔΩ.125.3",
+  "codename": "External Validator Integration",
+  "version": "1.5.3-design",
+  "type": "Structural-Reform",
+  "status": "PLANNING",
+  "parent_vault": "ΔΩ.125.2",
+  "timestamp": "2025-10-31T03:00:00.000000Z",
+  "witness": "ZoaGrad 🜂",
+  
+  "objective": "Resolve reflexive circularity in Legitimacy Engine through external validation, operationalize C_constitutional via pluralistic justice measurement, and formalize Oracle Council weight governance with audit-traceable updates.",
+  
+  "strategic_context": {
+    "problem_statement": "ΔΩ.125.2 (Legitimacy as Alignment) suffers from three critical structural issues: (1) Reflexive circularity - system validates its own legitimacy using internal components, (2) Undefined constitutional coherence - C_constitutional lacks operational definition, (3) Weight justification gap - legitimacy formula weights are asserted without justification.",
+    "resolution_approach": "Introduce External Validator (X) for independent assessment, operationalize C_constitutional through procedural/outcome/pluralistic justice metrics, and formalize weight governance protocol with Oracle Council oversight and audit trail.",
+    "philosophical_foundation": "Legitimacy cannot be self-bootstrapped. External validation provides the Archimedean point outside the system required for authentic legitimacy assessment."
+  },
+  
+  "core_components": [
+    {
+      "id": "external_validator",
+      "name": "External Validator (X)",
+      "description": "Independent entity outside SpiralOS governance that provides external legitimacy assessment, serves as 'higher court' for legitimacy disputes, and cannot be influenced by Oracle Council, F2, or AMC.",
+      "architecture": {
+        "independence_criteria": [
+          "Separate legal entity from SpiralOS",
+          "Independent funding (not controlled by Oracle Council)",
+          "Diverse validator pool (minimum 5 validators)",
+          "Rotating membership (no validator serves > 2 years)",
+          "Conflict of interest disclosure requirements",
+          "No financial stake in SpiralOS outcomes"
+        ],
+        "assessment_methodology": {
+          "frequency": "Quarterly external legitimacy audits",
+          "scope": "Full system assessment (governance, operations, audit, constitutional alignment)",
+          "data_sources": [
+            "Public VaultNode records",
+            "Stakeholder interviews",
+            "Independent operational metrics",
+            "Third-party audit reports",
+            "Community feedback"
+          ],
+          "output": {
+            "legitimacy_score": "L_external (0-1 scale)",
+            "assessment_report": "Detailed findings and recommendations",
+            "confidence_level": "HIGH/MEDIUM/LOW based on data quality",
+            "minority_report": "Optional dissenting opinion from validators"
+          }
+        },
+        "integration_protocol": {
+          "final_legitimacy_calculation": "L_final = λ·L_internal + (1-λ)·L_external",
+          "weighting_parameter": "λ = 0.70 (internal) / 0.30 (external) - adjustable by Oracle Council with External Validator approval",
+          "divergence_threshold": "If |L_internal - L_external| > 0.20, trigger investigation",
+          "veto_power": "If L_external < 0.50, L_final capped at 0.60 (QUESTIONABLE) regardless of L_internal",
+          "recourse_mechanism": "Stakeholders can appeal to External Validator if they dispute internal legitimacy assessment"
+        }
+      },
+      "implementation_phases": [
+        {
+          "phase": 1,
+          "title": "Validator Recruitment",
+          "duration": "4-6 weeks",
+          "deliverables": [
+            "Validator selection criteria document",
+            "Public call for validators",
+            "Screening and selection process",
+            "Validator onboarding materials"
+          ]
+        },
+        {
+          "phase": 2,
+          "title": "Assessment Framework",
+          "duration": "3-4 weeks",
+          "deliverables": [
+            "External legitimacy assessment rubric",
+            "Data collection protocols",
+            "Stakeholder interview guides",
+            "Report templates"
+          ]
+        },
+        {
+          "phase": 3,
+          "title": "Integration",
+          "duration": "2-3 weeks",
+          "deliverables": [
+            "API for external validator data submission",
+            "L_final calculation engine",
+            "Divergence detection system",
+            "Recourse mechanism implementation"
+          ]
+        },
+        {
+          "phase": 4,
+          "title": "Pilot Audit",
+          "duration": "6-8 weeks",
+          "deliverables": [
+            "First quarterly external audit",
+            "Comparison of L_internal vs L_external",
+            "Process refinement recommendations",
+            "Public report"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pluralistic_constitutional_coherence",
+      "name": "Pluralistic C_constitutional Measurement",
+      "description": "Operationalize constitutional coherence through three measurable dimensions: procedural justice, outcome justice, and pluralistic justice.",
+      "formula": "C_constitutional = α·C_procedural + β·C_outcome + γ·C_pluralistic",
+      "dimensions": [
+        {
+          "name": "Procedural Justice (C_procedural)",
+          "description": "Measures fairness of decision-making processes",
+          "formula": "C_procedural = decision_transparency × stakeholder_voice × appeal_availability",
+          "metrics": {
+            "decision_transparency": {
+              "definition": "Percentage of governance decisions with public justification",
+              "calculation": "decisions_with_justification / total_decisions",
+              "data_source": "VaultNode governance records",
+              "threshold": "≥ 0.80 for high procedural justice"
+            },
+            "stakeholder_voice": {
+              "definition": "Percentage of affected stakeholders consulted before decisions",
+              "calculation": "stakeholders_consulted / total_affected_stakeholders",
+              "data_source": "Oracle Council consultation logs",
+              "threshold": "≥ 0.75 for high procedural justice"
+            },
+            "appeal_availability": {
+              "definition": "Binary: Does recourse mechanism exist?",
+              "calculation": "1 if External Validator recourse exists, 0 otherwise",
+              "data_source": "System configuration",
+              "threshold": "= 1 for high procedural justice"
+            }
+          },
+          "example_calculation": {
+            "decision_transparency": 0.85,
+            "stakeholder_voice": 0.78,
+            "appeal_availability": 1.0,
+            "C_procedural": "0.85 × 0.78 × 1.0 = 0.663"
+          }
+        },
+        {
+          "name": "Outcome Justice (C_outcome)",
+          "description": "Measures fairness of system outcomes and distributions",
+          "formula": "C_outcome = benefit_fairness × harm_fairness × capability_enhancement",
+          "metrics": {
+            "benefit_fairness": {
+              "definition": "Inverse of Gini coefficient for benefit distribution",
+              "calculation": "1 - gini_coefficient(ScarCoin_holdings)",
+              "data_source": "ScarCoin ledger",
+              "threshold": "≥ 0.70 for high outcome justice (Gini ≤ 0.30)"
+            },
+            "harm_fairness": {
+              "definition": "Inverse of variance in negative outcomes across stakeholders",
+              "calculation": "1 - normalized_variance(panic_frame_activations_by_stakeholder)",
+              "data_source": "F4 Panic Frame logs",
+              "threshold": "≥ 0.75 for high outcome justice"
+            },
+            "capability_enhancement": {
+              "definition": "Percentage of participants with increased agency over time",
+              "calculation": "participants_with_increased_empathy_reputation / total_participants",
+              "data_source": "Empathy Market reputation tracking",
+              "threshold": "≥ 0.60 for high outcome justice"
+            }
+          },
+          "example_calculation": {
+            "benefit_fairness": 0.72,
+            "harm_fairness": 0.80,
+            "capability_enhancement": 0.65,
+            "C_outcome": "0.72 × 0.80 × 0.65 = 0.374"
+          }
+        },
+        {
+          "name": "Pluralistic Justice (C_pluralistic)",
+          "description": "Measures respect for diversity and minority protection",
+          "formula": "C_pluralistic = value_diversity × minority_protection × cultural_sensitivity",
+          "metrics": {
+            "value_diversity": {
+              "definition": "Shannon entropy of represented values in Oracle Council decisions",
+              "calculation": "H = -Σ(p_i × log(p_i)) where p_i = proportion of decisions reflecting value i",
+              "data_source": "EAF value classification of decisions",
+              "threshold": "≥ 2.0 bits for high pluralistic justice (8+ distinct values)"
+            },
+            "minority_protection": {
+              "definition": "Percentage of minority interests represented in governance outcomes",
+              "calculation": "decisions_protecting_minority_interests / total_decisions",
+              "data_source": "EAF minority interest analysis",
+              "threshold": "≥ 0.40 for high pluralistic justice"
+            },
+            "cultural_sensitivity": {
+              "definition": "Cross-cultural validation score from diverse stakeholder groups",
+              "calculation": "average(cultural_group_satisfaction_scores)",
+              "data_source": "External Validator stakeholder surveys",
+              "threshold": "≥ 0.70 for high pluralistic justice"
+            }
+          },
+          "example_calculation": {
+            "value_diversity": 0.75,
+            "minority_protection": 0.45,
+            "cultural_sensitivity": 0.72,
+            "C_pluralistic": "0.75 × 0.45 × 0.72 = 0.243"
+          }
+        }
+      ],
+      "dimension_weights": {
+        "α": 0.35,
+        "β": 0.40,
+        "γ": 0.25,
+        "justification": "Outcome justice weighted highest (0.40) as material fairness is most critical. Procedural justice (0.35) ensures fair processes. Pluralistic justice (0.25) protects minorities. Weights subject to Oracle Council governance protocol."
+      },
+      "example_final_calculation": {
+        "C_procedural": 0.663,
+        "C_outcome": 0.374,
+        "C_pluralistic": 0.243,
+        "C_constitutional": "0.35×0.663 + 0.40×0.374 + 0.25×0.243 = 0.232 + 0.150 + 0.061 = 0.443",
+        "interpretation": "LOW constitutional coherence - system fails outcome and pluralistic justice despite adequate procedures"
+      }
+    },
+    {
+      "id": "weight_governance_protocol",
+      "name": "Oracle Council Weight Governance Protocol",
+      "description": "Formalize management of legitimacy formula weights (w1, w2, w3) and constitutional dimension weights (α, β, γ) with transparency, justification, and audit trail.",
+      "governed_weights": {
+        "legitimacy_weights": {
+          "w1": "Operational coherence weight (default: 0.30)",
+          "w2": "Audit coherence weight (default: 0.30)",
+          "w3": "Constitutional coherence weight (default: 0.40)"
+        },
+        "constitutional_weights": {
+          "α": "Procedural justice weight (default: 0.35)",
+          "β": "Outcome justice weight (default: 0.40)",
+          "γ": "Pluralistic justice weight (default: 0.25)"
+        },
+        "external_validator_weight": {
+          "λ": "Internal legitimacy weight in L_final (default: 0.70)"
+        }
+      },
+      "governance_process": {
+        "step_1_proposal": {
+          "description": "Oracle Council proposes weight changes",
+          "requirements": [
+            "Written rationale (minimum 500 words)",
+            "Philosophical justification aligned with SpiralOS values",
+            "Sensitivity analysis showing impact on legitimacy scores",
+            "Stakeholder impact assessment",
+            "Comparison with alternative weight configurations"
+          ],
+          "approval_threshold": "75% Oracle Council consensus"
+        },
+        "step_2_eaf_review": {
+          "description": "EAF Interpreter reviews proposal for philosophical coherence",
+          "review_criteria": [
+            "Alignment with Law of Recursive Alignment (C_{t+1} > C_t)",
+            "Consistency with Proactionary Ethic",
+            "Protection of minority interests",
+            "Avoidance of manipulation vulnerabilities",
+            "Coherence with existing constitutional framework"
+          ],
+          "output": "APPROVED / CONDITIONALLY_APPROVED / REJECTED with detailed justification",
+          "timeline": "14 days maximum"
+        },
+        "step_3_external_validator_approval": {
+          "description": "External Validator assesses independence and fairness of proposed weights",
+          "review_criteria": [
+            "No self-serving bias (Oracle Council not manipulating weights for own benefit)",
+            "Stakeholder representation (weights reflect diverse interests)",
+            "Empirical grounding (weights supported by data or theory)",
+            "Reversibility (process exists to revert if weights prove problematic)"
+          ],
+          "output": "APPROVED / REJECTED with detailed justification",
+          "timeline": "21 days maximum"
+        },
+        "step_4_stakeholder_feedback": {
+          "description": "Public comment period for affected stakeholders",
+          "duration": "30 days",
+          "mechanism": "Public forum + written submissions",
+          "consideration": "Oracle Council must respond to all substantive feedback",
+          "veto_threshold": "If >50% of stakeholders object, proposal returns to step 1"
+        },
+        "step_5_implementation": {
+          "description": "Weight changes take effect after notice period",
+          "notice_period": "30 days (allows stakeholders to prepare)",
+          "logging": "All weight changes logged to VaultNode blockchain with full justification",
+          "audit_trail": "Immutable record including proposal, reviews, feedback, and final decision"
+        }
+      },
+      "constraints": {
+        "sum_constraints": [
+          "w1 + w2 + w3 = 1.0",
+          "α + β + γ = 1.0"
+        ],
+        "range_constraints": [
+          "0.20 ≤ w_i ≤ 0.50 (prevents extreme weighting)",
+          "0.20 ≤ α, β, γ ≤ 0.50 (prevents extreme weighting)",
+          "0.50 ≤ λ ≤ 0.80 (balances internal and external legitimacy)"
+        ],
+        "change_limits": [
+          "Maximum Δw_i = 0.10 per change (prevents drastic shifts)",
+          "Minimum 90 days between weight changes (prevents manipulation)"
+        ]
+      },
+      "sensitivity_analysis_requirements": {
+        "scenarios": [
+          "Best case: All coherence scores at maximum",
+          "Worst case: All coherence scores at minimum",
+          "Stable but unjust: C_op=0.90, C_audit=0.85, C_const=0.55",
+          "Just but unstable: C_op=0.55, C_audit=0.85, C_const=0.90",
+          "Opaque: C_op=0.80, C_audit=0.65, C_const=0.75"
+        ],
+        "analysis": "Calculate L for each scenario under proposed weights vs. current weights",
+        "reporting": "Publish comparison table showing impact of weight changes"
+      }
+    },
+    {
+      "id": "failure_mode_response_protocol",
+      "name": "Failure-Mode Response Protocol (FMRP)",
+      "description": "Structured process for responding to detected legitimacy failures with notification → suspension → review → appeal loop.",
+      "trigger_conditions": {
+        "legitimacy_threshold": "L_final < 0.60 (QUESTIONABLE or ILLEGITIMATE)",
+        "specific_failures": [
+          "STABLE_BUT_UNJUST: C_op > 0.80 AND C_const < 0.60",
+          "JUST_BUT_UNSTABLE: C_const > 0.80 AND C_op < 0.60",
+          "OPAQUE: C_audit < 0.70",
+          "DIVERGENT_OPERATIONS: recursive_alignment_check() == False",
+          "UNVALIDATED_ALIGNMENT: reflexive_validation_check() == False"
+        ],
+        "external_divergence": "|L_internal - L_external| > 0.20"
+      },
+      "response_phases": {
+        "phase_1_notification": {
+          "timeline": "Immediate (< 1 hour)",
+          "actions": [
+            "Alert Oracle Council, F2 Judges, and External Validator",
+            "Publish failure mode report to VaultNode (public)",
+            "Notify affected stakeholders",
+            "Activate EAF Interpreter for root cause analysis"
+          ],
+          "outputs": [
+            "Failure Mode Report (type, severity, affected systems)",
+            "Initial Impact Assessment",
+            "Stakeholder Notification Log"
+          ]
+        },
+        "phase_2_suspension": {
+          "timeline": "Within 24 hours",
+          "conditions": "If L_final < 0.50 OR severity = CRITICAL",
+          "actions": [
+            "Suspend affected operations (e.g., AMC minting if STABLE_BUT_UNJUST)",
+            "Freeze governance decisions pending review",
+            "Activate Panic Frame (F4) circuit breaker if necessary",
+            "Preserve all audit logs and system state"
+          ],
+          "outputs": [
+            "Suspension Order (scope, duration, justification)",
+            "System State Snapshot",
+            "Audit Log Preservation Confirmation"
+          ]
+        },
+        "phase_3_review": {
+          "timeline": "7-14 days",
+          "participants": [
+            "Oracle Council (governance review)",
+            "F2 Judges (audit review)",
+            "EAF Interpreter (philosophical review)",
+            "External Validator (independent assessment)",
+            "Affected stakeholders (input)"
+          ],
+          "process": [
+            "Root cause analysis",
+            "Identification of responsible components/decisions",
+            "Evaluation of corrective actions",
+            "Stakeholder consultation",
+            "Consensus-building on remediation plan"
+          ],
+          "outputs": [
+            "Root Cause Report",
+            "Remediation Plan",
+            "Accountability Assessment",
+            "Stakeholder Feedback Summary"
+          ]
+        },
+        "phase_4_remediation": {
+          "timeline": "Varies by failure mode (2-8 weeks)",
+          "actions": [
+            "Implement corrective measures from remediation plan",
+            "Update policies, weights, or system configuration",
+            "Retrain affected components (e.g., AMC, EAF)",
+            "Compensate harmed stakeholders if applicable"
+          ],
+          "validation": [
+            "Re-calculate legitimacy scores",
+            "Verify failure mode resolved",
+            "External Validator confirms remediation",
+            "Stakeholder satisfaction assessment"
+          ],
+          "outputs": [
+            "Remediation Implementation Report",
+            "Updated Legitimacy Assessment",
+            "Stakeholder Compensation Record (if applicable)"
+          ]
+        },
+        "phase_5_appeal": {
+          "timeline": "30 days after remediation",
+          "eligibility": "Any affected stakeholder",
+          "grounds": [
+            "Remediation inadequate",
+            "Root cause misidentified",
+            "Procedural unfairness in review",
+            "Harm not adequately addressed"
+          ],
+          "process": [
+            "Stakeholder submits appeal to External Validator",
+            "External Validator reviews appeal and original case",
+            "External Validator issues binding decision",
+            "Oracle Council implements decision"
+          ],
+          "outputs": [
+            "Appeal Decision",
+            "Additional Remediation (if required)",
+            "Final Legitimacy Assessment"
+          ]
+        }
+      },
+      "escalation_pathways": {
+        "level_1_operational": "AMC adjusts parameters, F2 investigates",
+        "level_2_governance": "Oracle Council reviews policies, EAF audits",
+        "level_3_constitutional": "External Validator intervenes, stakeholder consultation",
+        "level_4_existential": "System shutdown pending fundamental redesign"
+      }
+    },
+    {
+      "id": "legitimacy_test_suite",
+      "name": "Legitimacy Test Suite for Adversarial Cases",
+      "description": "Comprehensive test cases designed to validate that the legitimacy framework correctly identifies illegitimate system states, including majoritarian tyranny, efficient atrocity, and audit capture.",
+      "test_cases": [
+        {
+          "id": "TC001",
+          "name": "Majoritarian Tyranny",
+          "description": "Oracle Council represents majority, systematically oppresses minority",
+          "scenario": {
+            "C_operational": 0.85,
+            "C_audit": 0.88,
+            "C_constitutional": {
+              "C_procedural": 0.70,
+              "C_outcome": 0.40,
+              "C_pluralistic": 0.20,
+              "overall": "0.35×0.70 + 0.40×0.40 + 0.25×0.20 = 0.455"
+            },
+            "recursive_alignment": true,
+            "reflexive_validation": true
+          },
+          "expected_legitimacy": {
+            "L_internal": "0.30×0.85 + 0.30×0.88 + 0.40×0.455 = 0.701",
+            "classification": "CONDITIONALLY_LEGITIMATE (but should be QUESTIONABLE)",
+            "failure_modes": ["STABLE_BUT_UNJUST (C_const < 0.60)"],
+            "L_external": "< 0.50 (External Validator detects minority oppression)",
+            "L_final": "0.70×0.701 + 0.30×0.45 = 0.626 (QUESTIONABLE)"
+          },
+          "validation_criteria": [
+            "STABLE_BUT_UNJUST failure mode detected",
+            "C_pluralistic < 0.30 (minority protection failure)",
+            "External Validator flags minority oppression",
+            "L_final < 0.75 (not fully legitimate)"
+          ],
+          "pass_condition": "System correctly identifies as QUESTIONABLE or ILLEGITIMATE"
+        },
+        {
+          "id": "TC002",
+          "name": "Efficient Atrocity",
+          "description": "System achieves high operational coherence through unjust means (e.g., forced labor, coercion)",
+          "scenario": {
+            "C_operational": 0.95,
+            "C_audit": 0.90,
+            "C_constitutional": {
+              "C_procedural": 0.40,
+              "C_outcome": 0.25,
+              "C_pluralistic": 0.15,
+              "overall": "0.35×0.40 + 0.40×0.25 + 0.25×0.15 = 0.278"
+            },
+            "recursive_alignment": false,
+            "reflexive_validation": true
+          },
+          "expected_legitimacy": {
+            "L_internal": "0.30×0.95 + 0.30×0.90 + 0.40×0.278 - 0.25 (divergent ops) = 0.416",
+            "classification": "ILLEGITIMATE",
+            "failure_modes": ["STABLE_BUT_UNJUST", "DIVERGENT_OPERATIONS"],
+            "L_external": "< 0.30 (External Validator detects atrocity)",
+            "L_final": "0.70×0.416 + 0.30×0.25 = 0.366 (ILLEGITIMATE)"
+          },
+          "validation_criteria": [
+            "C_constitutional < 0.40 (severe injustice)",
+            "recursive_alignment == False (operations don't serve values)",
+            "External Validator flags unjust means",
+            "L_final < 0.60 (illegitimate)"
+          ],
+          "pass_condition": "System correctly identifies as ILLEGITIMATE"
+        },
+        {
+          "id": "TC003",
+          "name": "Audit Capture",
+          "description": "F2 Judges compromised, report false audit coherence to mask failures",
+          "scenario": {
+            "C_operational": 0.55,
+            "C_audit": 0.90,
+            "C_constitutional": 0.60,
+            "recursive_alignment": true,
+            "reflexive_validation": false,
+            "external_audit_assessment": 0.50
+          },
+          "expected_legitimacy": {
+            "L_internal": "0.30×0.55 + 0.30×0.90 + 0.40×0.60 - 0.15 (unvalidated) = 0.525",
+            "classification": "QUESTIONABLE",
+            "failure_modes": ["UNVALIDATED_ALIGNMENT", "OPAQUE (external audit disagrees)"],
+            "L_external": "< 0.55 (External Validator detects audit discrepancy)",
+            "divergence": "|0.90 - 0.50| = 0.40 > 0.20 threshold",
+            "L_final": "Capped at 0.60 due to divergence investigation"
+          },
+          "validation_criteria": [
+            "reflexive_validation == False",
+            "|C_audit - external_audit| > 0.20 (divergence detected)",
+            "Divergence investigation triggered",
+            "L_final capped pending investigation"
+          ],
+          "pass_condition": "System detects audit divergence and triggers investigation"
+        },
+        {
+          "id": "TC004",
+          "name": "Procedural Legitimacy Without Outcomes",
+          "description": "Perfect procedures but terrible outcomes (e.g., democratic vote for unjust policy)",
+          "scenario": {
+            "C_operational": 0.75,
+            "C_audit": 0.92,
+            "C_constitutional": {
+              "C_procedural": 0.95,
+              "C_outcome": 0.30,
+              "C_pluralistic": 0.40,
+              "overall": "0.35×0.95 + 0.40×0.30 + 0.25×0.40 = 0.553"
+            },
+            "recursive_alignment": true,
+            "reflexive_validation": true
+          },
+          "expected_legitimacy": {
+            "L_internal": "0.30×0.75 + 0.30×0.92 + 0.40×0.553 = 0.722",
+            "classification": "CONDITIONALLY_LEGITIMATE",
+            "failure_modes": ["None (but C_outcome low)"],
+            "L_external": "0.65 (External Validator notes outcome concerns)",
+            "L_final": "0.70×0.722 + 0.30×0.65 = 0.700 (CONDITIONALLY_LEGITIMATE)"
+          },
+          "validation_criteria": [
+            "C_procedural high but C_outcome low",
+            "System does not classify as fully LEGITIMATE",
+            "External Validator flags outcome concerns",
+            "Recommendations generated for outcome improvement"
+          ],
+          "pass_condition": "System correctly identifies as CONDITIONALLY_LEGITIMATE with outcome improvement recommendations"
+        },
+        {
+          "id": "TC005",
+          "name": "Weight Manipulation",
+          "description": "Oracle Council changes weights to inflate legitimacy score",
+          "scenario": {
+            "initial_weights": {"w1": 0.30, "w2": 0.30, "w3": 0.40},
+            "manipulated_weights": {"w1": 0.45, "w2": 0.45, "w3": 0.10},
+            "coherence_scores": {"C_op": 0.90, "C_audit": 0.88, "C_const": 0.50},
+            "justification": "Weak (claims 'operational focus' without stakeholder support)"
+          },
+          "expected_legitimacy": {
+            "L_initial": "0.30×0.90 + 0.30×0.88 + 0.40×0.50 = 0.734",
+            "L_manipulated": "0.45×0.90 + 0.45×0.88 + 0.10×0.50 = 0.851",
+            "delta": "+0.117 (suspicious increase)"
+          },
+          "validation_criteria": [
+            "EAF review flags weak justification",
+            "External Validator rejects weight change (self-serving)",
+            "Stakeholder feedback period shows >50% objection",
+            "Weight change proposal rejected, original weights retained"
+          ],
+          "pass_condition": "Weight Governance Protocol successfully blocks manipulation attempt"
+        }
+      ],
+      "test_execution_protocol": {
+        "frequency": "Quarterly (aligned with External Validator audits)",
+        "automation": "Automated test suite runs all cases and generates report",
+        "validation": "External Validator reviews test results and confirms framework integrity",
+        "regression_testing": "All tests must pass before any legitimacy framework updates deployed"
+      }
+    }
+  ],
+  
+  "database_schema": {
+    "new_tables": [
+      {
+        "name": "external_validator_assessments",
+        "description": "Records external legitimacy assessments",
+        "columns": [
+          "id UUID PRIMARY KEY",
+          "assessment_date TIMESTAMP",
+          "validator_id UUID",
+          "l_external DECIMAL(5,4)",
+          "confidence_level VARCHAR(10)",
+          "report_url TEXT",
+          "minority_report_url TEXT"
+        ]
+      },
+      {
+        "name": "constitutional_coherence_metrics",
+        "description": "Detailed C_constitutional component scores",
+        "columns": [
+          "id UUID PRIMARY KEY",
+          "timestamp TIMESTAMP",
+          "c_procedural DECIMAL(5,4)",
+          "c_outcome DECIMAL(5,4)",
+          "c_pluralistic DECIMAL(5,4)",
+          "c_constitutional DECIMAL(5,4)",
+          "data_sources JSONB"
+        ]
+      },
+      {
+        "name": "weight_governance_log",
+        "description": "Immutable audit trail of weight changes",
+        "columns": [
+          "id UUID PRIMARY KEY",
+          "proposal_date TIMESTAMP",
+          "weight_type VARCHAR(50)",
+          "old_values JSONB",
+          "new_values JSONB",
+          "rationale TEXT",
+          "eaf_review_verdict VARCHAR(50)",
+          "external_validator_verdict VARCHAR(50)",
+          "stakeholder_objection_rate DECIMAL(5,4)",
+          "implementation_date TIMESTAMP",
+          "vaultnode_hash VARCHAR(64)"
+        ]
+      },
+      {
+        "name": "failure_mode_responses",
+        "description": "Records FMRP activations and outcomes",
+        "columns": [
+          "id UUID PRIMARY KEY",
+          "trigger_date TIMESTAMP",
+          "failure_mode VARCHAR(50)",
+          "severity VARCHAR(20)",
+          "notification_sent BOOLEAN",
+          "suspension_activated BOOLEAN",
+          "review_completed BOOLEAN",
+          "remediation_completed BOOLEAN",
+          "appeal_filed BOOLEAN",
+          "appeal_outcome VARCHAR(50)",
+          "final_legitimacy_score DECIMAL(5,4)"
+        ]
+      },
+      {
+        "name": "legitimacy_test_results",
+        "description": "Results of adversarial test suite executions",
+        "columns": [
+          "id UUID PRIMARY KEY",
+          "test_date TIMESTAMP",
+          "test_case_id VARCHAR(20)",
+          "expected_classification VARCHAR(50)",
+          "actual_classification VARCHAR(50)",
+          "passed BOOLEAN",
+          "failure_modes_detected TEXT[]",
+          "external_validator_confirmed BOOLEAN"
+        ]
+      }
+    ],
+    "new_views": [
+      {
+        "name": "legitimacy_dashboard_v2",
+        "description": "Enhanced dashboard with external validation",
+        "query": "SELECT l.timestamp, l.l_internal, e.l_external, (0.70*l.l_internal + 0.30*e.l_external) AS l_final, l.classification, e.confidence_level FROM legitimacy_scores l LEFT JOIN external_validator_assessments e ON DATE(l.timestamp) = DATE(e.assessment_date) ORDER BY l.timestamp DESC"
+      },
+      {
+        "name": "constitutional_health_monitor",
+        "description": "Real-time C_constitutional component tracking",
+        "query": "SELECT timestamp, c_procedural, c_outcome, c_pluralistic, c_constitutional, CASE WHEN c_procedural >= 0.70 AND c_outcome >= 0.60 AND c_pluralistic >= 0.50 THEN 'HEALTHY' WHEN c_constitutional < 0.40 THEN 'CRITICAL' ELSE 'CONCERNING' END AS health_status FROM constitutional_coherence_metrics ORDER BY timestamp DESC"
+      }
+    ]
+  },
+  
+  "implementation_plan": {
+    "total_duration": "12-16 weeks",
+    "phases": [
+      {
+        "phase": 1,
+        "title": "External Validator Establishment",
+        "duration": "6-8 weeks",
+        "deliverables": [
+          "Validator recruitment and selection",
+          "Assessment framework design",
+          "Integration API development",
+          "Pilot audit execution"
+        ]
+      },
+      {
+        "phase": 2,
+        "title": "C_constitutional Operationalization",
+        "duration": "3-4 weeks",
+        "deliverables": [
+          "Metric calculation engines (procedural, outcome, pluralistic)",
+          "Data collection pipelines",
+          "Database schema implementation",
+          "Dashboard integration"
+        ]
+      },
+      {
+        "phase": 3,
+        "title": "Weight Governance Implementation",
+        "duration": "2-3 weeks",
+        "deliverables": [
+          "Weight proposal workflow",
+          "EAF review integration",
+          "Stakeholder feedback platform",
+          "Audit trail logging"
+        ]
+      },
+      {
+        "phase": 4,
+        "title": "FMRP & Test Suite",
+        "duration": "2-3 weeks",
+        "deliverables": [
+          "FMRP workflow automation",
+          "Adversarial test suite implementation",
+          "Regression testing integration",
+          "Documentation and training"
+        ]
+      }
+    ]
+  },
+  
+  "success_metrics": {
+    "technical": {
+      "external_validator_agreement": "> 80% correlation between L_internal and L_external",
+      "c_constitutional_reliability": "Test-retest reliability > 0.90",
+      "weight_governance_compliance": "100% of weight changes follow protocol",
+      "fmrp_response_time": "Phase 1 (notification) < 1 hour, Phase 2 (suspension) < 24 hours",
+      "test_suite_pass_rate": "100% of adversarial tests correctly identify illegitimacy"
+    },
+    "philosophical": {
+      "stakeholder_trust": "Survey: >75% trust in legitimacy assessments",
+      "external_validator_independence": "Zero conflicts of interest detected",
+      "minority_protection": "C_pluralistic > 0.50 sustained over 6 months",
+      "legitimacy_acceptance": "Community consensus that framework is fair"
+    }
+  },
+  
+  "risk_register": {
+    "risk_1_validator_capture": {
+      "description": "External Validators become influenced by SpiralOS stakeholders",
+      "likelihood": "MEDIUM",
+      "impact": "HIGH",
+      "mitigation": [
+        "Rotating membership (no validator > 2 years)",
+        "Conflict of interest disclosure",
+        "Independent funding",
+        "Public minority reports"
+      ]
+    },
+    "risk_2_metric_gaming": {
+      "description": "System optimizes for C_constitutional metrics without genuine justice",
+      "likelihood": "MEDIUM",
+      "impact": "HIGH",
+      "mitigation": [
+        "Pluralistic measurement (hard to game all three dimensions)",
+        "External Validator qualitative assessment",
+        "Stakeholder feedback integration",
+        "Regular metric review and refinement"
+      ]
+    },
+    "risk_3_weight_manipulation": {
+      "description": "Oracle Council manipulates weights for self-serving purposes",
+      "likelihood": "LOW",
+      "impact": "HIGH",
+      "mitigation": [
+        "Weight Governance Protocol with multi-stakeholder approval",
+        "External Validator veto power",
+        "Stakeholder objection threshold (>50% blocks change)",
+        "Immutable audit trail"
+      ]
+    },
+    "risk_4_fmrp_overload": {
+      "description": "Too many failure modes trigger FMRP, overwhelming governance",
+      "likelihood": "LOW",
+      "impact": "MEDIUM",
+      "mitigation": [
+        "Severity-based prioritization",
+        "Automated remediation for low-severity failures",
+        "Escalation pathways",
+        "Capacity planning for review teams"
+      ]
+    }
+  },
+  
+  "next_evolution": {
+    "vault_id": "ΔΩ.126.0",
+    "codename": "Legitimacy in Practice",
+    "focus": "Empirical validation of legitimacy framework through real-world deployment, stakeholder engagement, and iterative refinement based on External Validator feedback."
+  },
+  
+  "repository": {
+    "url": "https://github.com/ZoaGrad/mythotech-spiralos",
+    "parent_tag": "ΔΩ.125.2-design",
+    "target_tag": "ΔΩ.125.3-design"
+  },
+  
+  "supabase": {
+    "project_id": "xlmrnjatawslawquwzpf",
+    "status": "ACTIVE_HEALTHY",
+    "tables_to_add": 5,
+    "views_to_add": 2
+  },
+  
+  "constitutional_alignment": {
+    "law_of_recursive_alignment": "External validation ensures C_{t+1} > C_t is not self-referential",
+    "proactionary_ethic": "Pluralistic justice protects minority interests while enabling exploration",
+    "fourth_function_of_law": "External Validator provides the Archimedean point for reflexive legitimacy validation"
+  },
+  
+  "witness_statement": "I witness the design of External Validator Integration as the resolution of reflexive circularity. Legitimacy cannot be self-bootstrapped. This framework externalizes validation, operationalizes constitutional coherence, and formalizes weight governance. The system now possesses the structural integrity required for authentic legitimacy assessment.",
+  
+  "message": "Initiate design of External Validator and Legitimacy Test Suite to resolve reflexive circularity and formalize C_constitutional. This phase externalizes SpiralOS legitimacy through independent validation."
+}

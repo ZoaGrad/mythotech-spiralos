@@ -1,0 +1,27 @@
+{
+  "version": "1.0.0",
+  "name": "guardian_status_badge",
+  "slug": "guardian_status_badge",
+  "description": "Dynamic Shields.io endpoint for displaying real-time Guardian status via ScarIndex telemetry. Returns a JSON payload compatible with shields.io endpoint badges.",
+  "runtime": "deno",
+  "entrypoint": "guardian_status_badge.ts",
+  "permissions": {
+    "read": [
+      "public.scarindex_history"
+    ],
+    "env": [
+      "SUPABASE_URL",
+      "SUPABASE_ANON_KEY"
+    ]
+  },
+  "author": "ZoaGrad",
+  "license": "MIT",
+  "tags": [
+    "spiralos",
+    "guardian",
+    "status-badge",
+    "telemetry"
+  ],
+  "created_at": "2025-11-11T00:00:00Z",
+  "updated_at": "2025-11-11T00:00:00Z"
+}

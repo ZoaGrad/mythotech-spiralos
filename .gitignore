@@ -1,0 +1,63 @@
+﻿# Canonical runtime artifacts
+node_modules/
+__pycache__/
+.pytest_cache/
+.DS_Store
+
+# Python
+*.py[cod]
+*.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+venv/
+ENV/
+env/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+Thumbs.db
+
+# Testing
+.coverage
+htmlcov/
+*.cover
+
+# Temporary files
+*.log
+*.tmp
+/tmp/
+artifacts/
+cache/
+
+# Local database files
+spiral_data/*.db
+spiral_data/*.db-*
+
+# SECURITY: Secrets
+.env
+guardian_logs.txt
