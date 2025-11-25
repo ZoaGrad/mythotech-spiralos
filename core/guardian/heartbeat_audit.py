@@ -11,6 +11,8 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import Iterable, List, Mapping, MutableMapping, Optional
 
+from core.guardian.rhythm import HEARTBEAT_BOUNDS
+
 HeartbeatRecord = Mapping[str, object]
 
 
@@ -45,7 +47,7 @@ def audit_heartbeat_retention(
     records: Iterable[HeartbeatRecord],
     *,
     now: Optional[datetime] = None,
-    allowed_gap_minutes: int = 60,
+    allowed_gap_minutes: int = HEARTBEAT_BOUNDS.max_staleness_seconds // 60,
 ) -> MutableMapping[str, object]:
     """Assess heartbeat coverage and detect retention drift.
 

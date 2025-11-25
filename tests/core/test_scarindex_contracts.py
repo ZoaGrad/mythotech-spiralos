@@ -1,6 +1,8 @@
 import pytest
 from datetime import datetime, timezone
 
+from core.adapters import scarindex as scarindex_adapter
+
 from core.contracts.scarindex import (
     GuardianScarIndexCurrent,
     GuardianScarIndexHistory,
@@ -73,3 +75,30 @@ def test_scarindex_state_to_guardian_shapes():
 
     GuardianScarIndexCurrent.validate_row_shape(current)
     GuardianScarIndexHistory.validate_row_shape(history)
+
+
+def test_adapter_normalizes_timestamps(monkeypatch):
+    """ScarIndex adapter must honor locked UTC timestamp semantics."""
+
+    monkeypatch.setattr(
+        scarindex_adapter,
+        "get_spiralos_status",
+        lambda: {
+            "timestamp": "2025-01-01T12:00:00Z",
+            "coherence": {
+                "current_scarindex": 0.8,
+                "target_scarindex": 0.75,
+                "error": 0.05,
+            },
+        },
+    )
+
+    current, history = scarindex_adapter.to_guardian_scarindex_records(
+        "bridge-alpha", previous_value=0.7, source="telemetry_normalize"
+    )
+
+    assert current.updated_at.tzinfo is not None
+    assert history.timestamp.tzinfo is not None
+
+    GuardianScarIndexCurrent.validate_row_shape(current.model_dump())
+    GuardianScarIndexHistory.validate_row_shape(history.model_dump())

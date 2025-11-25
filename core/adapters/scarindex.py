@@ -16,12 +16,25 @@ from core.scarindex import ScarIndexOracle
 
 
 def _parse_timestamp(value: Optional[str]) -> datetime:
+    """Parse ISO-like timestamps into aware UTC datetimes.
+
+    Heartbeat/telemetry payloads often use ``Z``-terminated strings. Phase-11
+    requires deterministic UTC normalization so the ScarIndex lineage can be
+    audited without drift. Any parsing failure falls back to ``datetime.now``
+    in UTC to avoid returning naive datetimes.
+    """
+
     if not value:
         return datetime.now(timezone.utc)
+
+    normalized = value.replace("Z", "+00:00")
+
     try:
-        return datetime.fromisoformat(value)
+        parsed = datetime.fromisoformat(normalized)
     except ValueError:
         return datetime.now(timezone.utc)
+
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
 
 
 def to_scar_index_state() -> ScarIndexState:
