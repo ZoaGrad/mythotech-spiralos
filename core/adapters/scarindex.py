@@ -6,7 +6,12 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from core.adapters import get_spiralos_status
-from core.contracts.scarindex import ScarIndexBreakdown, ScarIndexState
+from core.contracts.scarindex import (
+    GuardianScarIndexCurrent,
+    GuardianScarIndexHistory,
+    ScarIndexBreakdown,
+    ScarIndexState,
+)
 from core.scarindex import ScarIndexOracle
 
 
@@ -61,4 +66,29 @@ def to_scar_index_state() -> ScarIndexState:
             "target": target_value,
             "pid_error": error,
         },
+    )
+
+
+def to_guardian_scarindex_records(
+    bridge_id: str,
+    *,
+    previous_value: float | None = None,
+    source: str = "telemetry_normalize",
+) -> tuple[GuardianScarIndexCurrent, GuardianScarIndexHistory]:
+    """Project the ScarIndex contract into guardian schema-aligned rows.
+
+    The function returns both the current-row projection (idempotent update) and
+    a history-row payload suitable for insertion. This keeps the adapter as the
+    single source of truth for schema alignment between Python contracts and the
+    Supabase migrations defined in ``spiral_supabase/migrations``.
+    """
+
+    state = to_scar_index_state()
+    return (
+        state.to_guardian_current(bridge_id),
+        state.to_guardian_history(
+            bridge_id,
+            previous_value=previous_value,
+            source=source,
+        ),
     )

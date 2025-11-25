@@ -13,10 +13,22 @@ type RawTelemetryPayload = {
   gateway_key: string;
   bridge_id?: string;
   event_type: string;
+  telemetry_version?: string;
   source?: string;
   timestamp?: string | number;
   payload?: Record<string, unknown>;
   metadata?: Record<string, unknown>;
+  envelope?: {
+    event?: {
+      type?: string;
+      timestamp?: string | number;
+      payload?: Record<string, unknown>;
+      signal_type?: string;
+      source?: string;
+    };
+    context?: Record<string, unknown>;
+    metrics?: Record<string, unknown>;
+  };
 };
 
 type NormalizedEvent = {
@@ -143,6 +155,38 @@ function classifySignalType(
 }
 
 // ============================================================================
+// TELEMETRY ENVELOPE NORMALIZATION (v2)
+// ============================================================================
+function coerceV2Envelope(body: RawTelemetryPayload): RawTelemetryPayload {
+  const { envelope } = body;
+
+  if (!envelope) return body;
+
+  const event = envelope.event ?? {};
+  const mergedPayload = {
+    ...(body.payload ?? {}),
+    ...(event.payload ?? {}),
+  } as Record<string, unknown>;
+
+  const mergedMetadata = {
+    ...(body.metadata ?? {}),
+    context: envelope.context,
+    metrics: envelope.metrics,
+    ingest_path: "telemetry_normalize:v2",
+  } as Record<string, unknown>;
+
+  return {
+    ...body,
+    event_type: event.type ?? body.event_type,
+    timestamp: event.timestamp ?? body.timestamp,
+    payload: mergedPayload,
+    source: body.source ?? event.source,
+    metadata: mergedMetadata,
+    telemetry_version: body.telemetry_version ?? "v2",
+  };
+}
+
+// ============================================================================
 // ACHE SIGNATURE CALCULATION
 // ============================================================================
 function calculateAcheSignature(
@@ -247,6 +291,9 @@ function generateSovereignState(
 function normalizePayload(
   payload: Record<string, unknown>,
   source: string,
+  telemetry_version: string,
+  signal_type: string | null,
+  timestamp_drift_ms: number,
 ): Record<string, unknown> {
   const normalized: Record<string, unknown> = { ...payload };
 
@@ -271,6 +318,12 @@ function normalizePayload(
 
   // Add normalization timestamp
   normalized._normalized_at = new Date().toISOString();
+  normalized._telemetry_version = telemetry_version;
+  normalized._signal_type = signal_type ?? "unknown";
+  normalized._clock = {
+    drift_ms: timestamp_drift_ms,
+    source,
+  };
 
   return normalized;
 }
@@ -300,6 +353,31 @@ function canonicalTimestamp(providedTimestamp?: string | number): {
     timestamp_iso: new Date(serverNow).toISOString(),
     timestamp_epoch: serverNow,
     timestamp_drift_ms: Math.round(drift),
+  };
+}
+
+// ============================================================================
+// METADATA NORMALIZATION
+// ============================================================================
+function normalizeMetadata(
+  metadata: Record<string, unknown>,
+  telemetry_version: string,
+  bridge_id: string | null,
+  gateway_key: string,
+  timestamp_drift_ms: number,
+): Record<string, unknown> {
+  return {
+    telemetry_version,
+    bridge_resolution: {
+      bridge_id,
+      gateway_key,
+      resolved: Boolean(bridge_id),
+    },
+    clock: {
+      drift_ms: timestamp_drift_ms,
+      source: telemetry_version === "v2" ? "client+server" : "server_only",
+    },
+    ...metadata,
   };
 }
 
@@ -339,6 +417,8 @@ serve(async (req: Request): Promise<Response> => {
     return jsonResponse({ error: "Invalid JSON body" }, 400);
   }
 
+  const normalizedBody = coerceV2Envelope(body);
+
   const {
     gateway_key,
     bridge_id: providedBridgeId,
@@ -347,7 +427,9 @@ serve(async (req: Request): Promise<Response> => {
     timestamp: providedTimestamp,
     payload = {},
     metadata = {},
-  } = body;
+    telemetry_version = "v1",
+    envelope,
+  } = normalizedBody;
 
   // Validate required fields
   if (!gateway_key) {
@@ -368,8 +450,9 @@ serve(async (req: Request): Promise<Response> => {
   const { timestamp_iso, timestamp_epoch, timestamp_drift_ms } =
     canonicalTimestamp(providedTimestamp);
 
-  // 4. Classify signal type
-  const signal_type = classifySignalType(event_type, source);
+  // 4. Classify signal type (v2 envelope can pre-label)
+  const providedSignalType = envelope?.event?.signal_type ?? null;
+  const signal_type = providedSignalType ?? classifySignalType(event_type, source);
 
   // 5. Calculate ache signature
   const ache_signature = calculateAcheSignature(event_type, payload, source);
@@ -389,10 +472,24 @@ serve(async (req: Request): Promise<Response> => {
   );
 
   // 8. Normalize payload
-  const normalized_payload = normalizePayload(payload, source);
+  const normalized_payload = normalizePayload(
+    payload,
+    source,
+    telemetry_version,
+    signal_type,
+    timestamp_drift_ms,
+  );
 
   // 9. Calculate latency
   const latency_ms = Date.now() - startTime;
+
+  const normalized_metadata = normalizeMetadata(
+    metadata,
+    telemetry_version,
+    resolvedBridgeId,
+    gateway_key,
+    timestamp_drift_ms,
+  );
 
   // 10. Insert into guardian_telemetry_events
   const { data, error } = await supabase
@@ -412,7 +509,7 @@ serve(async (req: Request): Promise<Response> => {
       agent_health,
       latency_ms,
       sovereign_state,
-      metadata,
+      metadata: normalized_metadata,
     })
     .select()
     .single();
