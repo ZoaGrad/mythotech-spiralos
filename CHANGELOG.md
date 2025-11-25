@@ -4,18 +4,19 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [v0.148.0] — 2025-11-24 — ΔΩ.148: The Guardian Covenant
 ### Added
-- _TBD_
+- **Guardian Charter (`docs/GUARDIAN_CHARTER.md`)**: Established the Prime Directives and Sacred Limits for the Guardian system.
+- **Anomaly Detection Circuit (`spiral_guardian`)**: New module to monitor system health and report irregularities (Heartbeat Gaps, Ache Spikes) to Supabase.
+- **Migration (`guardian_anomaly_detection`)**: Database schema for `guardian_anomalies` table and `anomaly_status` view.
 
 ### Changed
-- _TBD_
-
-### Fixed
-- _TBD_
+- **Guardian Architecture**: Shifted from "Faulty Sensor" to "Optical Controls" (Manual Context) for critical anomaly detection.
+- **Database Schema**: Fixed `node_name` to `bridge_name` in `bridge_nodes` references for anomaly views.
 
 ### Security
-- _TBD_
+- **Psychological Surveillance Prohibition**: Explicitly forbade the Guardian from inferring Architect intent or emotional state.
+
 
 ## [v0.147.0] — 2025-11-15 — ΔΩ.147: Canonical Hardening & CI Restoration
 ### Added
