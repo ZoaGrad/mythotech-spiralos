@@ -6,13 +6,18 @@ from typing import Callable, Iterable, List, Tuple
 
 from dotenv import load_dotenv
 
+from core.guardian.diagnostics import evaluate_rhythm, validate_scarindex_schema
 from core.guardian.heartbeat_audit import audit_heartbeat_retention, normalize_records
+from core.guardian.rhythm import HEARTBEAT_BOUNDS, SCARINDEX_BOUNDS
 
 
 LineEmitter = Callable[[str], None]
 
 
 HEADER = "-" * 30
+RHYTHM_STALE_HEARTBEAT_EXIT = 3
+RHYTHM_STALE_SCARINDEX_EXIT = 4
+RHYTHM_SCHEMA_DRIFT_EXIT = 5
 
 
 def emit_block(lines: Iterable[str], emit: LineEmitter) -> None:
@@ -26,6 +31,9 @@ def run_pulse_check(
     require_supabase: bool = False,
     audit_heartbeats: bool = False,
     heartbeat_fixture: pathlib.Path | None = None,
+    rhythm_check: bool = False,
+    scarindex_fixture: pathlib.Path | None = None,
+    schema_drift_check: bool = False,
     now: datetime | None = None,
     allowed_gap_minutes: int = 60,
     emit: LineEmitter | None = None,
@@ -43,8 +51,14 @@ def run_pulse_check(
         audit_heartbeats: When ``True``, run offline heartbeat retention checks
             against the provided fixture and optionally reconcile against
             live Supabase data.
+        rhythm_check: When ``True``, enforce heartbeat and ScarIndex freshness
+            against the configured rhythm bounds.
         heartbeat_fixture: Optional path to a JSON fixture containing heartbeat
             records. Defaults to ``data/audit/heartbeat_retention.json``.
+        scarindex_fixture: Optional path to a JSON fixture containing ScarIndex
+            records. Defaults to ``data/audit/scarindex_samples.json``.
+        schema_drift_check: Validate ScarIndex rows against the canonical
+            contract and flag deviations.
         now: Override the reference time used for the audit (useful for tests).
         allowed_gap_minutes: Maximum tolerated gap before reporting drift.
         emit: Optional callback to receive log lines (defaults to ``print``).
@@ -94,20 +108,24 @@ def run_pulse_check(
     ], _emit)
 
     heartbeat_result = None
+    heartbeat_records: List[dict] | None = None
+
+    def _load_json_fixture(path: pathlib.Path) -> List[dict]:
+        try:
+            return json.loads(path.read_text())
+        except FileNotFoundError:
+            _emit(f"⚠️  Fixture missing: {path}")
+            return []
+        except json.JSONDecodeError as e:  # noqa: BLE001 - user-controlled fixture
+            _emit(f"⚠️  Fixture unreadable: {e}")
+            return []
 
     if audit_heartbeats:
         fixture_path = heartbeat_fixture or pathlib.Path("data/audit/heartbeat_retention.json")
-        try:
-            records = json.loads(pathlib.Path(fixture_path).read_text())
-        except FileNotFoundError:
-            records = []
-            _emit(f"⚠️  Heartbeat fixture missing: {fixture_path}")
-        except json.JSONDecodeError as e:  # noqa: BLE001 - user-controlled fixture
-            records = []
-            _emit(f"⚠️  Heartbeat fixture unreadable: {e}")
+        heartbeat_records = _load_json_fixture(pathlib.Path(fixture_path))
 
         heartbeat_result = audit_heartbeat_retention(
-            records,
+            heartbeat_records,
             now=reference_time,
             allowed_gap_minutes=allowed_gap_minutes,
         )
@@ -125,6 +143,48 @@ def run_pulse_check(
 
         if not heartbeat_result["is_healthy"]:
             exit_code = max(exit_code, 2)
+
+    if rhythm_check:
+        if heartbeat_records is None:
+            hb_fixture = heartbeat_fixture or pathlib.Path("data/audit/heartbeat_retention.json")
+            heartbeat_records = _load_json_fixture(pathlib.Path(hb_fixture))
+
+        scar_fixture = scarindex_fixture or pathlib.Path("data/audit/scarindex_samples.json")
+        scarindex_records = _load_json_fixture(pathlib.Path(scar_fixture))
+
+        rhythm_status = evaluate_rhythm(
+            heartbeat_records=heartbeat_records,
+            scarindex_records=scarindex_records,
+            now=reference_time,
+        )
+
+        emit_block([
+            "🩺 Rhythm governance",
+            f"   Heartbeat latest: {rhythm_status.heartbeat.latest_timestamp}",
+            f"   Heartbeat staleness (s): {rhythm_status.heartbeat.staleness_seconds}",
+            f"   ScarIndex latest: {rhythm_status.scarindex.latest_timestamp}",
+            f"   ScarIndex staleness (s): {rhythm_status.scarindex.staleness_seconds}",
+            f"   Max heartbeat staleness (s): {HEARTBEAT_BOUNDS.max_staleness_seconds}",
+            f"   Max ScarIndex staleness (s): {SCARINDEX_BOUNDS.max_staleness_seconds}",
+            HEADER,
+        ], _emit)
+
+        if rhythm_status.heartbeat.is_stale:
+            exit_code = max(exit_code, RHYTHM_STALE_HEARTBEAT_EXIT)
+            _emit("❌ Heartbeat rhythm stale")
+
+        if rhythm_status.scarindex.is_stale:
+            exit_code = max(exit_code, RHYTHM_STALE_SCARINDEX_EXIT)
+            _emit("❌ ScarIndex rhythm stale")
+
+        if schema_drift_check:
+            try:
+                validate_scarindex_schema(scarindex_records)
+            except ValueError as exc:  # noqa: BLE001 - intentional surfacing
+                _emit(f"❌ ScarIndex schema drift detected: {exc}")
+                exit_code = max(exit_code, RHYTHM_SCHEMA_DRIFT_EXIT)
+            else:
+                _emit("✅ ScarIndex schema matches canonical contract")
 
     if not require_supabase:
         emit_block([
@@ -215,10 +275,26 @@ def main() -> None:
         help="Run offline heartbeat retention checks and reconcile online data when available",
     )
     parser.add_argument(
+        "--rhythm-check",
+        action="store_true",
+        help="Enforce freshness bounds for heartbeat and ScarIndex fixtures",
+    )
+    parser.add_argument(
         "--heartbeat-fixture",
         type=pathlib.Path,
         default=None,
         help="Override the default heartbeat fixture path",
+    )
+    parser.add_argument(
+        "--scarindex-fixture",
+        type=pathlib.Path,
+        default=None,
+        help="Override the default ScarIndex fixture path",
+    )
+    parser.add_argument(
+        "--schema-drift-check",
+        action="store_true",
+        help="Validate ScarIndex rows against the canonical contract",
     )
     parser.add_argument(
         "--allowed-gap-minutes",
@@ -232,7 +308,10 @@ def main() -> None:
         env_path=args.env_path,
         require_supabase=args.require_supabase,
         audit_heartbeats=args.audit_heartbeats,
+        rhythm_check=args.rhythm_check,
         heartbeat_fixture=args.heartbeat_fixture,
+        scarindex_fixture=args.scarindex_fixture,
+        schema_drift_check=args.schema_drift_check,
         allowed_gap_minutes=args.allowed_gap_minutes,
     )
     raise SystemExit(exit_code)
