@@ -1,10 +1,14 @@
 # 🌀 SpiralOS — Constitutional Cognitive Sovereignty
 
-![Version](https://img.shields.io/badge/version-v0.147.0-blue.svg?style=for-the-badge) ![Cycle](https://img.shields.io/badge/cycle-ΔΩ.147-7c3aed.svg?style=for-the-badge) ![CI](https://img.shields.io/badge/CI-green-success.svg?style=for-the-badge)
+<div align="center">
+  <img alt="SpiralOS glyph" src="https://img.shields.io/badge/version-v0.147.0-blue.svg?style=for-the-badge" />
+  <img alt="Cycle" src="https://img.shields.io/badge/cycle-%CE%94%CE%A9.147-7c3aed.svg?style=for-the-badge" />
+  <img alt="CI" src="https://img.shields.io/badge/CI-green-success.svg?style=for-the-badge" />
+</div>
 
 > Release channel: **ΔΩ.147 — Canonical Hardening & CI Restoration** (suggested tag `v0.147.0`).
 
-SpiralOS is an open-source autonomy stack that converts high-noise civic data into verifiable decisions. It orchestrates ScarIndex coherence analytics, ScarCoin/VaultNode economic primitives, and Guardian automations so contributors can run a resilient governance network without bespoke infrastructure. Mythic framing aside, SpiralOS is a practical toolkit for Supabase-powered telemetry, fast API surfaces, and rigorous CI hygiene.
+SpiralOS is an open-source autonomy stack that turns high-noise civic telemetry into auditable, trustworthy coordination signals. It orchestrates ScarIndex coherence analytics, ScarCoin/VaultNode economic primitives, and Guardian automations so contributors can run a resilient governance network without bespoke infrastructure.
 
 _Mythic tagline:_ **Where coherence becomes currency and Witnesses guard the flame.**
 
@@ -12,22 +16,14 @@ _Mythic tagline:_ **Where coherence becomes currency and Witnesses guard the fla
 
 ---
 
-## ✅ Feature Highlights
+## ✨ Quick Constellation
 
-- ✅ ScarIndex coherence engine with F4 PanicFrames + PID stabilization.
-- ✅ ScarCoin + VaultNode ritual economy layer for dual-token governance.
-- ✅ Supabase-backed telemetry pipeline (GitHub webhooks, Guardian heartbeat, Gateways).
-- ✅ Guardian automations, Discord integrations, and Sovereignty dashboards.
-- ✅ CI-green: `pytest -v`, `flake8 .`, and scoped `bandit` all pass on clean installs.
-
----
-
-## 🏛️ What SpiralOS Provides
-
-1. **Real-time coherence sensing** — ScarIndex, Ache PID controllers, and PanicFrames detect drift and freeze operations safely.
-2. **Programmatic governance** — Oracle Council, F2 Judicial dissent, and VaultNode archives provide cryptographic accountability.
-3. **Ritual economy layer** — ScarCoin, EMP, and VaultNode registries manage thermodynamic + relational tokens.
-4. **Guardian operations** — Automation scripts bridge GitHub, Discord, Supabase, and ScarCoin APIs under hardened credentials.
+| Pillar | Essence | Jump In |
+| --- | --- | --- |
+| 🧭 **Coherence** | ScarIndex + PanicFrames keep signals stable with Ache/SoC PID controls. | `python scarindex/` and `core/` modules; see `tests/` for fixtures. |
+| 🪙 **Holoeconomy** | ScarCoin + VaultNode dual-token rituals with EMP and archive registries. | `holoeconomy/` APIs; run the Bridge below. |
+| 🛡️ **Guardianship** | Automation scripts protect credentials, orchestrate Discord + GitHub, and steward Supabase. | `core/guardian/` scripts and `apps/` dashboards. |
+| 📡 **Telemetry** | Supabase Edge functions + GitHub/Gateway webhooks route live telemetry into governed storage. | `supabase/functions/` and `monitoring/`. |
 
 ---
 
@@ -74,38 +70,60 @@ flowchart LR
 
 ---
 
-## ⚡ Quickstart
+## 🚀 Quickstart
 
-### Prerequisites
-- Python 3.11+
-- `pip` or Poetry for Python dependencies
-- Node.js 18+ for dashboards/Guardian UI
-- Supabase project (optional for read-only mode)
+> **Zero to signal:** the defaults are deterministic—copy the env file, install deps, and run the suite.
 
-### Setup
 ```bash
 cp .env.example .env.local  # populate GUARDIAN_* + SUPABASE_* secrets
 pip install -r requirements.txt
-npm install  # if working on dashboards or Guardian UI
-pytest -v  # verify the suite boots in your environment
+npm install                  # dashboards + Guardian UI
+pytest -v                    # verify Python surface boots locally
 ```
 
-### Run the ScarCoin Bridge API
+Run the ScarCoin Bridge API:
+
 ```bash
-export SUPABASE_URL=...  # or rely on repo defaults for local CI
+export SUPABASE_URL=...           # or rely on repo defaults for local CI
 export SUPABASE_SERVICE_ROLE_KEY=...
 python holoeconomy/scarcoin_bridge_api.py
 ```
 
-### Sovereignty Dashboard + Guardian Workflows
+Sovereignty Dashboard + Guardian workflows:
+
 ```bash
-npm run dev  # dashboards in apps/, monitoring/, or guardian portals
+npm run dev                       # dashboards in apps/, monitoring/, or guardian portals
 python core/guardian/scripts/simple_heartbeat.py  # exercise Guardian automations
 ```
 
 ---
 
-## 🔐 Security & Governance
+## ✅ Capability Highlights
+
+- ✅ ScarIndex coherence engine with F4 PanicFrames + PID stabilization.
+- ✅ ScarCoin + VaultNode ritual economy layer for dual-token governance.
+- ✅ Supabase-backed telemetry pipeline (GitHub webhooks, Guardian heartbeat, Gateways).
+- ✅ Guardian automations, Discord integrations, and Sovereignty dashboards.
+- ✅ CI-green: `pytest -v`, `flake8 .`, and scoped `bandit` all pass on clean installs.
+
+### Signal Map (collapsible)
+<details>
+<summary>Show matrix</summary>
+
+| Layer | What It Guards | How To Touch It |
+| --- | --- | --- |
+| Core Control | Ache PID + PanicFrames to freeze drift. | `core/` modules and `tests/` fixtures. |
+| Economic Primitives | ScarCoin mint/burn, VaultNode archives, EMP registers. | `holoeconomy/` services and `contracts/` docs. |
+| Guardian Mesh | Discord, GitHub, telemetry collectors; hardened secrets flow. | `core/guardian/` scripts, `.env.example` hints. |
+| Observability | Liquidity Mirror, Sovereignty Dashboard, runbooks. | `monitoring/`, `apps/`, `docs/` runbooks. |
+
+</details>
+
+---
+
+## 🧭 Operating Manual
+
+### Security & Governance
 
 - **Guardian API key auth** — `GUARDIAN_API_KEYS` defines allowed callers; clients send `X-Guardian-Key` per request.
 - **JWT guardianship** — ScarCoin bridge verifies `Authorization: Bearer <token>` against `GUARDIAN_JWT_SECRET` (HS256) with optional issuer/audience fields.
@@ -113,9 +131,7 @@ python core/guardian/scripts/simple_heartbeat.py  # exercise Guardian automation
 - **Bandit posture** — `bandit -r . -x node_modules,scripts/etl/node_modules,supabase/functions,.github,archive,liquidity_mirror,v1.5B_legitimacy` runs clean. Legacy urllib calls are annotated with justified `# nosec` markers after HTTPS validation.
 - **Audit lineage** — ΔΩ.147.F canonical seal, ΔΩ.147.G cleanup report, and `data/audit/audit_summary.json` contain the freeze hash for external verification.
 
----
-
-## 🛠️ Development & CI
+### Development & CI
 
 SpiralOS ships with deterministic defaults so contributors can run the full signal without live secrets.
 
@@ -130,19 +146,23 @@ Additional helpers:
 - `.flake8`, `pyproject.toml`, and `bandit.json` enforce formatting + security policies.
 - `docs/audit/ΔΩ.147_release_notes.md` + `CHANGELOG.md` track ΔΩ lineage; update them alongside new waves.
 
-## 🌀 New Contributors
+---
+
+## 🌱 New Contributors
+
 Welcome to the Spiral.
 
-To get started:
-- Read `CONTRIBUTING.md`
-- Review architecture in `docs/ARCHITECTURE.md`
-- Check audit lineage in `docs/audit/`
-- Ensure tests + lint + bandit pass locally
-- Use the Issue & PR templates under `.github/`
+1. Read [`CONTRIBUTING.md`](./CONTRIBUTING.md) and [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md).
+2. Check audit lineage in [`docs/audit/`](./docs/audit/).
+3. Ensure tests + lint + bandit pass locally.
+4. Use the Issue & PR templates under `.github/`.
 
-This project follows ΔΩ governance cycles.
+> This project follows ΔΩ governance cycles; new artifacts should note the active wave.
+
+---
 
 ## 📚 Further Reading
+
 - Architecture Overview → `docs/ARCHITECTURE.md`
 - Audit Lineage → `docs/audit/`
 - Canonical Freeze (ΔΩ.147.F) → `data/audit/audit_summary.json`
