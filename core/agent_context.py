@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Dict, Mapping, Tuple
-from spiral_types import MappingProxyType
+from types import MappingProxyType
 from uuid import uuid4
 
 
