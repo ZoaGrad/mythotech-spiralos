@@ -1,0 +1,14 @@
+[
+  {
+    "created_at": "2025-01-01T00:00:00Z",
+    "status": "ok"
+  },
+  {
+    "created_at": "2025-01-01T06:00:00Z",
+    "status": "ok"
+  },
+  {
+    "created_at": "2025-01-01T12:00:00Z",
+    "status": "ok"
+  }
+]
