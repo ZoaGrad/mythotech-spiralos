@@ -8,7 +8,7 @@ import os
 import sys
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 import aiohttp
 import discord
@@ -44,6 +44,7 @@ class GuardianBot(commands.Bot):
         super().__init__(command_prefix="!", intents=intents, description="SpiralOS Guardian - System Health Monitor")
 
         self.edge_url = os.getenv("GUARDIAN_EDGE_URL")
+        self.api_url = os.getenv("GUARDIAN_API_URL") or self.edge_url
         self.webhook_url = os.getenv("DISCORD_GUARDIAN_WEBHOOK")
         self.channel_id = int(os.getenv("DISCORD_CHANNEL_ID", "0"))
         self.guild_id = int(os.getenv("DISCORD_GUILD_ID", "0"))
@@ -98,6 +99,36 @@ class GuardianBot(commands.Bot):
                     pid_state=data.get("pid_state"),
                     panic_frames=data.get("panic_frames", 0),
                 )
+
+    async def post_witness_event(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Send witness protocol events to Spiral API."""
+
+        if not self.api_url:
+            raise ValueError("GUARDIAN_API_URL is required for witness protocol")
+
+        url = f"{self.api_url.rstrip('/')}/witness/event"
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, json=payload) as response:
+                if response.status >= 400:
+                    detail = await response.text()
+                    raise Exception(f"Witness event failed: {response.status} {detail}")
+                return await response.json()
+
+    async def fetch_claim_status(self, claim_id: str) -> Dict[str, Any]:
+        """Fetch witness claim status via API proxy."""
+
+        if not self.api_url:
+            raise ValueError("GUARDIAN_API_URL is required for witness protocol")
+
+        url = f"{self.api_url.rstrip('/')}/witness/claim/{claim_id}"
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as response:
+                if response.status == 404:
+                    raise Exception("Claim not found")
+                if response.status >= 400:
+                    detail = await response.text()
+                    raise Exception(f"Claim lookup failed: {response.status} {detail}")
+                return await response.json()
 
     def create_status_embed(self, metrics: GuardianMetrics) -> discord.Embed:
         """Create a rich embed for Guardian status."""
@@ -259,13 +290,81 @@ bot = GuardianBot()
 
 
 # Slash Commands
-@bot.tree.command(name="status", description="Get current Guardian system status")
-@app_commands.describe(hours="Time window in hours (default: 24)")
-async def status_command(interaction: discord.Interaction, hours: int = 24):
-    """Get current system status."""
-    await interaction.response.defer()
+@bot.tree.command(name="claim", description="Submit a STREAM witness claim")
+@app_commands.describe(target_id="Target user id", payload="JSON payload for the claim")
+async def claim_command(interaction: discord.Interaction, target_id: str, payload: str):
+    """Submit a witness claim via Supabase edge proxy."""
+
+    await interaction.response.defer(ephemeral=True)
 
     try:
+        event = {
+            "initiator_id": str(interaction.user.id),
+            "target_id": target_id,
+            "payload": payload,
+        }
+        data = await bot.post_witness_event(event)
+        await interaction.followup.send(
+            f"✅ Claim submitted. ID: `{data.get('claim_id')}`", ephemeral=True
+        )
+    except Exception as e:
+        await interaction.followup.send(f"❌ Claim submission failed: {e}", ephemeral=True)
+
+
+@bot.tree.command(name="witness", description="Submit a witness assessment")
+@app_commands.describe(
+    claim_id="Claim identifier",
+    semantic="Semantic resonance score",
+    emotional="Emotional resonance score",
+    contextual="Contextual resonance score",
+    notes="Optional notes",
+)
+async def witness_command(
+    interaction: discord.Interaction,
+    claim_id: str,
+    semantic: float,
+    emotional: float,
+    contextual: float,
+    notes: Optional[str] = None,
+):
+    """Submit an assessment for a STREAM witness claim."""
+
+    await interaction.response.defer(ephemeral=True)
+
+    try:
+        assessment = {
+            "claim_id": claim_id,
+            "witness_id": str(interaction.user.id),
+            "semantic": semantic,
+            "emotional": emotional,
+            "contextual": contextual,
+            "notes": notes,
+        }
+        data = await bot.post_witness_event(assessment)
+        finalized = data.get("finalized")
+        status_line = "" if not finalized else f" → auto-finalized: {finalized}"
+        await interaction.followup.send(
+            f"✅ Assessment recorded for `{claim_id}`{status_line}", ephemeral=True
+        )
+    except Exception as e:
+        await interaction.followup.send(f"❌ Witness submission failed: {e}", ephemeral=True)
+
+
+@bot.tree.command(name="status", description="Get current Guardian system status or witness claim")
+@app_commands.describe(hours="Time window in hours (default: 24)", claim_id="Optional witness claim id")
+async def status_command(interaction: discord.Interaction, hours: int = 24, claim_id: Optional[str] = None):
+    """Get current system status or witness claim state."""
+    await interaction.response.defer(ephemeral=bool(claim_id))
+
+    try:
+        if claim_id:
+            claim = await bot.fetch_claim_status(claim_id)
+            await interaction.followup.send(
+                f"📜 Claim **{claim_id}** → {claim.get('status', 'unknown').upper()} (ρΣ={claim.get('rho_sigma')})",
+                ephemeral=True,
+            )
+            return
+
         metrics = await bot.fetch_guardian_status(hours=hours)
         embed = bot.create_status_embed(metrics)
         await interaction.followup.send(embed=embed)

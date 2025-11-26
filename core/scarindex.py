@@ -12,8 +12,8 @@ import hashlib
 import json
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Dict, Optional, Tuple
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, Optional, Tuple
 
 from .panic_frames import log_event, trigger_panic_frames
 
@@ -211,6 +211,7 @@ class ScarIndexOracle:
         ache: AcheMeasurement,
         cmp_lineage: Optional[float] = None,
         metadata: Optional[Dict] = None,
+        witness_stats: Optional[Dict[str, float]] = None,
         enable_logging: bool = True,
     ) -> ScarIndexResult:
         """
@@ -239,13 +240,21 @@ class ScarIndexOracle:
         # Using the v2.1 formula decomposition
         avg_c_i = sum(c_i_list) / N if N > 0 else 0
 
+        witness_social = p_i_avg
+        if witness_stats:
+            witness_resonance = (
+                float(witness_stats.get("avg_rho_sigma_last_100", 0) or 0)
+                + float(witness_stats.get("avg_emp_recent_30d", 0) or 0)
+            ) / 2
+            witness_social = (p_i_avg * 0.7) + (witness_resonance * 0.3)
+
         # Create result with calculated components
         result = ScarIndexResult(
             id=str(uuid.uuid4()),
             timestamp=datetime.now(timezone.utc),
             components=CoherenceComponents(
                 operational=avg_c_i,  # Average individual efficacy
-                audit=p_i_avg,  # Promotion probability
+                audit=witness_social,  # Promotion probability + witness resonance
                 constitutional=max(0, 1 - (decays_count / N)) if N > 0 else 0,  # Inverse of decay rate
                 symbolic=scarindex,  # Overall coherence
             ),
@@ -450,6 +459,40 @@ def compute_global_coherence(N, c_i_list, p_i_avg, decays_count):
         trigger_panic_frames()
 
     return C_t
+
+
+def load_witness_stats(supabase_client: Any) -> Dict[str, float]:
+    """Load witness protocol metrics for ScarIndex social weighting."""
+
+    stats = {"avg_emp_recent_30d": 0.0, "avg_rho_sigma_last_100": 0.0}
+
+    if not supabase_client:
+        return stats
+
+    try:
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+        emp_result = supabase_client.table("emp_ledger").select("amount, minted_at").gte("minted_at", cutoff).execute()
+        emp_rows = getattr(emp_result, "data", []) or []
+        if emp_rows:
+            totals = [float(row.get("amount", 0) or 0) for row in emp_rows]
+            stats["avg_emp_recent_30d"] = sum(totals) / len(totals)
+
+        rho_result = (
+            supabase_client.table("witness_claims")
+            .select("rho_sigma")
+            .not_.is_("rho_sigma", None)
+            .order("updated_at", desc=True)
+            .limit(100)
+            .execute()
+        )
+        rho_rows = getattr(rho_result, "data", []) or []
+        if rho_rows:
+            values = [float(row.get("rho_sigma", 0) or 0) for row in rho_rows]
+            stats["avg_rho_sigma_last_100"] = sum(values) / len(values)
+    except Exception as exc:  # pragma: no cover - external dependency
+        log_event("WARNING", f"Failed to load witness stats: {exc}")
+
+    return stats
 
 
 # Constants from v2.1 VaultNode

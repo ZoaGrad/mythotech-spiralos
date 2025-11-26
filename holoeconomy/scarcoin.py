@@ -15,6 +15,9 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Dict, List, Optional
+from uuid import UUID
+
+from .vaultnode import VaultEvent, seal_emp_minted
 
 
 @dataclass
@@ -443,6 +446,45 @@ class ScarCoinMintingEngine:
         """Get wallet balance"""
         wallet = self.get_wallet(address)
         return wallet.balance if wallet else None
+
+
+# Soul-bound EMP ledger for witness protocol
+emp_ledger: List[Dict] = []
+
+
+def mint_emp(user_id: UUID, amount: float, claim_id: UUID, origin_variant: str = "STREAM", rho_sigma: Optional[float] = None):
+    """
+    Soul-bound EMP minting. No transfer, no market.
+
+    Records the mint in the in-memory emp_ledger and emits a VaultNode event
+    for downstream sealing.
+    """
+
+    if amount <= 0:
+        raise ValueError("EMP mint amount must be positive")
+
+    record = {
+        "id": str(uuid.uuid4()),
+        "user_id": str(user_id),
+        "claim_id": str(claim_id),
+        "amount": float(amount),
+        "rho_sigma": rho_sigma,
+        "transferable": False,
+        "origin_variant": origin_variant,
+        "minted_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+    emp_ledger.append(record)
+
+    vault_event: VaultEvent = seal_emp_minted(
+        claim_id=str(claim_id),
+        user_id=str(user_id),
+        amount=Decimal(str(amount)),
+        rho_sigma=rho_sigma,
+        metadata={"variant": origin_variant},
+    )
+
+    return {"ledger_entry": record, "vault_event": vault_event}
 
 
 # Example usage

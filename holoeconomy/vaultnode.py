@@ -355,6 +355,43 @@ class VaultNode:
 
         return True
 
+
+WITNESS_EVENT = "WITNESS_EVENT"
+EMP_MINTED = "EMP_MINTED"
+
+
+def seal_witness_event(
+    *, claim_id: str, witness_id: str, status: str, payload: Optional[Dict] = None
+) -> VaultEvent:
+    """Create a VaultEvent for witness submissions."""
+
+    return VaultEvent(
+        event_type=WITNESS_EVENT,
+        event_data={
+            "claim_id": claim_id,
+            "witness_id": witness_id,
+            "status": status,
+            "payload": payload or {},
+        },
+    )
+
+
+def seal_emp_minted(
+    *, claim_id: str, user_id: str, amount: Decimal, rho_sigma: Optional[float] = None, metadata: Optional[Dict] = None
+) -> VaultEvent:
+    """Create a VaultEvent for EMP minting."""
+
+    return VaultEvent(
+        event_type=EMP_MINTED,
+        event_data={
+            "claim_id": claim_id,
+            "user_id": user_id,
+            "amount": str(amount),
+            "rho_sigma": rho_sigma,
+            "metadata": metadata or {},
+        },
+    )
+
     def get_chain_stats(self) -> Dict:
         """Get blockchain statistics"""
         total_events = sum(len(block.events) for block in self.blocks)
