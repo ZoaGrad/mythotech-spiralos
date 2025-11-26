@@ -67,6 +67,7 @@ class FrozenOperation(Enum):
     SCARCOIN_BURN = "scarcoin_burn"
     VAULTNODE_GEN = "vaultnode_gen"
     STATE_TRANSITION = "state_transition"
+    WITNESS_PROTOCOL = "witness_protocol"
 
 
 @dataclass
@@ -437,6 +438,20 @@ def log_event(level: str, message: str, meta: Optional[Dict] = None) -> None:
             manager.store.insert_signal(level=level, key="panic_frame.event", meta=meta or {"message": message})
     except Exception as e:
         log.debug(f"Failed to persist event to Supabase: {e}")
+
+
+def guard_witness_reversal_rate(witness_reversal_rate_7d: float) -> Optional[PanicFrameEvent]:
+    """Trigger panic frame if witness reversals exceed the safety threshold."""
+
+    manager = get_panic_manager()
+    if witness_reversal_rate_7d > 0.20:
+        event = manager.trigger_panic_frame(
+            scarindex=manager.PANIC_THRESHOLD,
+            metadata={"witness_reversal_rate_7d": witness_reversal_rate_7d, "operation": FrozenOperation.WITNESS_PROTOCOL.value},
+        )
+        manager.freeze_operations(event.id, [FrozenOperation.WITNESS_PROTOCOL])
+        return event
+    return None
 
 
 def trigger_panic_frames(scarindex: Optional[float] = None) -> None:
