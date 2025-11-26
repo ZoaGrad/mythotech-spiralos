@@ -54,6 +54,13 @@ class GuardianBot(commands.Bot):
 
     async def setup_hook(self):
         """Initialize bot and sync commands."""
+        # Load extensions
+        try:
+            await self.load_extension("cogs.witness")
+            print("✅ Loaded extension: cogs.witness")
+        except Exception as e:
+            print(f"❌ Failed to load extension cogs.witness: {e}")
+
         # Sync commands to guild for faster updates during development
         if self.guild_id:
             guild = discord.Object(id=self.guild_id)
