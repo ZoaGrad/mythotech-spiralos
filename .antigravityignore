@@ -1,0 +1,14 @@
+.env
+.env.*
+*.env
+spiral_data/
+guardian_logs.txt
+__pycache__/
+node_modules/
+build/
+dist/
+*.db
+*.sqlite
+*.log
+*.bak
+*.cache

@@ -355,3 +355,18 @@ s3_region = "env(S3_REGION)"
 s3_access_key = "env(S3_ACCESS_KEY)"
 # Configures AWS_SECRET_ACCESS_KEY for S3 bucket
 s3_secret_key = "env(S3_SECRET_KEY)"
+
+# RUNTIME TRINITY Cron Section
+[functions.emp-mint-worker]
+verify_jwt = false
+[functions.stream-expiry]
+verify_jwt = false
+
+[[cron]]
+schedule = "* * * * *"
+function = "emp-mint-worker"
+
+[[cron]]
+schedule = "*/10 * * * *"
+function = "stream-expiry"
+
