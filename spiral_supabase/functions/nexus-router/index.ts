@@ -46,15 +46,15 @@ serve(async (req) => {
         // We'll omit `user_id` and see if it works (if nullable). If not, we'll need to fix this.
 
         const payload = {
-            claim_body: claim_body,
+            payload: claim_body,
             mode: mode,
             status: 'pending',
-            // metadata: { source, external_user_id } // If we had a metadata column
+            // initiator_id: ... // If we had a user ID
         };
 
         // 3. Insert Claim
         const { data, error } = await supabase
-            .from("stream_claims")
+            .from("witness_claims")
             .insert(payload)
             .select()
             .single();

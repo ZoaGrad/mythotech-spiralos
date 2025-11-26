@@ -40,9 +40,9 @@ GROUP BY DATE(created_at);
 DROP VIEW IF EXISTS public.view_emp_velocity;
 CREATE VIEW public.view_emp_velocity AS
 WITH mints AS (
-    SELECT DATE(created_at) as day, SUM(amount) as total_minted, COUNT(*) as mint_events
+    SELECT DATE(minted_at) as day, SUM(amount) as total_minted, COUNT(*) as mint_events
     FROM public.emp_ledger
-    GROUP BY DATE(created_at)
+    GROUP BY DATE(minted_at)
 ),
 seals AS (
     SELECT DATE(created_at) as day, COUNT(*) as sealed_events
