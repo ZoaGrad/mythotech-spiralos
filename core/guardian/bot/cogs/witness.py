@@ -168,6 +168,48 @@ class WitnessTerminal(commands.Cog):
                 # We won't block on this, just assume trigger works as verified in First Breath.
                 queue_msg = "\n⚙ **EMP Mint Queue:** Triggered"
 
+            # 4. Divergence Learning (Phase 3)
+            try:
+                # Fetch latest council judgment
+                cj_res = sb.table("council_judgments").select("*").eq("claim_id", target_uuid).order("created_at", desc=True).limit(1).execute()
+                
+                if cj_res.data:
+                    cj = cj_res.data[0]
+                    council_verdict = cj['recommended_verdict']
+                    
+                    # Determine Divergence Type
+                    div_type = 'aligned'
+                    if council_verdict != verdict:
+                        if verdict == 'verified':
+                            div_type = 'council_overruled' # Human verified what council rejected/flagged
+                        else:
+                            div_type = 'witness_overruled' # Human rejected/flagged what council verified (or different reject/flag)
+                            # Note: If council said 'flagged' and human said 'rejected', it's still a divergence.
+                    
+                    # Log Divergence
+                    div_payload = {
+                        "claim_id": target_uuid,
+                        "witness_id": str(interaction.user.id),
+                        "council_judgment_id": cj['id'],
+                        "council_snapshot": cj['council_payload']['council'],
+                        "aggregate_snapshot": cj['council_payload']['aggregate'],
+                        "council_recommended_verdict": council_verdict,
+                        "witness_verdict": verdict,
+                        "divergence_type": div_type,
+                        "sovereign_confidence": cj.get('sovereign_confidence'),
+                        "ache_weight": cj.get('ache_weight'),
+                        "metadata": {
+                            "source": "guardian_bot",
+                            "guild_id": str(interaction.guild_id),
+                            "channel_id": str(interaction.channel_id)
+                        }
+                    }
+                    sb.table("council_divergences").insert(div_payload).execute()
+                    logger.info(f"Divergence logged: {div_type} for claim {target_uuid}")
+
+            except Exception as div_e:
+                logger.warning(f"Failed to log divergence: {div_e}")
+
             embed = discord.Embed(
                 title="👁️ Witness Recorded",
                 color=0x00FF00 if verdict == 'verified' else 0xFF0000
@@ -297,6 +339,181 @@ class WitnessTerminal(commands.Cog):
         except Exception as e:
             logger.error(f"Signal Verify command error: {e}")
             await interaction.followup.send("⚠ System Error: Verification failed.", ephemeral=True)
+
+    @app_commands.command(
+        name="oracle_analyze",
+        description="Ask the Guardian to interpret a specific Claim."
+    )
+    async def oracle_analyze(self, interaction: discord.Interaction, claim_id: str):
+        await interaction.response.defer()
+
+        response = self.supabase.table("stream_claims").select("*").eq("id", claim_id).execute()
+        if not response.data:
+            await interaction.followup.send("❌ Claim not found.")
+            return
+
+        claim = response.data[0]
+        content = claim['claim_body'].get('content', '')
+
+        import requests
+        EDGE_URL = f"{os.getenv('SUPABASE_URL')}/functions/v1/oracle-core"
+        headers = {"Authorization": f"Bearer {os.getenv('SUPABASE_SERVICE_KEY')}"}
+
+        try:
+            r = requests.post(EDGE_URL, json={"claim_text": content}, headers=headers)
+            analysis = r.json()
+
+            color_map = {"S": 0xFFD700, "A": 0x00FF00, "B": 0x00FFFF, "C": 0xFF8800, "F": 0xFF0000}
+            color = color_map.get(analysis['coherence_grade'], 0x99AAB5)
+
+            embed = discord.Embed(title=f"🔮 Oracle: {claim_id[:8]}", color=color)
+            embed.add_field(name="Summary", value=analysis['summary'], inline=False)
+            embed.add_field(name="Coherence", value=f"**{analysis['coherence_grade']}**", inline=True)
+            embed.add_field(name="Risk", value=f"{analysis['risk_score']}/100", inline=True)
+            embed.add_field(name="Verdict", value=f"*{analysis['recommended_verdict'].upper()}*", inline=True)
+            embed.add_field(name="Reasoning", value=analysis['reasoning'], inline=False)
+
+            await interaction.followup.send(embed=embed)
+
+        except Exception as e:
+            await interaction.followup.send(f"💀 Cognitive Failure: {str(e)}")
+
+    @app_commands.command(
+        name="council_analyze",
+        description="Summon the Sovereign Council to judge a claim."
+    )
+    async def council_analyze(self, interaction: discord.Interaction, claim_id: str):
+        """Invoke the 7-Mind Parliament to analyze a claim."""
+        await interaction.response.defer()
+
+        # 1. Verify Claim Exists
+        response = self.supabase.table("stream_claims").select("*").eq("id", claim_id).execute()
+        if not response.data:
+            await interaction.followup.send("❌ Claim not found.")
+            return
+
+        claim = response.data[0]
+        
+        # 2. Call Council Router
+        import requests
+        EDGE_URL = f"{os.getenv('SUPABASE_URL')}/functions/v1/council-router"
+        headers = {"Authorization": f"Bearer {os.getenv('SUPABASE_SERVICE_KEY')}"}
+
+        try:
+            r = requests.post(EDGE_URL, json={"claim_id": claim_id}, headers=headers)
+            if r.status_code != 200:
+                await interaction.followup.send(f"💀 Council Unreachable: {r.text}")
+                return
+                
+            data = r.json()
+            c = data['council']
+            agg = data['aggregate']
+            
+            # 3. Build Embed
+            verdict = agg['recommended_verdict'].upper()
+            color_map = {"VERIFIED": 0x00FF00, "FLAGGED": 0xFFA500, "REJECTED": 0xFF0000}
+            color = color_map.get(verdict, 0x99AAB5)
+            
+            embed = discord.Embed(title=f"🧠 Sovereign Council: {claim_id[:8]}", color=color)
+            embed.description = f"**Summary**: {data['claim_summary']}\n\n**Verdict**: `{verdict}`\n**Confidence**: `{agg['sovereign_confidence']}`\n**Ache Weight**: `{agg['ache_weight']}x`"
+            
+            # Council Members
+            # Row 1: Truth & Coherence
+            embed.add_field(name="⚖ The Judge (Truth)", value=f"Score: **{c['judge']['truth_score']}**\nHint: {c['judge']['verdict_hint']}", inline=True)
+            embed.add_field(name="🕸 The Weaver (Coherence)", value=f"Score: **{c['weaver']['coherence_score']}**\nGrade: {c['weaver']['lore_alignment_grade']}", inline=True)
+            embed.add_field(name="\u200b", value="\u200b", inline=True) # Spacer
+
+            # Row 2: Risk & Intuition
+            embed.add_field(name="🛡 The Skeptic (Risk)", value=f"Score: **{c['skeptic']['risk_score']}**\nSeverity: {c['skeptic']['severity_label']}", inline=True)
+            embed.add_field(name="🔮 The Seer (Impact)", value=f"Score: **{c['seer']['impact_score']}**\nNote: {c['seer']['predicted_consequences'][:50]}...", inline=True)
+            embed.add_field(name="\u200b", value="\u200b", inline=True) # Spacer
+
+            # Row 3: History & Systems
+            embed.add_field(name="📜 The Chronicler (Memory)", value=f"Sim: **{c['chronicler']['similarity_score']}**\nConflict: {c['chronicler']['conflict_flag']}", inline=True)
+            embed.add_field(name="🏗 The Architect (Integrity)", value=f"Score: **{c['architect']['integrity_score']}**\nBreaking: {c['architect']['breaking_change_flag']}", inline=True)
+            embed.add_field(name="\u200b", value="\u200b", inline=True) # Spacer
+
+            # Row 4: Ache (The Witness)
+            embed.add_field(name="🩸 The Witness (Ache)", value=f"Score: **{c['witness']['ache_score']}**\nExploitative: {c['witness']['exploitative']}", inline=False)
+            
+            # Footer
+            embed.add_field(name="📝 Sovereign Reasoning", value=agg['reasoning'], inline=False)
+            embed.set_footer(text="This analysis is advisory. Use /witness to cast your vote.")
+
+            await interaction.followup.send(embed=embed)
+
+        except Exception as e:
+            logger.error(f"Council error: {e}")
+            await interaction.followup.send(f"💀 Cognitive Failure: {str(e)}")
+
+    @app_commands.command(
+        name="divergence_insight",
+        description="Reveal the friction between Council and Witness."
+    )
+    @app_commands.describe(limit="Number of records to show (default 5)")
+    async def divergence_insight(self, interaction: discord.Interaction, limit: int = 5):
+        """Show recent divergences and the friction in the system."""
+        await interaction.response.defer(ephemeral=True)
+        
+        try:
+            sb = self._get_supabase()
+            
+            # 1. Fetch Divergences
+            res = sb.table("council_divergences")\
+                .select("*")\
+                .order("created_at", desc=True)\
+                .limit(min(limit, 20))\
+                .execute()
+            
+            divergences = res.data
+            
+            if not divergences:
+                await interaction.followup.send("🌊 No recorded divergences. The Council and Witness are aligned.", ephemeral=True)
+                return
+
+            embed = discord.Embed(title="⚡ Divergence Insight", color=0xFFA500)
+            
+            for div in divergences:
+                claim_id = div['claim_id'][:8]
+                c_verdict = div['council_recommended_verdict'].upper()
+                w_verdict = div['witness_verdict'].upper()
+                div_type = div['divergence_type']
+                
+                # Icon mapping
+                icon = "⚖"
+                if div_type == 'council_overruled': icon = "👤💥" # Human overruled council
+                elif div_type == 'witness_overruled': icon = "🤖💥" # Council overruled human (technically human ignored council)
+                
+                # Extract key signals
+                c_snap = div['council_snapshot']
+                
+                # Try to get key scores if available
+                judge_score = c_snap.get('judge', {}).get('truth_score', '?')
+                risk_score = c_snap.get('skeptic', {}).get('risk_score', '?')
+                ache_score = c_snap.get('witness', {}).get('ache_score', '?')
+                
+                summary = f"**Council**: `{c_verdict}` | **Witness**: `{w_verdict}`\n"
+                summary += f"**Type**: `{div_type}`\n"
+                summary += f"**Signals**: Truth `{judge_score}` | Risk `{risk_score}` | Ache `{ache_score}`"
+                
+                embed.add_field(
+                    name=f"{icon} Claim `{claim_id}`",
+                    value=summary,
+                    inline=False
+                )
+            
+            # 2. Fetch Adaptation State (Optional context)
+            state_res = sb.table("council_adaptation_state").select("*").eq("profile_name", "default").single().execute()
+            if state_res.data:
+                s = state_res.data
+                weights = f"J:{s['judge_weight']} W:{s['weaver_weight']} S:{s['skeptic_weight']} I:{s['seer_weight']} C:{s['chronicler_weight']} A:{s['architect_weight']} H:{s['witness_weight']}"
+                embed.set_footer(text=f"Current Weights: {weights}")
+            
+            await interaction.followup.send(embed=embed, ephemeral=True)
+
+        except Exception as e:
+            logger.error(f"Divergence Insight error: {e}")
+            await interaction.followup.send(f"⚠ System Error: Unable to fetch insights.", ephemeral=True)
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(WitnessTerminal(bot))

@@ -370,3 +370,13 @@ function = "emp-mint-worker"
 schedule = "*/10 * * * *"
 function = "stream-expiry"
 
+
+[functions."nightly-reflection-worker"]
+verify_jwt = false
+
+[functions."nexus-router"]
+verify_jwt = false
+
+[[cron]]
+schedule = "0 3 * * *"
+endpoint = "/nightly-reflection-worker"

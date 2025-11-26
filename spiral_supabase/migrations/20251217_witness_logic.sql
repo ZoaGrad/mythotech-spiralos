@@ -16,6 +16,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS on_assessment_insert ON witness_assessments;
 CREATE TRIGGER on_assessment_insert
 AFTER INSERT ON witness_assessments
 FOR EACH ROW
@@ -40,6 +41,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS on_claim_witnessed_queue ON stream_claims;
 CREATE TRIGGER on_claim_witnessed_queue
 AFTER UPDATE ON stream_claims
 FOR EACH ROW
@@ -49,18 +51,20 @@ EXECUTE FUNCTION trigger_emp_queue();
 CREATE OR REPLACE FUNCTION seal_ledger_entry()
 RETURNS TRIGGER AS $$
 BEGIN
-    INSERT INTO vault_nodes (node_type, reference_id, state_hash, metadata, hash_signature)
+    INSERT INTO vault_nodes (node_type, reference_id, state_hash, metadata, hash_signature, node_address)
     VALUES (
         'EMP_MINT',
         NEW.id,
         gen_random_uuid(), -- Placeholder for actual state hash
         jsonb_build_object('amount', NEW.amount, 'owner_id', NEW.owner_id),
-        md5(NEW.id::text || NEW.created_at::text) -- Simple signature for First Breath
+        md5(NEW.id::text || NEW.created_at::text), -- Simple signature for First Breath
+        '127.0.0.1'
     );
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS on_emp_ledger_seal ON emp_ledger;
 CREATE TRIGGER on_emp_ledger_seal
 AFTER INSERT ON emp_ledger
 FOR EACH ROW
