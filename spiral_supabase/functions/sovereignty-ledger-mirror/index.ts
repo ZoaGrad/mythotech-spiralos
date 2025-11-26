@@ -2,6 +2,7 @@
 // ΔΩ.147.10 — GitHub Webhook-Compatible Mirror
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { Buffer } from "node:buffer";
 import crypto from "node:crypto";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
