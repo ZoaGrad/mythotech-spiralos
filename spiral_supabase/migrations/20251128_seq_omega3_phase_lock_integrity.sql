@@ -93,7 +93,8 @@ begin
   end if;
 
   -- Compute root hash over full JSON snapshot
-  v_actual_root_hash := encode(digest(v_status::text, 'sha256'), 'hex');
+  -- Use public.digest to ensure we find the function, and cast inputs explicitly
+  v_actual_root_hash := encode(public.digest(v_status::text, 'sha256'), 'hex');
 
   -- Resolve expected root hash
   if p_expected_root_hash is not null then
