@@ -134,6 +134,11 @@ def main():
     # Global Status Command
     parser_status = subparsers.add_parser("global-status", help="Show full system status via API")
 
+    # Dashboard Command
+    parser_dashboard = subparsers.add_parser("dashboard", help="Manage dashboard")
+    dash_subs = parser_dashboard.add_subparsers(dest="subcommand")
+    dash_subs.add_parser("preview", help="Launch local dashboard preview")
+
     rhythm_parser = subparsers.add_parser("rhythm", help="Rhythm sentry")
     rhythm_parser.add_argument("--once", action="store_true", help="Run a single rhythm check cycle")
 
@@ -205,6 +210,8 @@ def main():
         cmd_constitution(args)
     elif args.command == "global-status":
         cmd_status(args)
+    elif args.command == "dashboard":
+        cmd_dashboard(args)
     elif args.command == "rhythm":
         cmd_rhythm(args)
     elif args.command == "custody":
@@ -360,6 +367,26 @@ def cmd_status(args):
         print(json.dumps(data, indent=2))
     else:
         print("[STATUS] No data returned or error occurred.")
+
+def cmd_dashboard(args):
+    """
+    Launch local dashboard preview.
+    """
+    if args.subcommand == "preview":
+        import subprocess
+        import os
+        dashboard_dir = os.path.join(os.getcwd(), "web", "dashboard")
+        print(f"[DASHBOARD] Launching preview in {dashboard_dir}...")
+        try:
+            # Check if node_modules exists, if not install
+            if not os.path.exists(os.path.join(dashboard_dir, "node_modules")):
+                print("[DASHBOARD] Installing dependencies...")
+                subprocess.check_call("npm install", shell=True, cwd=dashboard_dir)
+            
+            print("[DASHBOARD] Starting dev server...")
+            subprocess.check_call("npm run dev", shell=True, cwd=dashboard_dir)
+        except Exception as e:
+            print(f"[DASHBOARD] Error: {e}")
 
 def cmd_rhythm(args):
     sentry = RhythmSentry(db=db)

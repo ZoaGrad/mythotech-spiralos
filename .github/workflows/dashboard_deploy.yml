@@ -1,0 +1,36 @@
+name: Deploy Dashboard
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'web/dashboard/**'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        
+    - name: Install Dependencies
+      working-directory: ./web/dashboard
+      run: npm ci
+      
+    - name: Build
+      working-directory: ./web/dashboard
+      run: npm run build
+      env:
+        NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        
+    # Placeholder for actual Vercel/Netlify deploy
+    # In a real scenario, we'd use vercel/actions or netlify/actions here.
+    # For now, we just verify the build passes.
+    - name: Verify Build
+      run: echo "Build successful. Ready for Vercel/Netlify deployment."
