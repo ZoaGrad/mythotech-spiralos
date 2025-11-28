@@ -131,6 +131,9 @@ def main():
         "status", help="Show lock state and last known drift status"
     )
 
+    # Global Status Command
+    parser_status = subparsers.add_parser("global-status", help="Show full system status via API")
+
     rhythm_parser = subparsers.add_parser("rhythm", help="Rhythm sentry")
     rhythm_parser.add_argument("--once", action="store_true", help="Run a single rhythm check cycle")
 
@@ -200,6 +203,8 @@ def main():
             autopoiesis_parser.print_help()
     elif args.command == "constitution":
         cmd_constitution(args)
+    elif args.command == "global-status":
+        cmd_status(args)
     elif args.command == "rhythm":
         cmd_rhythm(args)
     elif args.command == "custody":
@@ -342,6 +347,20 @@ def cmd_constitution(args):
             # Leave hashes as-is; lock remains engaged until manual repair
             # You could add more logic here (e.g. notify external system)
             print("[RESOLVE] Drift rejected; lock remains engaged. Manual repair required.")
+
+def cmd_status(args):
+    """
+    Global system status via fn_status_api RPC.
+    """
+    try:
+        # We use the raw client to call the RPC
+        res = db.client._ensure_client().rpc("fn_status_api", {}).execute()
+        if res.data:
+            print(json.dumps(res.data, indent=2))
+        else:
+            print("[STATUS] No data returned from fn_status_api")
+    except Exception as e:
+        print(f"[STATUS] Error fetching status: {e}")
 
 def cmd_rhythm(args):
     sentry = RhythmSentry(db=db)
