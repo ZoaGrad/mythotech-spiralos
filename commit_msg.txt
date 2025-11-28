@@ -1,8 +1,0 @@
-feat(ARCH): Apply Schema Repairs + RLS Fixes + Webhook Patch (Seq F Ready)
-
-- Restore missing tables: witness_claims, witness_events, scarcoin_bridge, vault_events
-- Rename witness_assessments → assessments
-- Enable RLS and apply policies on 13 flagged tables
-- Fix sovereignty-ledger-mirror webhook (Buffer error)
-- Correct view security + timestamp alignment for observatory views
-- Prepare environment for Sequence F activation
