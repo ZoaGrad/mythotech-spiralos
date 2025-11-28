@@ -37,7 +37,7 @@ begin
   --    IMPORTANT: cast to bytea + cast hash type to text
   v_actual_root_hash :=
     encode(
-      digest(v_status::text::bytea, 'sha256'::text),
+      public.digest(v_status::text::bytea, 'sha256'::text),
       'hex'
     );
 
