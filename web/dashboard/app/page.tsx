@@ -2,6 +2,8 @@
 
 import { useStatusApi } from '../hooks/useStatusApi';
 
+import { PhaseLockPanel } from "../components/PhaseLockPanel";
+
 export default function Dashboard() {
     const { status, loading, error } = useStatusApi();
 
@@ -82,6 +84,8 @@ export default function Dashboard() {
                 </div>
 
             </div>
+
+            <PhaseLockPanel />
         </div>
     );
 }
