@@ -95,6 +95,57 @@ def main():
     membrane_parser.add_argument("--stress", action="store_true", help="Run stress test")
     membrane_parser.add_argument("--cycles", type=int, default=10, help="Number of cycles")
 
+    # Constitution Commands
+    constitution_parser = subparsers.add_parser("constitution", help="Constitution tools")
+    constitution_sub = constitution_parser.add_subparsers(dest="constitution_cmd")
+
+    const_hash = constitution_sub.add_parser("hash", help="Record constitution hashes for core components")
+    const_verify = constitution_sub.add_parser("verify", help="Verify live constitution against ledger")
+
+    # Extend constitution subcommands
+    const_drift = constitution_sub.add_parser(
+        "drift", help="Check for constitutional drift and lock status"
+    )
+
+    const_resolve = constitution_sub.add_parser(
+        "resolve", help="Resolve current constitutional lock"
+    )
+    const_resolve.add_argument(
+        "--accept",
+        action="store_true",
+        help="Accept new state as canonical and update hashes",
+    )
+    const_resolve.add_argument(
+        "--reject",
+        action="store_true",
+        help="Reject drift, keep old constitution (manual repair required)",
+    )
+    const_resolve.add_argument(
+        "--note",
+        type=str,
+        default="",
+        help="Resolution note",
+    )
+
+    const_status = constitution_sub.add_parser(
+        "status", help="Show lock state and last known drift status"
+    )
+
+    rhythm_parser = subparsers.add_parser("rhythm", help="Rhythm sentry")
+    rhythm_parser.add_argument("--once", action="store_true", help="Run a single rhythm check cycle")
+
+    custody_parser = subparsers.add_parser("custody", help="Custody registry operations")
+    custody_sub = custody_parser.add_subparsers(dest="custody_cmd")
+
+    custody_grant = custody_sub.add_parser("grant", help="Grant custody permissions")
+    custody_grant.add_argument("entity")
+    custody_grant.add_argument("permissions_json")
+
+    custody_revoke = custody_sub.add_parser("revoke", help="Revoke custody")
+    custody_revoke.add_argument("entity")
+
+    custody_list = custody_sub.add_parser("list", help="List active custody entries")
+
     args = parser.parse_args()
 
     if args.command == "mirror":
@@ -122,6 +173,11 @@ def main():
         else:
             purpose_parser.print_help()
     elif args.command == "autopoiesis":
+        lock = ScarLockController(db=db)
+        if lock.is_locked():
+            print("[AUTOPOIESIS] Blocked: constitutional lock is engaged. No structural changes allowed.")
+            return
+
         if args.subcommand == "queue":
             cmd_autopoiesis_queue(args)
         elif args.subcommand == "approve":
@@ -142,6 +198,12 @@ def main():
             cmd_autopoiesis_test_membrane(args)
         else:
             autopoiesis_parser.print_help()
+    elif args.command == "constitution":
+        cmd_constitution(args)
+    elif args.command == "rhythm":
+        cmd_rhythm(args)
+    elif args.command == "custody":
+        cmd_custody(args)
     else:
         parser.print_help()
 
@@ -214,6 +276,108 @@ def cmd_autopoiesis_test_membrane(args):
     import time
     time.sleep(1)
     print("[MEMBRANE] Integrity: 100%")
+
+from core.constitutional_rhythm import ConstitutionHasher, ConstitutionVerifier, RhythmSentry, CONSTITUTION_COMPONENTS
+from core.custody import CustodyRegistry
+from core.scarlock import ScarLockController
+from core.living_constitution import LivingConstitutionPulse
+import json
+
+def cmd_constitution(args):
+    if args.constitution_cmd == "hash":
+        hasher = ConstitutionHasher(db)
+        for component in CONSTITUTION_COMPONENTS:
+            h = hasher.record_hash(component)
+            print(f"[HASH] {component}: {h}")
+    elif args.constitution_cmd == "verify":
+        verifier = ConstitutionVerifier(db)
+        for component in CONSTITUTION_COMPONENTS:
+            result = verifier.verify_component(component)
+            print(f"[VERIFY] {component}: {result['status']}")
+    elif args.constitution_cmd == "drift":
+        pulse = LivingConstitutionPulse(db=db)
+        # Run a single pulse, but do NOT auto-lock here; just report
+        # We can call sentry directly to avoid extra events
+        sentry = RhythmSentry(db=db)
+        cycle = sentry.run_cycle()
+        lock = ScarLockController(db=db)
+        print("[DRIFT] drift_detected:", cycle.get("drift_detected"))
+        print("[DRIFT] lock_engaged:", lock.is_locked())
+        for r in cycle.get("results", []):
+            print(f" - {r['component']}: {r['status']}")
+
+    elif args.constitution_cmd == "status":
+        lock = ScarLockController(db=db)
+        status = lock.status()
+        print("[LOCK_STATUS]", status)
+
+    elif args.constitution_cmd == "resolve":
+        lock = ScarLockController(db=db)
+        hasher = ConstitutionHasher(db)
+
+        # Basic custody check: only entities with a certain permission should resolve
+        registry = CustodyRegistry(db)
+        # We treat 'service_role' as canonical resolver; you can refine this later
+        if not registry.has_permission("service_role", "can_resolve_lock"):
+            print("[ERROR] Current actor is not authorized to resolve constitutional lock.")
+            return
+
+        if args.accept and args.reject:
+            print("[ERROR] Cannot --accept and --reject simultaneously.")
+            return
+
+        if not args.accept and not args.reject:
+            print("[ERROR] Specify either --accept or --reject.")
+            return
+
+        if args.accept:
+            # Re-hash all components to treat current state as canonical
+            for component in CONSTITUTION_COMPONENTS:
+                h = hasher.record_hash(component)
+                print(f"[ACCEPT] Updated hash for {component}: {h}")
+            lock.release_lock(actor="resolver", resolution_note=args.note or "accept_new_state")
+            print("[RESOLVE] Lock released; new constitution accepted.")
+
+        elif args.reject:
+            # Leave hashes as-is; lock remains engaged until manual repair
+            # You could add more logic here (e.g. notify external system)
+            print("[RESOLVE] Drift rejected; lock remains engaged. Manual repair required.")
+
+def cmd_rhythm(args):
+    sentry = RhythmSentry(db=db)
+    if args.once:
+        result = sentry.run_cycle()
+        print(result)
+    else:
+        import time
+        while True:
+            result = sentry.run_cycle()
+            print("[RHYTHM] cycle:", result.get("drift_detected"))
+            time.sleep(60)
+
+def cmd_custody(args):
+    registry = CustodyRegistry(db)
+    if args.custody_cmd == "grant":
+        entity = args.entity
+        permissions = json.loads(args.permissions_json)
+        db.client._ensure_client().table("custody_registry").upsert({
+            "entity": entity,
+            "permission_set": permissions,
+            "active": True,
+            "updated_at": "now()"
+        }).execute()
+        print(f"[CUSTODY] Granted permissions to {entity}")
+    elif args.custody_cmd == "revoke":
+        db.client._ensure_client().table("custody_registry").update({
+            "active": False,
+            "updated_at": "now()"
+        }).eq("entity", args.entity).execute()
+        print(f"[CUSTODY] Revoked {args.entity}")
+    elif args.custody_cmd == "list":
+        entries = registry.list_active()
+        for e in entries:
+            print(f"- {e.entity}: {e.permission_set}")
+
 
 
 
