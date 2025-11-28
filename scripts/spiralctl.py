@@ -348,19 +348,18 @@ def cmd_constitution(args):
             # You could add more logic here (e.g. notify external system)
             print("[RESOLVE] Drift rejected; lock remains engaged. Manual repair required.")
 
+from core.status_api import StatusAPI
+
 def cmd_status(args):
     """
     Global system status via fn_status_api RPC.
     """
-    try:
-        # We use the raw client to call the RPC
-        res = db.client._ensure_client().rpc("fn_status_api", {}).execute()
-        if res.data:
-            print(json.dumps(res.data, indent=2))
-        else:
-            print("[STATUS] No data returned from fn_status_api")
-    except Exception as e:
-        print(f"[STATUS] Error fetching status: {e}")
+    api = StatusAPI(db)
+    data = api.get_status()
+    if data:
+        print(json.dumps(data, indent=2))
+    else:
+        print("[STATUS] No data returned or error occurred.")
 
 def cmd_rhythm(args):
     sentry = RhythmSentry(db=db)
