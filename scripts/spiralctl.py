@@ -489,6 +489,72 @@ def cmd_causality(args):
         except Exception as e:
             print(f"[CAUSALITY] Error fetching tension: {e}")
 
+def cmd_recalibration(args):
+    if args.recal_cmd == "trigger":
+        from core.guardian.recalibration import trigger_recalibration
+        print(f"[RECALIBRATION] Triggering recalibration (window={args.hours}h)...")
+        recal_id = trigger_recalibration(window_hours=args.hours)
+        if recal_id:
+            print(f"Recalibration Log ID: {recal_id}")
+        else:
+            print("Recalibration failed.")
+
+    elif args.recal_cmd == "history":
+        limit = args.limit
+        try:
+            res = db.client._ensure_client().table("guardian_recalibration_log")\
+                .select("recalibrated_at,window_start,previous_trust_index,new_trust_index,calibration_error,trigger_reason")\
+                .order("recalibrated_at", desc=True)\
+                .limit(limit)\
+                .execute()
+            
+            rows = res.data or []
+            if not rows:
+                print("No recalibration history found.")
+                return
+
+            for r in rows:
+                r["recalibrated_at"] = str(r["recalibrated_at"])
+                r["window_start"] = str(r["window_start"])
+                r["previous_trust_index"] = float(r["previous_trust_index"])
+                r["new_trust_index"] = float(r["new_trust_index"])
+                r["calibration_error"] = float(r["calibration_error"])
+
+            try:
+                from tabulate import tabulate
+                print(tabulate(rows, headers="keys"))
+            except ImportError:
+                print(json.dumps(rows, indent=2))
+        except Exception as e:
+            print(f"[RECALIBRATION] Error: {e}")
+
+def cmd_effectiveness(args):
+    if args.eff_cmd == "summary":
+        try:
+            res = db.client._ensure_client().table("view_guardian_effectiveness")\
+                .select("chosen_action,predicted_state,actual_state,intervention_prevented_collapse,effectiveness_score,action_taken_at")\
+                .order("action_taken_at", desc=True)\
+                .limit(20)\
+                .execute()
+            
+            rows = res.data or []
+            if not rows:
+                print("No effectiveness data found.")
+                return
+
+            for r in rows:
+                r["action_taken_at"] = str(r["action_taken_at"])
+                r["effectiveness_score"] = float(r["effectiveness_score"])
+
+            try:
+                from tabulate import tabulate
+                print(tabulate(rows, headers="keys"))
+            except ImportError:
+                print(json.dumps(rows, indent=2))
+        except Exception as e:
+            print(f"[EFFECTIVENESS] Error: {e}")
+
+
 def main():
     parser = argparse.ArgumentParser(description="SpiralOS Guardian CLI")
     subparsers = parser.add_subparsers(dest="command", help="Command to run")
@@ -700,6 +766,24 @@ def main():
     fusion_sub = fusion_parser.add_subparsers(dest="fusion_cmd")
     fusion_sub.add_parser("list", help="List fusion nodes")
 
+
+
+    # Recalibration Command
+    recal_parser = subparsers.add_parser("recalibration", help="Guardian Recalibration commands")
+    recal_sub = recal_parser.add_subparsers(dest="recal_cmd")
+    
+    recal_trigger = recal_sub.add_parser("trigger", help="Trigger manual recalibration")
+    recal_trigger.add_argument("--hours", type=int, default=24, help="Window hours")
+    
+    recal_history = recal_sub.add_parser("history", help="Show recalibration history")
+    recal_history.add_argument("--limit", type=int, default=10, help="Limit results")
+
+    # Effectiveness Command
+    eff_parser = subparsers.add_parser("effectiveness", help="Guardian Effectiveness commands")
+    eff_sub = eff_parser.add_subparsers(dest="eff_cmd")
+    
+    eff_sub.add_parser("summary", help="Show effectiveness summary")
+
     args = parser.parse_args()
 
     if args.command == "mirror":
@@ -707,6 +791,11 @@ def main():
             cmd_mirror_diagnose(args)
         else:
             mirror_parser.print_help()
+    # ... (existing commands)
+    elif args.command == "recalibration":
+        cmd_recalibration(args)
+    elif args.command == "effectiveness":
+        cmd_effectiveness(args)
     elif args.command == "identity":
         if args.subcommand == "list":
             cmd_identity_list(args)
