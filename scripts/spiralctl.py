@@ -511,6 +511,11 @@ def main():
     tension_parser = causality_sub.add_parser("tension", help="Show high-tension nodes")
     tension_parser.add_argument("--limit", type=int, default=10, help="Limit results")
 
+    # Cross-Mesh Command
+    crossmesh_parser = subparsers.add_parser("crossmesh", help="Cross-Mesh reconciliation commands")
+    crossmesh_sub = crossmesh_parser.add_subparsers(dest="crossmesh_cmd")
+    crossmesh_sub.add_parser("surface", help="Show the unified mesh surface")
+
     args = parser.parse_args()
 
     if args.command == "mirror":
@@ -579,8 +584,20 @@ def main():
         cmd_temporal(args)
     elif args.command == "causality":
         cmd_causality(args)
+    elif args.command == "crossmesh":
+        cmd_crossmesh(args)
     else:
         parser.print_help()
+
+def cmd_crossmesh(args):
+    if args.crossmesh_cmd == "surface":
+        try:
+            res = db.client._ensure_client().table("view_cross_mesh_surface").select("*").limit(20).execute()
+            print(f"--- Cross-Mesh Reconciliation Surface ---")
+            for row in res.data:
+                print(f"[{row['created_at']}] {row['resolved_type']} | {row['source_table']}::{row['source_id']} | T:{row['mesh_tension']} S:{row['severity']}")
+        except Exception as e:
+            print(f"[CROSSMESH] Error: {e}")
 
 if __name__ == "__main__":
     main()

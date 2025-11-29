@@ -67,9 +67,26 @@ async def run_guardian_cycle() -> None:
                 for anomaly in anomalies:
                     print(f"[FRACTURE] {anomaly}")
                     # Emit anomaly event and link to tick
-                    anomaly_event_id = emit_audit_event("anomaly_detected", "GuardianRunner", {"anomaly": str(anomaly)})
-                    if tick_id and anomaly_event_id:
-                        link_events(tick_id, anomaly_event_id, "guardian_anomaly_scan", 1.0)
+                    # Insert into guardian_anomalies
+                    anomaly_payload = {
+                        "anomaly_type": "COHERENCE_FRACTURE",
+                        "severity": "HIGH",
+                        "details": {"reason": anomaly.reason, "value": anomaly.value},
+                        "detected_at": anomaly.created_at.isoformat(),
+                        "status": "OPEN"
+                    }
+                    try:
+                        res = supabase_client.table("guardian_anomalies").insert(anomaly_payload).execute()
+                        if res.data:
+                            anomaly_id = res.data[0]['id']
+                            from core.cross_mesh import emit_cross_mesh
+                            emit_cross_mesh("ANOMALY", "guardian_anomalies", anomaly_id, anomaly_payload)
+                            
+                            # Link to tick
+                            if tick_id:
+                                link_events(tick_id, anomaly_id, "guardian_anomaly_scan", 1.0)
+                    except Exception as e:
+                        print(f"[GUARDIAN] Failed to record anomaly: {e}")
             else:
                 print("[FLOW] Coherence nominal; no anomalies detected.")
         except Exception as exc:  # pragma: no cover - resilience guard

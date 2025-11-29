@@ -25,6 +25,8 @@ class TemporalDriftEngine:
             anchor_id = res.data
             if anchor_id:
                 emit_audit_event("temporal_anchor_recorded", "TemporalDriftEngine", {"anchor_id": anchor_id, "source": source})
+                from core.cross_mesh import emit_cross_mesh
+                emit_cross_mesh("TEMPORAL_ANCHOR", "temporal_drift_log", anchor_id, {"source": source})
             
             return anchor_id
         except Exception as e:

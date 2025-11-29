@@ -44,6 +44,9 @@ def link_events(
                     "p_weight": weight
                 }
             ).execute()
+            
+            from core.cross_mesh import emit_cross_mesh
+            emit_cross_mesh("CAUSAL_LINK", "causal_event_links", link_id, notes)
 
         return link_id
     except Exception as e:

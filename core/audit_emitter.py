@@ -13,7 +13,10 @@ def emit_audit_event(event_type: str, component: str, payload: dict = None):
             "p_payload": payload
         }).execute()
         if res.data:
-            return res.data
+            event_id = res.data
+            from core.cross_mesh import emit_cross_mesh
+            emit_cross_mesh(event_type, "audit_surface_events", event_id, payload)
+            return event_id
         return None
     except Exception as e:
         print(f"[AUDIT_EMIT_FAIL] {event_type} from {component}: {e}")
