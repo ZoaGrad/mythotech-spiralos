@@ -1,5 +1,6 @@
 from typing import Dict, Any, Optional
 from .db import db as default_db, DatabaseWrapper
+from .audit_emitter import emit_audit_event
 import json
 
 class StatusAPI:
@@ -15,6 +16,9 @@ class StatusAPI:
         Fetch the global system status.
         Returns a dictionary containing lock_status, latest_event, and guardian_vows.
         """
+        # Emit audit event
+        emit_audit_event("status_check", "StatusAPI", {"action": "get_status"})
+
         try:
             res = self.db.client._ensure_client().rpc("fn_status_api", {}).execute()
             if res.data:

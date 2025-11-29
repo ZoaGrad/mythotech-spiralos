@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from supabase import Client, create_client
 
 from core.guardian.anomaly_detector import AnomalyDetector
+from core.audit_emitter import emit_audit_event
 
 HEARTBEAT_FREQUENCY = 60
 
@@ -43,6 +44,7 @@ async def run_guardian_cycle() -> None:
     while True:
         cycle_start = datetime.now(timezone.utc)
         print(f"[STATUS] Guardian heartbeat initiated at {cycle_start.isoformat()}")
+        emit_audit_event("guardian_tick", "GuardianRunner", {"timestamp": cycle_start.isoformat()})
 
         try:
             anomalies = detector.detect_anomalies()
