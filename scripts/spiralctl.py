@@ -10,6 +10,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 sys.stdout.reconfigure(encoding='utf-8')
 
 from core.mirror_layer import MirrorLayer, QuantumTag, OriginType
+from core.audit_emitter import emit_audit_event
 
 def cmd_mirror_diagnose(args):
     print(f"🔹 [MirrorLayer] Diagnosing dimensions: {args.dimensions}")
@@ -154,6 +155,17 @@ def main():
 
     custody_list = custody_sub.add_parser("list", help="List active custody entries")
 
+    # Audit Command
+    audit_parser = subparsers.add_parser("audit", help="Audit Surface commands")
+    audit_sub = audit_parser.add_subparsers(dest="audit_cmd")
+
+    audit_sub.add_parser("surface", help="Prints latest audit events")
+    
+    emit_parser = audit_sub.add_parser("emit", help="Manual test emitter")
+    emit_parser.add_argument("msg", help="Message to emit")
+
+    audit_sub.add_parser("diff", help="Compares latest phase-lock hash vs baseline")
+
     args = parser.parse_args()
 
     if args.command == "mirror":
@@ -216,6 +228,8 @@ def main():
         cmd_rhythm(args)
     elif args.command == "custody":
         cmd_custody(args)
+    elif args.command == "audit":
+        cmd_audit(args)
     else:
         parser.print_help()
 
@@ -466,6 +480,26 @@ def cmd_purpose_broadcast_trinity(args):
         print("[TELEOLOGY] Trinity \u0394\u03a9.I.1\u20133 broadcasted")
     except Exception as e:
         print(f"[TELEOLOGY] Broadcast failed: {e}")
+
+def cmd_audit(args):
+    if args.audit_cmd == "surface":
+        try:
+            res = db.client._ensure_client().table("view_global_audit_surface").select("*").limit(20).execute()
+            for evt in res.data:
+                print(f"[{evt['created_at']}] {evt['component']} -> {evt['event_type']} (Hash: {evt.get('phase_lock_hash')})")
+        except Exception as e:
+            print(f"Error fetching audit surface: {e}")
+    elif args.audit_cmd == "emit":
+        emit_audit_event("manual_emit", "CLI", {"message": args.msg})
+        print(f"Emitted manual event: {args.msg}")
+    elif args.audit_cmd == "diff":
+        print("Comparing Phase-Lock Hash vs Baseline...")
+        try:
+            res = db.client._ensure_client().rpc("fn_verify_phase_lock", {}).execute()
+            print(f"Current Runtime Hash: {res.data.get('hash')}")
+            print("Baseline: [LOAD FROM ARTIFACT]") # Placeholder
+        except Exception as e:
+            print(f"Error verifying phase lock: {e}")
 
 if __name__ == "__main__":
     main()
