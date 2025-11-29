@@ -338,6 +338,12 @@ def cmd_lattice_forecast(args):
     except ImportError:
         print(json.dumps(rows, indent=2))
 
+def cmd_continuation_health(args):
+    from core.continuation.engine import get_continuation_health_stats
+    print("[CONTINUATION] Fetching health metrics...")
+    stats = get_continuation_health_stats()
+    print(json.dumps(stats, indent=2))
+
 def cmd_guardian_scan(args):
     from core.guardian_actions import scan_future_lattice_window
     print("[GUARDIAN] Scanning future lattice window...")
@@ -534,6 +540,12 @@ def main():
         help="List integration lattice projections",
     )
 
+    # continuation command
+    continuation_parser = subparsers.add_parser("continuation", help="Continuation Engine commands")
+    continuation_subparsers = continuation_parser.add_subparsers(dest="subcommand", help="Continuation subcommand")
+    
+    health_parser = continuation_subparsers.add_parser("health", help="Show continuation health metrics")
+
     # guardian command (new group, separate from autopoiesis for clarity)
     guardian_parser = subparsers.add_parser("guardian", help="Guardian Action commands")
     guardian_subparsers = guardian_parser.add_subparsers(dest="subcommand", help="Guardian subcommand")
@@ -719,6 +731,12 @@ def main():
             cmd_lattice_forecast(args)
         else:
             lattice_parser.print_help()
+
+    elif args.command == "continuation":
+        if args.subcommand == "health":
+            cmd_continuation_health(args)
+        else:
+            continuation_parser.print_help()
 
     elif args.command == "guardian":
         if args.subcommand == "scan":
