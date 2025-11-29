@@ -4,7 +4,7 @@ from typing import Optional
 
 from supabase import Client, create_client
 
-from system.core.config.settings import Settings
+from system.core.config import Settings
 
 
 class SupabaseManager:
@@ -33,11 +33,12 @@ class SupabaseManager:
         """Fail fast if Supabase credentials are missing or unusable."""
 
         settings = cls.settings()
+        url, key = settings.supabase_credentials
 
-        if not settings.supabase_service_role_key:
-            raise RuntimeError("Supabase service role key is not configured")
-        if not settings.supabase_url:
+        if not str(url).strip():
             raise RuntimeError("Supabase URL is not configured")
+        if not key.strip():
+            raise RuntimeError("Supabase service role key is not configured")
 
         client = cls.get_client()
         try:
