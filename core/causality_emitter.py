@@ -47,10 +47,22 @@ def link_events(
             ).execute()
             
             from core.cross_mesh import emit_cross_mesh
+            from core.paradox_predictor import project_paradox_for_fusion
             emit_cross_mesh("CAUSAL_LINK", "causal_event_links", link_id, notes)
 
             # 3. Temporal Fusion (Ω.6-D)
-            fuse_temporal_mesh(link_id, {"trigger": "auto-fusion", "notes": notes})
+            fusion_id = fuse_temporal_mesh(link_id, {"trigger": "auto-fusion", "notes": notes})
+
+            if fusion_id:
+                project_paradox_for_fusion(
+                    fusion_id,
+                    {
+                        "trigger": "auto-paradox-projection",
+                        "source": "causality_emitter",
+                        "notes": notes or {},
+                    },
+                    window_minutes=30,
+                )
 
         return link_id
     except Exception as e:
@@ -60,12 +72,16 @@ def link_events(
 def fuse_temporal_mesh(link_id: str, context: Optional[Dict[str, Any]] = None):
     context = context or {}
     try:
-        db.client._ensure_client().rpc(
+        resp = db.client._ensure_client().rpc(
             "fn_fuse_mesh_temporal",
             {
                 "p_causal_link_id": link_id,
                 "p_context": context
             }
         ).execute()
+        if hasattr(resp, "data") and resp.data:
+            return str(resp.data)
+        return None
     except Exception as e:
         print(f"[FUSION_FAIL] {link_id}: {e}")
+        return None

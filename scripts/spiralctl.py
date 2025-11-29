@@ -249,6 +249,36 @@ def cmd_paradox_list(args):
             f"<-> {e['entity_b_type']}:{e['entity_b_id']}"
         )
 
+def cmd_paradox_forecast(args):
+    client = db.client._ensure_client()
+    
+    res = (
+        client.table("view_paradox_risk_surface")
+        .select(
+            "id,created_at,paradox_risk,risk_band,drift_risk,tension_risk,status"
+        )
+        .order("paradox_risk", desc=True)
+        .limit(30)
+        .execute()
+    )
+
+    rows = res.data or []
+    if not rows:
+        print("No paradox projections found.")
+        return
+
+    for r in rows:
+        r["created_at"] = str(r["created_at"])
+        r["paradox_risk"] = float(r["paradox_risk"])
+        r["drift_risk"] = float(r["drift_risk"])
+        r["tension_risk"] = float(r["tension_risk"])
+
+    try:
+        from tabulate import tabulate
+        print(tabulate(rows, headers="keys"))
+    except ImportError:
+        print(json.dumps(rows, indent=2))
+
 def cmd_purpose_activate_trinity(args):
     activate_teleology_trinity()
 
@@ -377,6 +407,11 @@ def main():
     
     list_events_parser = paradox_subparsers.add_parser("list", help="List paradox events")
     list_events_parser.add_argument("--status", default="open", help="Filter by status")
+
+    paradox_subparsers.add_parser(
+        "forecast",
+        help="List predicted paradox risk surface",
+    )
 
     # purpose command
     purpose_parser = subparsers.add_parser("purpose", help="Teleology Purpose commands")
@@ -538,6 +573,8 @@ def main():
             cmd_paradox_scan(args)
         elif args.subcommand == "list":
             cmd_paradox_list(args)
+        elif args.subcommand == "forecast":
+            cmd_paradox_forecast(args)
         else:
             paradox_parser.print_help()
     elif args.command == "purpose":
