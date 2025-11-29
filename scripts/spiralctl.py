@@ -279,6 +279,35 @@ def cmd_paradox_forecast(args):
     except ImportError:
         print(json.dumps(rows, indent=2))
 
+def cmd_collapse_forecast(args):
+    client = db.client._ensure_client()
+    
+    res = (
+        client.table("view_collapse_horizon_surface")
+        .select(
+            "id,collapse_risk,collapse_band,horizon_start,horizon_end,status"
+        )
+        .order("collapse_risk", desc=True)
+        .limit(20)
+        .execute()
+    )
+
+    rows = res.data or []
+    if not rows:
+        print("No collapse envelopes projected.")
+        return
+
+    for r in rows:
+        r["collapse_risk"] = float(r["collapse_risk"])
+        r["horizon_start"] = str(r["horizon_start"])
+        r["horizon_end"] = str(r["horizon_end"])
+
+    try:
+        from tabulate import tabulate
+        print(tabulate(rows, headers="keys"))
+    except ImportError:
+        print(json.dumps(rows, indent=2))
+
 def cmd_purpose_activate_trinity(args):
     activate_teleology_trinity()
 
@@ -411,6 +440,15 @@ def main():
     paradox_subparsers.add_parser(
         "forecast",
         help="List predicted paradox risk surface",
+    )
+
+    # collapse command
+    collapse_parser = subparsers.add_parser("collapse", help="Collapse Horizon commands")
+    collapse_subparsers = collapse_parser.add_subparsers(dest="subcommand", help="Collapse subcommand")
+
+    collapse_subparsers.add_parser(
+        "forecast",
+        help="List projected collapse envelopes",
     )
 
     # purpose command
@@ -577,6 +615,11 @@ def main():
             cmd_paradox_forecast(args)
         else:
             paradox_parser.print_help()
+    elif args.command == "collapse":
+        if args.subcommand == "forecast":
+            cmd_collapse_forecast(args)
+        else:
+            collapse_parser.print_help()
     elif args.command == "purpose":
         if args.subcommand == "activate-trinity":
             cmd_purpose_activate_trinity(args)
