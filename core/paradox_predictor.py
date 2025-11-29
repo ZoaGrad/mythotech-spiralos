@@ -1,7 +1,7 @@
 # core/paradox_predictor.py
 from typing import Any, Dict, Optional
 
-from .db import get_client
+from .db import db
 
 
 def project_paradox_for_fusion(
@@ -9,7 +9,7 @@ def project_paradox_for_fusion(
     context: Optional[Dict[str, Any]] = None,
     window_minutes: int = 30,
 ) -> Optional[str]:
-    client = get_client()
+    client = db.client._ensure_client()
     payload = {
         "p_fusion_id": fusion_id,
         "p_window_minutes": window_minutes,
