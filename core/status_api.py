@@ -1,7 +1,7 @@
 from typing import Dict, Any, Optional
 from .db import db as default_db, DatabaseWrapper
 from .audit_emitter import emit_audit_event
-import json
+from .temporal import TemporalDriftEngine
 
 class StatusAPI:
     """
@@ -10,6 +10,7 @@ class StatusAPI:
     """
     def __init__(self, db: Optional[DatabaseWrapper] = None):
         self.db = db or default_db
+        self.temporal = TemporalDriftEngine()
 
     def get_status(self) -> Dict[str, Any]:
         """
@@ -18,6 +19,9 @@ class StatusAPI:
         """
         # Emit audit event
         emit_audit_event("status_check", "StatusAPI", {"action": "get_status"})
+        
+        # Record Temporal Anchor
+        self.temporal.record_anchor(source="StatusAPI")
 
         try:
             res = self.db.client._ensure_client().rpc("fn_status_api", {}).execute()

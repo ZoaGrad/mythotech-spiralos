@@ -2,6 +2,7 @@ import json
 from typing import Optional, Dict, Any
 from .db import db as default_db, DatabaseWrapper
 from .audit_emitter import emit_audit_event
+from .temporal import TemporalDriftEngine
 
 class ScarLockController:
     """
@@ -11,6 +12,7 @@ class ScarLockController:
 
     def __init__(self, db: Optional[DatabaseWrapper] = None):
         self.db = db or default_db
+        self.temporal = TemporalDriftEngine()
 
     def _get_lock_row(self) -> Dict[str, Any]:
         res = self.db.client._ensure_client().table("constitutional_lock").select("*").limit(1).execute()
@@ -29,6 +31,9 @@ class ScarLockController:
         return bool(row["is_locked"])
 
     def engage_lock(self, reason: str, actor: str = "guardian") -> None:
+        # Check drift before engaging
+        self.temporal.verify_drift(source="ScarLock")
+
         self.db.client._ensure_client().table("constitutional_lock").update({
             "is_locked": True,
             "reason": reason,

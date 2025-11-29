@@ -11,6 +11,8 @@ sys.stdout.reconfigure(encoding='utf-8')
 
 from core.mirror_layer import MirrorLayer, QuantumTag, OriginType
 from core.audit_emitter import emit_audit_event
+from core.temporal import TemporalDriftEngine
+from core.causality_emitter import link_events
 
 def cmd_mirror_diagnose(args):
     print(f"🔹 [MirrorLayer] Diagnosing dimensions: {args.dimensions}")
@@ -166,6 +168,27 @@ def main():
 
     audit_sub.add_parser("diff", help="Compares latest phase-lock hash vs baseline")
 
+    # Temporal Command
+    temporal_parser = subparsers.add_parser("temporal", help="Temporal Coherence commands")
+    temporal_sub = temporal_parser.add_subparsers(dest="temporal_cmd")
+    temporal_sub.add_parser("anchor", help="Manually record an anchor")
+    temporal_sub.add_parser("verify", help="Run drift-check manually")
+    temporal_sub.add_parser("log", help="Fetch recent drift entries")
+
+    # Causality Command
+    causality_parser = subparsers.add_parser("causality", help="Causality Mesh commands")
+    causality_sub = causality_parser.add_subparsers(dest="causality_cmd")
+
+    link_parser = causality_sub.add_parser("link", help="Create a causal link")
+    link_parser.add_argument("--source", required=True, help="Source Event UUID")
+    link_parser.add_argument("--target", required=True, help="Target Event UUID")
+    link_parser.add_argument("--type", required=True, help="Cause Type")
+    link_parser.add_argument("--weight", type=float, default=1.0, help="Causal Weight")
+    link_parser.add_argument("--notes", help="JSON notes")
+
+    surface_parser = causality_sub.add_parser("surface", help="View causality surface")
+    surface_parser.add_argument("--limit", type=int, default=20, help="Limit results")
+
     args = parser.parse_args()
 
     if args.command == "mirror":
@@ -230,11 +253,12 @@ def main():
         cmd_custody(args)
     elif args.command == "audit":
         cmd_audit(args)
+    elif args.command == "temporal":
+        cmd_temporal(args)
+    elif args.command == "causality":
+        cmd_causality(args)
     else:
         parser.print_help()
-
-from core.coherence import CoherenceEngine
-from core.paradox_layer import ParadoxEngine
 from core.db import db
 from core.autopoiesis_executor import AutopoiesisExecutor
 from scripts.activate_teleology_trinity import activate_teleology_trinity
@@ -486,7 +510,7 @@ def cmd_audit(args):
         try:
             res = db.client._ensure_client().table("view_global_audit_surface").select("*").limit(20).execute()
             for evt in res.data:
-                print(f"[{evt['created_at']}] {evt['component']} -> {evt['event_type']} (Hash: {evt.get('phase_lock_hash')})")
+                print(f"[{evt['created_at']}] {evt['id']} | {evt['component']} -> {evt['event_type']} (Hash: {evt.get('phase_lock_hash')})")
         except Exception as e:
             print(f"Error fetching audit surface: {e}")
     elif args.audit_cmd == "emit":
@@ -500,6 +524,53 @@ def cmd_audit(args):
             print("Baseline: [LOAD FROM ARTIFACT]") # Placeholder
         except Exception as e:
             print(f"Error verifying phase lock: {e}")
+
+def cmd_temporal(args):
+    engine = TemporalDriftEngine()
+    
+    if args.temporal_cmd == "anchor":
+        id = engine.record_anchor(source="CLI")
+        print(f"[TEMPORAL] Anchor recorded: {id}")
+        
+    elif args.temporal_cmd == "verify":
+        res = engine.verify_drift(source="CLI")
+        print(f"[TEMPORAL] Drift Check: {res}")
+        
+    elif args.temporal_cmd == "log":
+        try:
+            res = db.client._ensure_client().table("view_temporal_drift_status").select("*").limit(10).execute()
+            for row in res.data:
+                print(f"[{row['created_at']}] {row['source']} | Delta: {row['drift_delta_ms']}ms | {row['severity']}")
+        except Exception as e:
+            print(f"Error fetching log: {e}")
+
+def cmd_causality(args):
+    if args.causality_cmd == "link":
+        try:
+            notes = json.loads(args.notes) if args.notes else {}
+            link_id = link_events(
+                source_event_id=args.source,
+                target_event_id=args.target,
+                cause_type=args.type,
+                weight=args.weight,
+                notes=notes
+            )
+            if link_id:
+                print(f"[CAUSALITY] Link created: {link_id}")
+            else:
+                print("[CAUSALITY] Failed to create link.")
+        except Exception as e:
+            print(f"[CAUSALITY] Error: {e}")
+
+    elif args.causality_cmd == "surface":
+        try:
+            limit = args.limit
+            res = db.client._ensure_client().table("view_causal_links").select("*").limit(limit).execute()
+            print(f"--- Causality Surface (Limit: {limit}) ---")
+            for row in res.data:
+                print(f"[{row['created_at']}] {row['source_event_type']} --({row['cause_type']})--> {row['target_event_type']} (W: {row['weight']})")
+        except Exception as e:
+            print(f"[CAUSALITY] Error fetching surface: {e}")
 
 if __name__ == "__main__":
     main()
