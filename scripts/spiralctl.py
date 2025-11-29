@@ -516,6 +516,11 @@ def main():
     crossmesh_sub = crossmesh_parser.add_subparsers(dest="crossmesh_cmd")
     crossmesh_sub.add_parser("surface", help="Show the unified mesh surface")
 
+    # Fusion Command
+    fusion_parser = subparsers.add_parser("fusion", help="Temporal-Mesh fusion commands")
+    fusion_sub = fusion_parser.add_subparsers(dest="fusion_cmd")
+    fusion_sub.add_parser("list", help="List fusion nodes")
+
     args = parser.parse_args()
 
     if args.command == "mirror":
@@ -586,6 +591,8 @@ def main():
         cmd_causality(args)
     elif args.command == "crossmesh":
         cmd_crossmesh(args)
+    elif args.command == "fusion":
+        cmd_fusion(args)
     else:
         parser.print_help()
 
@@ -598,6 +605,19 @@ def cmd_crossmesh(args):
                 print(f"[{row['created_at']}] {row['resolved_type']} | {row['source_table']}::{row['source_id']} | T:{row['mesh_tension']} S:{row['severity']}")
         except Exception as e:
             print(f"[CROSSMESH] Error: {e}")
+
+def cmd_fusion(args):
+    if args.fusion_cmd == "list":
+        try:
+            res = db.client._ensure_client().table("view_mesh_temporal_fusion").select("*").limit(20).execute()
+            try:
+                from tabulate import tabulate
+                print(tabulate(res.data, headers="keys"))
+            except ImportError:
+                import json
+                print(json.dumps(res.data, indent=2))
+        except Exception as e:
+            print(f"[FUSION] Error: {e}")
 
 if __name__ == "__main__":
     main()
