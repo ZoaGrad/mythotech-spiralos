@@ -1,6 +1,7 @@
 import json
 from typing import Optional, Dict, Any
 from .db import db as default_db, DatabaseWrapper
+from .audit_emitter import emit_audit_event
 
 class ScarLockController:
     """
@@ -41,6 +42,8 @@ class ScarLockController:
             "event_type": "LOCKDOWN_ENGAGED",
             "payload": {"reason": reason, "actor": actor}
         }).execute()
+        
+        emit_audit_event("scarlock_state", "ScarLock", {"new_state": "LOCKED", "reason": reason})
 
     def release_lock(self, actor: str = "guardian", resolution_note: str = "") -> None:
         self.db.client._ensure_client().table("constitutional_lock").update({
@@ -52,6 +55,8 @@ class ScarLockController:
             "event_type": "LOCKDOWN_RELEASED",
             "payload": {"actor": actor, "resolution": resolution_note}
         }).execute()
+
+        emit_audit_event("scarlock_state", "ScarLock", {"new_state": "UNLOCKED", "resolution": resolution_note})
 
     def status(self) -> Dict[str, Any]:
         row = self._get_lock_row()
