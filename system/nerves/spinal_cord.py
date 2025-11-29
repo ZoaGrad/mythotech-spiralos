@@ -12,14 +12,11 @@ from holoeconomy.wi.compute_wi import calculate_wi
 from holoeconomy.wi.compute_wi import calculate_wi
 from system.nerves.discord_pulse import send_pulse
 import asyncio
-from system.agents.guardian_bot import start_guardian
+
 
 app = FastAPI(title="SpiralOS Spinal Cord")
 
-@app.on_event("startup")
-async def startup_event():
-    # ΔΩ: AWAKEN THE LENS
-    asyncio.create_task(start_guardian())
+
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root():
