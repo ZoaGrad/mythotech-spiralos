@@ -568,7 +568,7 @@ def cmd_causality(args):
             res = db.client._ensure_client().table("view_causal_links").select("*").limit(limit).execute()
             print(f"--- Causality Surface (Limit: {limit}) ---")
             for row in res.data:
-                print(f"[{row['created_at']}] {row['source_event_type']} --({row['cause_type']})--> {row['target_event_type']} (W: {row['weight']})")
+                print(f"[{row['created_at']}] {row['source_event_type']} --({row['cause_type']})--> {row['target_event_type']} (W: {row['weight']}) | Anchor: {row.get('temporal_anchor_id')}")
         except Exception as e:
             print(f"[CAUSALITY] Error fetching surface: {e}")
 
