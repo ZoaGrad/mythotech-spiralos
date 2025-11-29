@@ -16,6 +16,12 @@ import asyncio
 
 app = FastAPI(title="SpiralOS Spinal Cord")
 
+# Ω.12-A: Register Governance Routers
+from system.api.governance import router as governance_router
+from system.api.ui_governance import router as governance_ui_router
+app.include_router(governance_router)
+app.include_router(governance_ui_router)
+
 
 
 @app.get("/", response_class=HTMLResponse)
