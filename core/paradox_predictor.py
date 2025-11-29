@@ -68,3 +68,21 @@ def project_collapse_from_paradox(
         print(f"[COLLAPSE] Projection failed for paradox {paradox_map_id}: {e}")
     
     return None
+
+
+def integrate_future_from_fusion(fusion_id: str) -> Optional[str]:
+    """
+    Call fn_integrate_future_surfaces and return the lattice_id.
+    """
+    client = db.client._ensure_client()
+    try:
+        resp = client.rpc("fn_integrate_future_surfaces", {"p_fusion_id": fusion_id}).execute()
+        if getattr(resp, "data", None):
+            lattice_id = resp.data
+            # Log state (optional, could fetch row to be more specific)
+            print(f"[LATTICE] Integrated future for fusion {fusion_id} -> {lattice_id}")
+            return lattice_id
+    except Exception as e:
+        print(f"[LATTICE] Integration failed for fusion {fusion_id}: {e}")
+    
+    return None

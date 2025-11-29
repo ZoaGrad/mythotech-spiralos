@@ -47,22 +47,26 @@ def link_events(
             ).execute()
             
             from core.cross_mesh import emit_cross_mesh
-            from core.paradox_predictor import project_paradox_for_fusion
+            from core.paradox_predictor import project_paradox_for_fusion, integrate_future_from_fusion
+            
             emit_cross_mesh("CAUSAL_LINK", "causal_event_links", link_id, notes)
 
             # 3. Temporal Fusion (Ω.6-D)
             fusion_id = fuse_temporal_mesh(link_id, {"trigger": "auto-fusion", "notes": notes})
 
             if fusion_id:
+                # 4. Paradox Projection (Ω.6-E) & Collapse (Ω.6-F)
                 project_paradox_for_fusion(
                     fusion_id,
                     {
                         "trigger": "auto-paradox-projection",
                         "source": "causality_emitter",
                         "notes": notes or {},
-                    },
-                    window_minutes=30,
+                    }
                 )
+                
+                # 5. Future Integration (Ω.7)
+                integrate_future_from_fusion(fusion_id)
 
         return link_id
     except Exception as e:

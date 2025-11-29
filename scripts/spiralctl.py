@@ -308,6 +308,36 @@ def cmd_collapse_forecast(args):
     except ImportError:
         print(json.dumps(rows, indent=2))
 
+def cmd_lattice_forecast(args):
+    client = db.client._ensure_client()
+    
+    res = (
+        client.table("view_future_lattice_surface")
+        .select(
+            "id,lattice_state,collapse_probability,curvature_risk,guardian_recommendation,horizon_start,horizon_end"
+        )
+        .order("collapse_probability", desc=True)
+        .limit(20)
+        .execute()
+    )
+
+    rows = res.data or []
+    if not rows:
+        print("No integration lattice nodes found.")
+        return
+
+    for r in rows:
+        r["collapse_probability"] = float(r["collapse_probability"])
+        r["curvature_risk"] = float(r["curvature_risk"])
+        r["horizon_start"] = str(r["horizon_start"])
+        r["horizon_end"] = str(r["horizon_end"])
+
+    try:
+        from tabulate import tabulate
+        print(tabulate(rows, headers="keys"))
+    except ImportError:
+        print(json.dumps(rows, indent=2))
+
 def cmd_purpose_activate_trinity(args):
     activate_teleology_trinity()
 
@@ -449,6 +479,15 @@ def main():
     collapse_subparsers.add_parser(
         "forecast",
         help="List projected collapse envelopes",
+    )
+
+    # lattice command
+    lattice_parser = subparsers.add_parser("lattice", help="Integration Lattice commands")
+    lattice_subparsers = lattice_parser.add_subparsers(dest="subcommand", help="Lattice subcommand")
+
+    lattice_subparsers.add_parser(
+        "forecast",
+        help="List integration lattice projections",
     )
 
     # purpose command
@@ -620,6 +659,11 @@ def main():
             cmd_collapse_forecast(args)
         else:
             collapse_parser.print_help()
+    elif args.command == "lattice":
+        if args.subcommand == "forecast":
+            cmd_lattice_forecast(args)
+        else:
+            lattice_parser.print_help()
     elif args.command == "purpose":
         if args.subcommand == "activate-trinity":
             cmd_purpose_activate_trinity(args)
