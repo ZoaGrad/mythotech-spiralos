@@ -80,11 +80,20 @@ def process_guardian_actions(client=None) -> None:
         action_id = plan_action_for_lattice(client, lattice_id)
         
         if action_id:
-            # Fetch the action to log it
+            # Fetch the action to log it and validate it
             try:
-                act_res = client.table("guardian_action_events").select("chosen_action,severity").eq("id", action_id).single().execute()
+                act_res = client.table("guardian_action_events").select("*").eq("id", action_id).single().execute()
                 if act_res.data:
                     act = act_res.data
+                    
+                    # Ω.11: Enforce Governance
+                    from core.governance.runner import enforce_governance
+                    if not enforce_governance(act):
+                        print(f"    [GOVERNANCE] Action {action_id} VETOED.")
+                        # Update status to VETOED
+                        client.table("guardian_action_events").update({"status": "vetoed"}).eq("id", action_id).execute()
+                        continue
+
                     print(f"    [ACTION] {act['chosen_action']} (Sev: {act['severity']}) -> {action_id}")
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"[GUARDIAN] Action processing error for {action_id}: {e}")

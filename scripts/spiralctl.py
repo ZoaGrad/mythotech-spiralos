@@ -784,6 +784,19 @@ def main():
     
     eff_sub.add_parser("summary", help="Show effectiveness summary")
 
+    # Governance Command (Ω.11)
+    gov_parser = subparsers.add_parser("governance", help="Meta-Constitutional Governance commands")
+    gov_sub = gov_parser.add_subparsers(dest="gov_cmd")
+
+    gov_sub.add_parser("constitution", help="List constitutional articles")
+    gov_sub.add_parser("constraints", help="List active constraints")
+    
+    amend_parser = gov_sub.add_parser("amendments", help="Governance amendments")
+    amend_parser.add_argument("--list", action="store_true", help="List amendments")
+    
+    test_parser = gov_sub.add_parser("test", help="Test constraint validation")
+    test_parser.add_argument("--action-id", help="Test against specific action ID")
+
     args = parser.parse_args()
 
     if args.command == "mirror":
@@ -890,6 +903,8 @@ def main():
         cmd_crossmesh(args)
     elif args.command == "fusion":
         cmd_fusion(args)
+    elif args.command == "governance":
+        cmd_governance(args)
     else:
         parser.print_help()
 
@@ -915,6 +930,56 @@ def cmd_fusion(args):
                 print(json.dumps(res.data, indent=2))
         except Exception as e:
             print(f"[FUSION] Error: {e}")
+
+def cmd_governance(args):
+    client = db.client._ensure_client()
+    
+    if args.gov_cmd == "constitution":
+        res = client.table("core_constitution").select("*").eq("superseded", False).order("article_number").execute()
+        print("\n📜 CORE CONSTITUTION")
+        print("=====================")
+        for art in res.data:
+            print(f"Article {art['article_number']}: {art['title']}")
+            print(f"  {art['body']}\n")
+            
+    elif args.gov_cmd == "constraints":
+        res = client.table("guardian_constraints").select("*").eq("active", True).order("constraint_code").execute()
+        print("\n🛡️ ACTIVE CONSTRAINTS")
+        print("======================")
+        for c in res.data:
+            print(f"[{c['constraint_code']}] {c['description']}")
+            print(f"  Scope: {c['scope']} | Rule: {c['rule_expression']}")
+            
+    elif args.gov_cmd == "amendments":
+        res = client.table("governance_amendments").select("*").order("submitted_at", desc=True).execute()
+        print("\n🗳️ GOVERNANCE AMENDMENTS")
+        print("=======================")
+        if not res.data:
+            print("No amendments found.")
+        for a in res.data:
+            print(f"#{a['amendment_number']} {a['title']} [{a['status'].upper()}]")
+            print(f"  {a['proposal'][:100]}...")
+            
+    elif args.gov_cmd == "test":
+        print("Testing governance validation...")
+        # Mock action for testing
+        mock_action = {
+            "id": "test-action-uuid",
+            "projected_probability": 0.6,
+            "predicted_state": "critical",
+            "action_type": "escalate"
+        }
+        print(f"Mock Action: {mock_action}")
+        
+        from core.governance.validators import validate_action
+        violations = validate_action(mock_action)
+        
+        if violations:
+            print(f"❌ VIOLATIONS DETECTED ({len(violations)}):")
+            for v in violations:
+                print(f"  - {v['constraint_code']}: {v['description']}")
+        else:
+            print("✅ Action is COMPLIANT.")
 
 if __name__ == "__main__":
     main()
