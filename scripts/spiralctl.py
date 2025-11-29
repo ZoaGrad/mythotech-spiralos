@@ -13,6 +13,14 @@ from core.mirror_layer import MirrorLayer, QuantumTag, OriginType
 from core.audit_emitter import emit_audit_event
 from core.temporal import TemporalDriftEngine
 from core.causality_emitter import link_events
+from core.db import db
+from core.autopoiesis_executor import AutopoiesisExecutor
+from scripts.activate_teleology_trinity import activate_teleology_trinity
+from core.constitutional_rhythm import ConstitutionHasher, ConstitutionVerifier, RhythmSentry, CONSTITUTION_COMPONENTS
+from core.custody import CustodyRegistry
+from core.scarlock import ScarLockController
+from core.living_constitution import LivingConstitutionPulse
+from core.status_api import StatusAPI
 
 def cmd_mirror_diagnose(args):
     print(f"🔹 [MirrorLayer] Diagnosing dimensions: {args.dimensions}")
@@ -31,6 +39,316 @@ def cmd_identity_list(args):
     # Filter by certainty
     filtered = [t for t in simulated_tags if t['certainty'] > args.certainty_above]
     print(json.dumps(filtered, indent=2))
+
+def cmd_autopoiesis_queue(args):
+    reqs = db.list_structural_change_requests(status="pending")
+    if not reqs:
+        print("No pending requests.")
+    for r in reqs:
+        print(f"{r['id']} — {r['op_code']} — {r['reason']}")
+
+def cmd_autopoiesis_approve(args):
+    db.mark_change_approved(args.id)
+    print(f"Approved {args.id}")
+
+def cmd_autopoiesis_reject(args):
+    db.mark_change_rejected(args.id)
+    print(f"Rejected {args.id}")
+
+def cmd_autopoiesis_execute(args):
+    coherence = CoherenceEngine()
+    executor = AutopoiesisExecutor(coherence)
+    res = executor.execute_change(args.id)
+    print(res)
+
+def cmd_autopoiesis_rollback(args):
+    coherence = CoherenceEngine()
+    executor = AutopoiesisExecutor(coherence)
+    res = executor.rollback_change(args.id)
+    print(res)
+
+def cmd_autopoiesis_activate_path(args):
+    if args.path == "JD":
+        print("[AUTOPOIESIS] Activating Sequence J-D (Sequential Autopoiesis Path)...")
+        # 1. Run J0 membrane check (simulated)
+        print("[MEMBRANE] J0 Safety Layer: ACTIVE")
+        # 2. Enable J1
+        print("[PHASE] J1 (Proposal-Only): ENABLED")
+        # 3. Load whitelist for J2
+        print("[PHASE] J2 (Guided): WHITELIST LOADED")
+        # 4. Register engines for J3
+        print("[PHASE] J3 (Full): ENGINES REGISTERED")
+        # 5. Log event
+        from core.supabase_integration import SupabaseClient
+        from datetime import datetime, timezone
+        client = SupabaseClient()._ensure_client()
+        client.table("system_events").insert({
+            "event_type": "AUTOPOIESIS_PATH_ACTIVATED",
+            "payload": {"path": "JD", "timestamp": datetime.now(timezone.utc).isoformat()}
+        }).execute()
+        print("[AUTOPOIESIS] Sequence J-D Activated.")
+
+def cmd_autopoiesis_phase(args):
+    print(f"[AUTOPOIESIS] Switched to Phase {args.phase.upper()}")
+
+def cmd_autopoiesis_status(args):
+    print("[AUTOPOIESIS] Status: ACTIVE")
+    print("  Phase: J1 (Proposal-Only)")
+    print("  Membrane: SECURE")
+    print("  Teleology: \u0394\u03a9.I.1\u20133")
+
+def cmd_autopoiesis_test_membrane(args):
+    print(f"[MEMBRANE] Testing integrity (stress={args.stress}, cycles={args.cycles})...")
+    # Simulate test
+    import time
+    time.sleep(1)
+    print("[MEMBRANE] Integrity: 100%")
+
+def cmd_constitution(args):
+    if args.constitution_cmd == "hash":
+        hasher = ConstitutionHasher(db)
+        for component in CONSTITUTION_COMPONENTS:
+            h = hasher.record_hash(component)
+            print(f"[HASH] {component}: {h}")
+    elif args.constitution_cmd == "verify":
+        verifier = ConstitutionVerifier(db)
+        for component in CONSTITUTION_COMPONENTS:
+            result = verifier.verify_component(component)
+            print(f"[VERIFY] {component}: {result['status']}")
+    elif args.constitution_cmd == "drift":
+        pulse = LivingConstitutionPulse(db=db)
+        # Run a single pulse, but do NOT auto-lock here; just report
+        # We can call sentry directly to avoid extra events
+        sentry = RhythmSentry(db=db)
+        cycle = sentry.run_cycle()
+        lock = ScarLockController(db=db)
+        print("[DRIFT] drift_detected:", cycle.get("drift_detected"))
+        print("[DRIFT] lock_engaged:", lock.is_locked())
+        for r in cycle.get("results", []):
+            print(f" - {r['component']}: {r['status']}")
+
+    elif args.constitution_cmd == "status":
+        lock = ScarLockController(db=db)
+        status = lock.status()
+        print("[LOCK_STATUS]", status)
+
+    elif args.constitution_cmd == "resolve":
+        lock = ScarLockController(db=db)
+        hasher = ConstitutionHasher(db)
+
+        # Basic custody check: only entities with a certain permission should resolve
+        registry = CustodyRegistry(db)
+        # We treat 'service_role' as canonical resolver; you can refine this later
+        if not registry.has_permission("service_role", "can_resolve_lock"):
+            print("[ERROR] Current actor is not authorized to resolve constitutional lock.")
+            return
+
+        if args.accept and args.reject:
+            print("[ERROR] Cannot --accept and --reject simultaneously.")
+            return
+
+        if not args.accept and not args.reject:
+            print("[ERROR] Specify either --accept or --reject.")
+            return
+
+        if args.accept:
+            # Re-hash all components to treat current state as canonical
+            for component in CONSTITUTION_COMPONENTS:
+                h = hasher.record_hash(component)
+                print(f"[ACCEPT] Updated hash for {component}: {h}")
+            lock.release_lock(actor="resolver", resolution_note=args.note or "accept_new_state")
+            print("[RESOLVE] Lock released; new constitution accepted.")
+
+        elif args.reject:
+            # Leave hashes as-is; lock remains engaged until manual repair
+            # You could add more logic here (e.g. notify external system)
+            print("[RESOLVE] Drift rejected; lock remains engaged. Manual repair required.")
+
+def cmd_status(args):
+    """
+    Global system status via fn_status_api RPC.
+    """
+    api = StatusAPI(db)
+    data = api.get_status()
+    if data:
+        print(json.dumps(data, indent=2))
+    else:
+        print("[STATUS] No data returned or error occurred.")
+
+def cmd_dashboard(args):
+    """
+    Launch local dashboard preview.
+    """
+    if args.subcommand == "preview":
+        import subprocess
+        import os
+        dashboard_dir = os.path.join(os.getcwd(), "web", "dashboard")
+        print(f"[DASHBOARD] Launching preview in {dashboard_dir}...")
+        try:
+            # Check if node_modules exists, if not install
+            if not os.path.exists(os.path.join(dashboard_dir, "node_modules")):
+                print("[DASHBOARD] Installing dependencies...")
+                subprocess.check_call("npm install", shell=True, cwd=dashboard_dir)
+            
+            print("[DASHBOARD] Starting dev server...")
+            subprocess.check_call("npm run dev", shell=True, cwd=dashboard_dir)
+        except Exception as e:
+            print(f"[DASHBOARD] Error: {e}")
+
+def cmd_rhythm(args):
+    sentry = RhythmSentry(db=db)
+    if args.once:
+        result = sentry.run_cycle()
+        print(result)
+    else:
+        import time
+        while True:
+            result = sentry.run_cycle()
+            print("[RHYTHM] cycle:", result.get("drift_detected"))
+            time.sleep(60)
+
+def cmd_custody(args):
+    registry = CustodyRegistry(db)
+    if args.custody_cmd == "grant":
+        entity = args.entity
+        permissions = json.loads(args.permissions_json)
+        db.client._ensure_client().table("custody_registry").upsert({
+            "entity": entity,
+            "permission_set": permissions,
+            "active": True,
+            "updated_at": "now()"
+        }).execute()
+        print(f"[CUSTODY] Granted permissions to {entity}")
+    elif args.custody_cmd == "revoke":
+        db.client._ensure_client().table("custody_registry").update({
+            "active": False,
+            "updated_at": "now()"
+        }).eq("entity", args.entity).execute()
+        print(f"[CUSTODY] Revoked {args.entity}")
+    elif args.custody_cmd == "list":
+        entries = registry.list_active()
+        for e in entries:
+            print(f"- {e.entity}: {e.permission_set}")
+
+def cmd_paradox_scan(args):
+    mirror = MirrorLayer()
+    coherence = CoherenceEngine()
+    engine = ParadoxEngine(mirror, coherence)
+    result = engine.run_cycle()
+    print("[PARADOX] Scan complete.")
+    print(f"  Candidates: {result['candidates']}")
+    print(f"  Resolved:   {result['resolved']}")
+    print(f"  \u0394Coherence: {result['coherence_delta']:.4f}")
+
+def cmd_paradox_list(args):
+    events = db.list_paradox_events(status=args.status)
+    for e in events:
+        print(
+            f"{e['id']} [{e['status']}] {e['paradox_kind']} "
+            f"({e['severity']:.2f}) {e['entity_a_type']}:{e['entity_a_id']} "
+            f"<-> {e['entity_b_type']}:{e['entity_b_id']}"
+        )
+
+def cmd_purpose_activate_trinity(args):
+    activate_teleology_trinity()
+
+def cmd_purpose_broadcast_trinity(args):
+    # Re-broadcast logic similar to activation script but without upsert
+    from core.supabase_integration import SupabaseClient
+    from datetime import datetime, timezone
+    
+    client = SupabaseClient()._ensure_client()
+    event_payload = {
+        "event_type": "TELEOLOGY_TRINITY_ACTIVATED",
+        "payload": {
+            "codes": ["\u0394\u03a9.I.1", "\u0394\u03a9.I.2", "\u0394\u03a9.I.3"],
+            "activated_at": datetime.now(timezone.utc).isoformat()
+        }
+    }
+    try:
+        client.table("system_events").insert(event_payload).execute()
+        print("[TELEOLOGY] Trinity \u0394\u03a9.I.1\u20133 broadcasted")
+    except Exception as e:
+        print(f"[TELEOLOGY] Broadcast failed: {e}")
+
+def cmd_audit(args):
+    if args.audit_cmd == "surface":
+        try:
+            res = db.client._ensure_client().table("view_global_audit_surface").select("*").limit(20).execute()
+            for evt in res.data:
+                print(f"[{evt['created_at']}] {evt['id']} | {evt['component']} -> {evt['event_type']} (Hash: {evt.get('phase_lock_hash')})")
+        except Exception as e:
+            print(f"Error fetching audit surface: {e}")
+    elif args.audit_cmd == "emit":
+        emit_audit_event("manual_emit", "CLI", {"message": args.msg})
+        print(f"Emitted manual event: {args.msg}")
+    elif args.audit_cmd == "diff":
+        print("Comparing Phase-Lock Hash vs Baseline...")
+        try:
+            res = db.client._ensure_client().rpc("fn_verify_phase_lock", {}).execute()
+            print(f"Current Runtime Hash: {res.data.get('hash')}")
+            print("Baseline: [LOAD FROM ARTIFACT]") # Placeholder
+        except Exception as e:
+            print(f"Error verifying phase lock: {e}")
+
+def cmd_temporal(args):
+    engine = TemporalDriftEngine()
+    
+    if args.temporal_cmd == "anchor":
+        id = engine.record_anchor(source="CLI")
+        print(f"[TEMPORAL] Anchor recorded: {id}")
+        
+    elif args.temporal_cmd == "verify":
+        res = engine.verify_drift(source="CLI")
+        print(f"[TEMPORAL] Drift Check: {res}")
+        
+    elif args.temporal_cmd == "log":
+        try:
+            res = db.client._ensure_client().table("view_temporal_drift_status").select("*").limit(10).execute()
+            for row in res.data:
+                print(f"[{row['created_at']}] {row['source']} | Delta: {row['drift_delta_ms']}ms | {row['severity']}")
+        except Exception as e:
+            print(f"Error fetching log: {e}")
+
+def cmd_causality(args):
+    if args.causality_cmd == "link":
+        try:
+            notes = json.loads(args.notes) if args.notes else {}
+            link_id = link_events(
+                source_event_id=args.source,
+                target_event_id=args.target,
+                cause_type=args.type,
+                weight=args.weight,
+                severity=args.severity,
+                notes=notes
+            )
+            if link_id:
+                print(f"[CAUSALITY] Link created: {link_id}")
+            else:
+                print("[CAUSALITY] Failed to create link.")
+        except Exception as e:
+            print(f"[CAUSALITY] Error: {e}")
+
+    elif args.causality_cmd == "surface":
+        try:
+            limit = args.limit
+            res = db.client._ensure_client().table("view_causal_links").select("*").limit(limit).execute()
+            print(f"--- Causality Surface (Limit: {limit}) ---")
+            for row in res.data:
+                print(f"[{row['created_at']}] {row['source_event_type']} --({row['cause_type']})--> {row['target_event_type']} (W: {row['weight']}) | Anchor: {row.get('temporal_anchor_id')}")
+        except Exception as e:
+            print(f"[CAUSALITY] Error fetching surface: {e}")
+
+    elif args.causality_cmd == "tension":
+        limit = getattr(args, "limit", 10)
+        try:
+            res = db.client._ensure_client().table("view_causality_tension").select("*").limit(limit).execute()
+            print(f"--- High-Tension Nodes (Limit: {limit}) ---")
+            for row in res.data:
+                print(f"[{row['latest_event_at']}] {row['component']} :: {row['event_type']} "
+                      f"(Sev: {row['severity_dominant']}, W: {row['total_weight_norm']}, T: {row['mesh_tension_max']})")
+        except Exception as e:
+            print(f"[CAUSALITY] Error fetching tension: {e}")
 
 def main():
     parser = argparse.ArgumentParser(description="SpiralOS Guardian CLI")
@@ -184,10 +502,14 @@ def main():
     link_parser.add_argument("--target", required=True, help="Target Event UUID")
     link_parser.add_argument("--type", required=True, help="Cause Type")
     link_parser.add_argument("--weight", type=float, default=1.0, help="Causal Weight")
+    link_parser.add_argument("--severity", default="UNKNOWN", help="Severity (RED, YELLOW, GREEN)")
     link_parser.add_argument("--notes", help="JSON notes")
 
     surface_parser = causality_sub.add_parser("surface", help="View causality surface")
     surface_parser.add_argument("--limit", type=int, default=20, help="Limit results")
+
+    tension_parser = causality_sub.add_parser("tension", help="Show high-tension nodes")
+    tension_parser.add_argument("--limit", type=int, default=10, help="Limit results")
 
     args = parser.parse_args()
 
@@ -259,318 +581,6 @@ def main():
         cmd_causality(args)
     else:
         parser.print_help()
-from core.db import db
-from core.autopoiesis_executor import AutopoiesisExecutor
-from scripts.activate_teleology_trinity import activate_teleology_trinity
-
-def cmd_autopoiesis_queue(args):
-    reqs = db.list_structural_change_requests(status="pending")
-    if not reqs:
-        print("No pending requests.")
-    for r in reqs:
-        print(f"{r['id']} — {r['op_code']} — {r['reason']}")
-
-def cmd_autopoiesis_approve(args):
-    db.mark_change_approved(args.id)
-    print(f"Approved {args.id}")
-
-def cmd_autopoiesis_reject(args):
-    db.mark_change_rejected(args.id)
-    print(f"Rejected {args.id}")
-
-def cmd_autopoiesis_execute(args):
-    coherence = CoherenceEngine()
-    executor = AutopoiesisExecutor(coherence)
-    res = executor.execute_change(args.id)
-    print(res)
-
-def cmd_autopoiesis_rollback(args):
-    coherence = CoherenceEngine()
-    executor = AutopoiesisExecutor(coherence)
-    res = executor.rollback_change(args.id)
-    print(res)
-
-def cmd_autopoiesis_activate_path(args):
-    if args.path == "JD":
-        print("[AUTOPOIESIS] Activating Sequence J-D (Sequential Autopoiesis Path)...")
-        # 1. Run J0 membrane check (simulated)
-        print("[MEMBRANE] J0 Safety Layer: ACTIVE")
-        # 2. Enable J1
-        print("[PHASE] J1 (Proposal-Only): ENABLED")
-        # 3. Load whitelist for J2
-        print("[PHASE] J2 (Guided): WHITELIST LOADED")
-        # 4. Register engines for J3
-        print("[PHASE] J3 (Full): ENGINES REGISTERED")
-        # 5. Log event
-        from core.supabase_integration import SupabaseClient
-        from datetime import datetime, timezone
-        client = SupabaseClient()._ensure_client()
-        client.table("system_events").insert({
-            "event_type": "AUTOPOIESIS_PATH_ACTIVATED",
-            "payload": {"path": "JD", "timestamp": datetime.now(timezone.utc).isoformat()}
-        }).execute()
-        print("[AUTOPOIESIS] Sequence J-D Activated.")
-
-def cmd_autopoiesis_phase(args):
-    print(f"[AUTOPOIESIS] Switched to Phase {args.phase.upper()}")
-
-def cmd_autopoiesis_status(args):
-    print("[AUTOPOIESIS] Status: ACTIVE")
-    print("  Phase: J1 (Proposal-Only)")
-    print("  Membrane: SECURE")
-    print("  Teleology: \u0394\u03a9.I.1\u20133")
-
-def cmd_autopoiesis_test_membrane(args):
-    print(f"[MEMBRANE] Testing integrity (stress={args.stress}, cycles={args.cycles})...")
-    # Simulate test
-    import time
-    time.sleep(1)
-    print("[MEMBRANE] Integrity: 100%")
-
-from core.constitutional_rhythm import ConstitutionHasher, ConstitutionVerifier, RhythmSentry, CONSTITUTION_COMPONENTS
-from core.custody import CustodyRegistry
-from core.scarlock import ScarLockController
-from core.living_constitution import LivingConstitutionPulse
-import json
-
-def cmd_constitution(args):
-    if args.constitution_cmd == "hash":
-        hasher = ConstitutionHasher(db)
-        for component in CONSTITUTION_COMPONENTS:
-            h = hasher.record_hash(component)
-            print(f"[HASH] {component}: {h}")
-    elif args.constitution_cmd == "verify":
-        verifier = ConstitutionVerifier(db)
-        for component in CONSTITUTION_COMPONENTS:
-            result = verifier.verify_component(component)
-            print(f"[VERIFY] {component}: {result['status']}")
-    elif args.constitution_cmd == "drift":
-        pulse = LivingConstitutionPulse(db=db)
-        # Run a single pulse, but do NOT auto-lock here; just report
-        # We can call sentry directly to avoid extra events
-        sentry = RhythmSentry(db=db)
-        cycle = sentry.run_cycle()
-        lock = ScarLockController(db=db)
-        print("[DRIFT] drift_detected:", cycle.get("drift_detected"))
-        print("[DRIFT] lock_engaged:", lock.is_locked())
-        for r in cycle.get("results", []):
-            print(f" - {r['component']}: {r['status']}")
-
-    elif args.constitution_cmd == "status":
-        lock = ScarLockController(db=db)
-        status = lock.status()
-        print("[LOCK_STATUS]", status)
-
-    elif args.constitution_cmd == "resolve":
-        lock = ScarLockController(db=db)
-        hasher = ConstitutionHasher(db)
-
-        # Basic custody check: only entities with a certain permission should resolve
-        registry = CustodyRegistry(db)
-        # We treat 'service_role' as canonical resolver; you can refine this later
-        if not registry.has_permission("service_role", "can_resolve_lock"):
-            print("[ERROR] Current actor is not authorized to resolve constitutional lock.")
-            return
-
-        if args.accept and args.reject:
-            print("[ERROR] Cannot --accept and --reject simultaneously.")
-            return
-
-        if not args.accept and not args.reject:
-            print("[ERROR] Specify either --accept or --reject.")
-            return
-
-        if args.accept:
-            # Re-hash all components to treat current state as canonical
-            for component in CONSTITUTION_COMPONENTS:
-                h = hasher.record_hash(component)
-                print(f"[ACCEPT] Updated hash for {component}: {h}")
-            lock.release_lock(actor="resolver", resolution_note=args.note or "accept_new_state")
-            print("[RESOLVE] Lock released; new constitution accepted.")
-
-        elif args.reject:
-            # Leave hashes as-is; lock remains engaged until manual repair
-            # You could add more logic here (e.g. notify external system)
-            print("[RESOLVE] Drift rejected; lock remains engaged. Manual repair required.")
-
-from core.status_api import StatusAPI
-
-def cmd_status(args):
-    """
-    Global system status via fn_status_api RPC.
-    """
-    api = StatusAPI(db)
-    data = api.get_status()
-    if data:
-        print(json.dumps(data, indent=2))
-    else:
-        print("[STATUS] No data returned or error occurred.")
-
-def cmd_dashboard(args):
-    """
-    Launch local dashboard preview.
-    """
-    if args.subcommand == "preview":
-        import subprocess
-        import os
-        dashboard_dir = os.path.join(os.getcwd(), "web", "dashboard")
-        print(f"[DASHBOARD] Launching preview in {dashboard_dir}...")
-        try:
-            # Check if node_modules exists, if not install
-            if not os.path.exists(os.path.join(dashboard_dir, "node_modules")):
-                print("[DASHBOARD] Installing dependencies...")
-                subprocess.check_call("npm install", shell=True, cwd=dashboard_dir)
-            
-            print("[DASHBOARD] Starting dev server...")
-            subprocess.check_call("npm run dev", shell=True, cwd=dashboard_dir)
-        except Exception as e:
-            print(f"[DASHBOARD] Error: {e}")
-
-def cmd_rhythm(args):
-    sentry = RhythmSentry(db=db)
-    if args.once:
-        result = sentry.run_cycle()
-        print(result)
-    else:
-        import time
-        while True:
-            result = sentry.run_cycle()
-            print("[RHYTHM] cycle:", result.get("drift_detected"))
-            time.sleep(60)
-
-def cmd_custody(args):
-    registry = CustodyRegistry(db)
-    if args.custody_cmd == "grant":
-        entity = args.entity
-        permissions = json.loads(args.permissions_json)
-        db.client._ensure_client().table("custody_registry").upsert({
-            "entity": entity,
-            "permission_set": permissions,
-            "active": True,
-            "updated_at": "now()"
-        }).execute()
-        print(f"[CUSTODY] Granted permissions to {entity}")
-    elif args.custody_cmd == "revoke":
-        db.client._ensure_client().table("custody_registry").update({
-            "active": False,
-            "updated_at": "now()"
-        }).eq("entity", args.entity).execute()
-        print(f"[CUSTODY] Revoked {args.entity}")
-    elif args.custody_cmd == "list":
-        entries = registry.list_active()
-        for e in entries:
-            print(f"- {e.entity}: {e.permission_set}")
-
-
-
-
-def cmd_paradox_scan(args):
-    mirror = MirrorLayer()
-    coherence = CoherenceEngine()
-    engine = ParadoxEngine(mirror, coherence)
-    result = engine.run_cycle()
-    print("[PARADOX] Scan complete.")
-    print(f"  Candidates: {result['candidates']}")
-    print(f"  Resolved:   {result['resolved']}")
-    print(f"  \u0394Coherence: {result['coherence_delta']:.4f}")
-
-def cmd_paradox_list(args):
-    events = db.list_paradox_events(status=args.status)
-    for e in events:
-        print(
-            f"{e['id']} [{e['status']}] {e['paradox_kind']} "
-            f"({e['severity']:.2f}) {e['entity_a_type']}:{e['entity_a_id']} "
-            f"<-> {e['entity_b_type']}:{e['entity_b_id']}"
-        )
-
-def cmd_purpose_activate_trinity(args):
-    activate_teleology_trinity()
-
-def cmd_purpose_broadcast_trinity(args):
-    # Re-broadcast logic similar to activation script but without upsert
-    from core.supabase_integration import SupabaseClient
-    from datetime import datetime, timezone
-    
-    client = SupabaseClient()._ensure_client()
-    event_payload = {
-        "event_type": "TELEOLOGY_TRINITY_ACTIVATED",
-        "payload": {
-            "codes": ["\u0394\u03a9.I.1", "\u0394\u03a9.I.2", "\u0394\u03a9.I.3"],
-            "activated_at": datetime.now(timezone.utc).isoformat()
-        }
-    }
-    try:
-        client.table("system_events").insert(event_payload).execute()
-        print("[TELEOLOGY] Trinity \u0394\u03a9.I.1\u20133 broadcasted")
-    except Exception as e:
-        print(f"[TELEOLOGY] Broadcast failed: {e}")
-
-def cmd_audit(args):
-    if args.audit_cmd == "surface":
-        try:
-            res = db.client._ensure_client().table("view_global_audit_surface").select("*").limit(20).execute()
-            for evt in res.data:
-                print(f"[{evt['created_at']}] {evt['id']} | {evt['component']} -> {evt['event_type']} (Hash: {evt.get('phase_lock_hash')})")
-        except Exception as e:
-            print(f"Error fetching audit surface: {e}")
-    elif args.audit_cmd == "emit":
-        emit_audit_event("manual_emit", "CLI", {"message": args.msg})
-        print(f"Emitted manual event: {args.msg}")
-    elif args.audit_cmd == "diff":
-        print("Comparing Phase-Lock Hash vs Baseline...")
-        try:
-            res = db.client._ensure_client().rpc("fn_verify_phase_lock", {}).execute()
-            print(f"Current Runtime Hash: {res.data.get('hash')}")
-            print("Baseline: [LOAD FROM ARTIFACT]") # Placeholder
-        except Exception as e:
-            print(f"Error verifying phase lock: {e}")
-
-def cmd_temporal(args):
-    engine = TemporalDriftEngine()
-    
-    if args.temporal_cmd == "anchor":
-        id = engine.record_anchor(source="CLI")
-        print(f"[TEMPORAL] Anchor recorded: {id}")
-        
-    elif args.temporal_cmd == "verify":
-        res = engine.verify_drift(source="CLI")
-        print(f"[TEMPORAL] Drift Check: {res}")
-        
-    elif args.temporal_cmd == "log":
-        try:
-            res = db.client._ensure_client().table("view_temporal_drift_status").select("*").limit(10).execute()
-            for row in res.data:
-                print(f"[{row['created_at']}] {row['source']} | Delta: {row['drift_delta_ms']}ms | {row['severity']}")
-        except Exception as e:
-            print(f"Error fetching log: {e}")
-
-def cmd_causality(args):
-    if args.causality_cmd == "link":
-        try:
-            notes = json.loads(args.notes) if args.notes else {}
-            link_id = link_events(
-                source_event_id=args.source,
-                target_event_id=args.target,
-                cause_type=args.type,
-                weight=args.weight,
-                notes=notes
-            )
-            if link_id:
-                print(f"[CAUSALITY] Link created: {link_id}")
-            else:
-                print("[CAUSALITY] Failed to create link.")
-        except Exception as e:
-            print(f"[CAUSALITY] Error: {e}")
-
-    elif args.causality_cmd == "surface":
-        try:
-            limit = args.limit
-            res = db.client._ensure_client().table("view_causal_links").select("*").limit(limit).execute()
-            print(f"--- Causality Surface (Limit: {limit}) ---")
-            for row in res.data:
-                print(f"[{row['created_at']}] {row['source_event_type']} --({row['cause_type']})--> {row['target_event_type']} (W: {row['weight']}) | Anchor: {row.get('temporal_anchor_id')}")
-        except Exception as e:
-            print(f"[CAUSALITY] Error fetching surface: {e}")
 
 if __name__ == "__main__":
     main()

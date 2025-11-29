@@ -49,7 +49,18 @@ class TemporalDriftEngine:
             if data.get("severity") == "RED":
                 alert_event_id = emit_audit_event("temporal_drift_alert", "TemporalDriftEngine", {"reason": "severity_red", "delta": data.get("delta_ms")})
                 if verify_event_id and alert_event_id:
-                    link_events(verify_event_id, alert_event_id, "temporal_severity_escalation", 1.0)
+                    # Map severity to weight
+                    severity = data.get("severity", "UNKNOWN")
+                    weight = 0.9 if severity == "RED" else 0.6 if severity == "YELLOW" else 0.3
+                    
+                    link_events(
+                        source_event_id=verify_event_id, 
+                        target_event_id=alert_event_id, 
+                        cause_type="temporal_severity_escalation",
+                        severity=severity,
+                        weight=weight,
+                        notes={"drift_status": data}
+                    )
             
             return data
         except Exception as e:

@@ -5,6 +5,7 @@ def link_events(
     source_event_id: str,
     target_event_id: str,
     cause_type: str,
+    severity: str = "UNKNOWN",
     weight: float = 1.0,
     notes: Optional[Dict[str, Any]] = None,
 ) -> Optional[str]:
@@ -17,6 +18,7 @@ def link_events(
         notes = {}
         
     try:
+        # 1. Create Link
         resp = db.client._ensure_client().rpc(
             "fn_link_events",
             {
@@ -28,9 +30,22 @@ def link_events(
             },
         ).execute()
 
+        link_id = None
         if hasattr(resp, "data") and resp.data:
-            return str(resp.data)
-        return None
+            link_id = str(resp.data)
+        
+        # 2. Update Metrics (Severity, Normalized Weight, Tension)
+        if link_id:
+            db.client._ensure_client().rpc(
+                "fn_update_causality_metrics",
+                {
+                    "p_link_id": link_id,
+                    "p_severity": severity,
+                    "p_weight": weight
+                }
+            ).execute()
+
+        return link_id
     except Exception as e:
         print(f"[CAUSALITY_LINK_FAIL] {source_event_id} -> {target_event_id}: {e}")
         return None
