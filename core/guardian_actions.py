@@ -86,13 +86,28 @@ def process_guardian_actions(client=None) -> None:
                 if act_res.data:
                     act = act_res.data
                     
-                    # Ω.11: Enforce Governance
-                    from core.governance.runner import enforce_governance
-                    if not enforce_governance(act):
-                        print(f"    [GOVERNANCE] Action {action_id} VETOED.")
+                    # Ω.12: Constitutional Execution Engine
+                    from core.governance.executor import wrap_guardian_action
+                    
+                    final_action = wrap_guardian_action(act)
+                    
+                    if not final_action:
+                        print(f"    [GOVERNANCE] Action {action_id} VETOED by Constitution.")
                         # Update status to VETOED
                         client.table("guardian_action_events").update({"status": "vetoed"}).eq("id", action_id).execute()
                         continue
+                    
+                    # If rewritten, we might want to update the DB record or just proceed with the in-memory object.
+                    # For now, let's update the DB if it changed, to keep logs consistent.
+                    if final_action != act:
+                        print(f"    [GOVERNANCE] Action {action_id} REWRITTEN.")
+                        client.table("guardian_action_events").update({
+                            "chosen_action": final_action.get("chosen_action"),
+                            "severity": final_action.get("severity"),
+                            "metadata": final_action.get("metadata", {}),
+                            "status": "rewritten" # Optional status update
+                        }).eq("id", action_id).execute()
+                        act = final_action
 
                     print(f"    [ACTION] {act['chosen_action']} (Sev: {act['severity']}) -> {action_id}")
             except Exception as e:

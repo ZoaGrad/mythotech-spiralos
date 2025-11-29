@@ -697,7 +697,15 @@ def main():
         "status", help="Show lock state and last known drift status"
     )
 
-    # Global Status Command
+    # Ω.12: Execution Engine Commands
+    const_enforce = constitution_sub.add_parser("enforce", help="Test constitutional enforcement on an action")
+    const_enforce.add_argument("--action-json", help="JSON string of action to test", required=True)
+
+    const_log = constitution_sub.add_parser("log", help="View constitutional execution log")
+    const_log.add_argument("--limit", type=int, default=20, help="Limit results")
+
+    const_trace = constitution_sub.add_parser("trace", help="Trace constitutional decision path")
+    const_trace.add_argument("action_id", help="Action ID to trace")
     parser_status = subparsers.add_parser("global-status", help="Show full system status via API")
 
     # Dashboard Command
@@ -980,6 +988,66 @@ def cmd_governance(args):
                 print(f"  - {v['constraint_code']}: {v['description']}")
         else:
             print("✅ Action is COMPLIANT.")
+
+def cmd_constitution(args):
+    client = db.client._ensure_client()
+    
+    if args.constitution_cmd == "enforce":
+        import json
+        from core.governance.executor import enforce_constitution
+        
+        try:
+            action = json.loads(args.action_json)
+            print(f"Testing enforcement on action: {action}")
+            result = enforce_constitution(action)
+            
+            if result is None:
+                print("🚫 VETOED")
+            elif result != action:
+                print("✏️ REWRITTEN")
+                print(json.dumps(result, indent=2))
+            else:
+                print("✅ ALLOWED (Unchanged)")
+                
+        except json.JSONDecodeError:
+            print("Error: Invalid JSON string")
+        except Exception as e:
+            print(f"Error: {e}")
+            
+    elif args.constitution_cmd == "log":
+        try:
+            res = client.table("constitutional_execution_log").select("*").order("timestamp", desc=True).limit(args.limit).execute()
+            print(f"\n📜 Constitutional Execution Log (Last {args.limit})")
+            print("=========================================")
+            for log in res.data:
+                status = "VETOED" if log['vetoed'] else "REWRITTEN" if log['rewritten'] else "EXECUTED"
+                print(f"[{log['timestamp']}] {status} | Action: {log['action_id']}")
+                if log['notes']:
+                    print(f"  Note: {log['notes']}")
+        except Exception as e:
+            print(f"Error fetching log: {e}")
+
+    elif args.constitution_cmd == "trace":
+        try:
+            res = client.table("constitutional_execution_log").select("*").eq("action_id", args.action_id).single().execute()
+            if res.data:
+                log = res.data
+                print(f"\n🔍 Trace for Action {args.action_id}")
+                print("==================================")
+                print(f"Timestamp: {log['timestamp']}")
+                print(f"Outcome: {'VETOED' if log['vetoed'] else 'REWRITTEN' if log['rewritten'] else 'EXECUTED'}")
+                print(f"Validation Path: {log['validation_path']}")
+                print(f"Applied Constraints: {log['applied_constraints']}")
+                print(f"Notes: {log['notes']}")
+            else:
+                print(f"No execution log found for action {args.action_id}")
+        except Exception as e:
+            print(f"Error tracing action: {e}")
+            
+    # Fallback for other commands (placeholders for now as they weren't in scope for Ω.12 but existed in parser)
+    elif args.constitution_cmd in ["hash", "verify", "drift", "resolve", "status"]:
+        print(f"Command '{args.constitution_cmd}' is not yet fully implemented in this CLI version.") 
+
 
 if __name__ == "__main__":
     main()
