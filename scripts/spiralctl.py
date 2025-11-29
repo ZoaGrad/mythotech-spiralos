@@ -338,6 +338,50 @@ def cmd_lattice_forecast(args):
     except ImportError:
         print(json.dumps(rows, indent=2))
 
+def cmd_guardian_scan(args):
+    from core.guardian_actions import scan_future_lattice_window
+    print("[GUARDIAN] Scanning future lattice window...")
+    nodes = scan_future_lattice_window(window_minutes=60)
+    if not nodes:
+        print("No actionable nodes found.")
+        return
+    
+    print(f"Found {len(nodes)} candidates:")
+    for n in nodes:
+        print(f" - {n['id']} [{n['lattice_state']}] Prob: {n['collapse_probability']}")
+
+def cmd_guardian_plan(args):
+    from core.guardian_actions import plan_action_for_lattice
+    print(f"[GUARDIAN] Planning action for lattice {args.lattice_id}...")
+    action_id = plan_action_for_lattice(None, args.lattice_id)
+    if action_id:
+        print(f"Action Created/Found: {action_id}")
+    else:
+        print("Failed to plan action.")
+
+def cmd_guardian_actions(args):
+    client = db.client._ensure_client()
+    res = (
+        client.table("guardian_action_events")
+        .select("id,created_at,lattice_state,chosen_action,severity,status")
+        .order("created_at", desc=True)
+        .limit(20)
+        .execute()
+    )
+    rows = res.data or []
+    if not rows:
+        print("No guardian actions found.")
+        return
+
+    for r in rows:
+        r["created_at"] = str(r["created_at"])
+    
+    try:
+        from tabulate import tabulate
+        print(tabulate(rows, headers="keys"))
+    except ImportError:
+        print(json.dumps(rows, indent=2))
+
 def cmd_purpose_activate_trinity(args):
     activate_teleology_trinity()
 
@@ -489,6 +533,17 @@ def main():
         "forecast",
         help="List integration lattice projections",
     )
+
+    # guardian command (new group, separate from autopoiesis for clarity)
+    guardian_parser = subparsers.add_parser("guardian", help="Guardian Action commands")
+    guardian_subparsers = guardian_parser.add_subparsers(dest="subcommand", help="Guardian subcommand")
+    
+    guardian_subparsers.add_parser("scan", help="Scan future lattice for candidates")
+    
+    plan_parser = guardian_subparsers.add_parser("plan", help="Plan action for specific lattice node")
+    plan_parser.add_argument("--lattice-id", required=True, help="Lattice Node UUID")
+    
+    guardian_subparsers.add_parser("actions", help="List recent guardian actions")
 
     # purpose command
     purpose_parser = subparsers.add_parser("purpose", help="Teleology Purpose commands")
@@ -664,6 +719,17 @@ def main():
             cmd_lattice_forecast(args)
         else:
             lattice_parser.print_help()
+
+    elif args.command == "guardian":
+        if args.subcommand == "scan":
+            cmd_guardian_scan(args)
+        elif args.subcommand == "plan":
+            cmd_guardian_plan(args)
+        elif args.subcommand == "actions":
+            cmd_guardian_actions(args)
+        else:
+            guardian_parser.print_help()
+
     elif args.command == "purpose":
         if args.subcommand == "activate-trinity":
             cmd_purpose_activate_trinity(args)

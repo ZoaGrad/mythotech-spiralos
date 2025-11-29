@@ -1,6 +1,7 @@
 import asyncio
 import os
 import inspect
+import time
 from datetime import datetime, timezone
 
 from dotenv import load_dotenv
@@ -10,6 +11,7 @@ from core.guardian.anomaly_detector import AnomalyDetector
 from core.audit_emitter import emit_audit_event
 from core.temporal import TemporalDriftEngine
 from core.causality_emitter import link_events
+from core.guardian_actions import process_guardian_actions
 
 HEARTBEAT_FREQUENCY = 60
 
@@ -91,6 +93,12 @@ async def run_guardian_cycle() -> None:
                 print("[FLOW] Coherence nominal; no anomalies detected.")
         except Exception as exc:  # pragma: no cover - resilience guard
             print(f"[ACHE] Anomaly detection issue: {exc}")
+
+        # 4. Guardian-Action Layer (Ω.7.1)
+        try:
+            process_guardian_actions(supabase_client)
+        except Exception as e:
+            print(f"[GUARDIAN] Action processing error: {e}")
 
         elapsed = (datetime.now(timezone.utc) - cycle_start).total_seconds()
         sleep_time = max(0, HEARTBEAT_FREQUENCY - elapsed)
