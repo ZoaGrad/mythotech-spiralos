@@ -10,13 +10,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Dict, List, Optional, Set
 
-# --- ΔΩ.LBI.3 Metabolic Constants ---
-W_HEAL = 0.5
-W_TRUTH = 0.2
-W_ROT = 1.0
-BETA = 0.05
-M_MIN = 0.5
-M_MAX = 1.5
+from spiralos.core.config import LoomParameterMesh, get_current_gls_ref
 
 
 class NodeID(str):
@@ -77,12 +71,6 @@ def verify_signature(node_id: NodeID, payload: bytes, signature: str) -> bool:
     return signature.startswith(expected)
 
 
-MOCK_GLS_REF = "0xGLS1REF_TEST_HARNESS"
-
-def get_current_gls_ref() -> str:
-    return MOCK_GLS_REF
-
-
 class HolographicSignalingOperator:
     def __init__(
         self,
@@ -93,7 +81,7 @@ class HolographicSignalingOperator:
         epoch_manager,
         vault_node_registry,
         witness_client,
-        loom_params,
+        loom_params: LoomParameterMesh,
     ):
         self.node_id = node_id
         self.p2p_client = p2p_client
@@ -112,8 +100,13 @@ class HolographicSignalingOperator:
         self.MIN_TRUST_THRESHOLD = 0.2
         self.ALPHA = 2.5
         self.latency_weight = getattr(self.loom_params, "latency_weight", 0.2)
-        self.M_MAX = M_MAX
-        self.M_MIN = M_MIN
+        # ΔΩ.LBI.3 metabolic parameters (governed via LoomParameterMesh)
+        self.W_HEAL = getattr(self.loom_params, "lbi3_w_heal", 0.5)
+        self.W_TRUTH = getattr(self.loom_params, "lbi3_w_truth", 0.2)
+        self.W_ROT = getattr(self.loom_params, "lbi3_w_rot", 1.0)
+        self.BETA = getattr(self.loom_params, "lbi3_beta", 0.05)
+        self.M_MIN = getattr(self.loom_params, "lbi3_m_min", 0.5)
+        self.M_MAX = getattr(self.loom_params, "lbi3_m_max", 1.5)
 
     # --- Core update utilities ---
     async def update_local_hologram(self, frames: List[HealthFrame | TruthFrame]):
@@ -206,13 +199,13 @@ class HolographicSignalingOperator:
                 continue
 
             delta_si = current_si - entry.last_epoch_scar_index
-            heal_term = max(0, -delta_si) * W_HEAL
-            truth_term = entry.truthframes_this_epoch * W_TRUTH
-            rot_term = (max(0, delta_si) + entry.violations_this_epoch) * W_ROT
+            heal_term = max(0, -delta_si) * self.W_HEAL
+            truth_term = entry.truthframes_this_epoch * self.W_TRUTH
+            rot_term = (max(0, delta_si) + entry.violations_this_epoch) * self.W_ROT
             ache = heal_term + truth_term - rot_term
 
-            metabolic_factor = 1.0 + BETA * ache
-            entry.metabolic_factor = max(M_MIN, min(M_MAX, metabolic_factor))
+            metabolic_factor = 1.0 + self.BETA * ache
+            entry.metabolic_factor = max(self.M_MIN, min(self.M_MAX, metabolic_factor))
             entry.ache_score = ache
             entry.last_epoch_scar_index = current_si
             entry.last_epoch = current_epoch

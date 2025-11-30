@@ -28,10 +28,11 @@ These metrics are combined to compute the **Ache Score** for node `v` in epoch `
 
 `Ache_v(e) = w_heal \cdot \max(0, -\Delta SI_v(e)) + w_truth \cdot truthframes_v(e) - w_rot \cdot (\max(0, \Delta SI_v(e)) + violations_v(e))`
 
-**Suggested Default Parameters:**
-*   `w_heal = 0.5`: Weight for positive ScarIndex drift (healing).
-*   `w_truth = 0.2`: Weight for being attested by `TruthFrames` (witnessed activity).
-*   `w_rot = 1.0`: Weight for negative ScarIndex drift (accumulating scar) and violations.
+**Governed Parameters (from `LoomParameterMesh`):**
+The following parameters, previously static, are sourced from the `LoomParameterMesh` and are tunable via governance:
+*   `w_heal` (`lbi3_w_heal` in `LoomParameterMesh`): Weight for positive ScarIndex drift (healing). Default: `0.5`.
+*   `w_truth` (`lbi3_w_truth` in `LoomParameterMesh`): Weight for being attested by `TruthFrames` (witnessed activity). Default: `0.2`.
+*   `w_rot` (`lbi3_w_rot` in `LoomParameterMesh`): Weight for negative ScarIndex drift (accumulating scar) and violations. Default: `1.0`.
 
 **Interpretation of Ache Score:**
 *   A positive `Ache_v(e)` indicates a node is actively "healing" (reducing its ScarIndex) and/or is being consistently validated by the Witness Network.
@@ -46,10 +47,11 @@ The `Ache_v(e)` is then used to derive a **Metabolic Factor (`M_v(e)`)** for nod
 
 `M_v(e) = \text{clamp}\left(1 + \beta \cdot Ache_v(e), M_{min}, M_{max}\right)`
 
-**Suggested Default Parameters:**
-*   `β = 0.05`: Scaling factor for the Ache Score's impact on the Metabolic Factor.
-*   `M_min = 0.5`: Minimum possible value for the Metabolic Factor.
-*   `M_max = 1.5`: Maximum possible value for the Metabolic Factor.
+**Governed Parameters (from `LoomParameterMesh`):**
+These parameters, also now sourced from `LoomParameterMesh`, control the scaling and bounding of the metabolic factor:
+*   `β` (`lbi3_beta` in `LoomParameterMesh`): Scaling factor for the Ache Score's impact on the Metabolic Factor. Default: `0.05`.
+*   `M_min` (`lbi3_m_min` in `LoomParameterMesh`): Minimum possible value for the Metabolic Factor. Default: `0.5`.
+*   `M_max` (`lbi3_m_max` in `LoomParameterMesh`): Maximum possible value for the Metabolic Factor. Default: `1.5`.
 
 The **Effective CRS (`CRS^{eff}_v(e+1)`)** used for routing decisions in epoch `e+1` is then calculated as:
 
@@ -111,7 +113,7 @@ The primary integration point for ΔΩ.LBI.3 is the `HolographicSignalingOperato
 
 *   **Trust in `ScarIndexOracle`:** ΔΩ.LBI.3 relies on the integrity of the `ScarIndexOracle` for accurate `SI_v` values. Compromise of the oracle would directly impact metabolic calculations.
 *   **Witness Integrity:** The `truth_term` in `Ache_v(e)` is dependent on honest Witness attestations. A Sybil attack on the Witness network could manipulate `truthframes_this_epoch`. This is mitigated by existing Witness multisig and reputation systems.
-*   **Parameter Tuning:** The `w_heal`, `w_truth`, `w_rot`, `β`, `M_min`, `M_max` parameters are critical. Incorrect tuning could lead to undesirable network dynamics (e.g., too slow recovery, too aggressive punishment). These will be part of the `LoomParameterMesh` and subject to governance.
+*   **Parameter Tuning:** The `w_heal`, `w_truth`, `w_rot`, `β`, `M_min`, `M_max` parameters are critical. Incorrect tuning could lead to undesirable network dynamics (e.g., too slow recovery, too aggressive punishment). These are governed through the `LoomParameterMesh` (fields: `lbi3_w_heal`, `lbi3_w_truth`, `lbi3_w_rot`, `lbi3_beta`, `lbi3_m_min`, `lbi3_m_max`) and subject to formal governance.
 *   **Epoch Manager Reliability:** The `on_epoch_tick` method's timely and consistent invocation by the `EpochManager` is crucial for correct metabolic updates.
 
 This concludes the specification for ΔΩ.LBI.3.
