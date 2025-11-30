@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Set
 import math
 import time
 
@@ -32,7 +32,12 @@ class HolographicSignalingOperator:
     persistence. Higher layers can snapshot / restore hologram state if needed.
     """
 
-    def __init__(self, alpha: float = 2.5, latency_weight: float = 0.2):
+    def __init__(
+        self,
+        alpha: float = 2.5,
+        latency_weight: float = 0.2,
+        gls_ref: str = "canonical_gls_ref",
+    ):
         """
         :param alpha: Purity bias exponent; default 2.5 (Just World Curve).
         :param latency_weight: β in CRS = Flow * exp(-β * latency_ms).
@@ -40,6 +45,8 @@ class HolographicSignalingOperator:
         self.alpha = alpha
         self.latency_weight = latency_weight
         self._hologram: Dict[str, HologramEntry] = {}
+        self._processed_signatures_per_epoch: Dict[int, Set[str]] = {}
+        self.gls_ref = gls_ref
 
     # ---------- Core utilities ----------
 
@@ -80,6 +87,16 @@ class HolographicSignalingOperator:
             load_percent = float(frame.get("load_percent", 1.0))
             headroom_ru = int(frame.get("headroom_ru", 0))
             latency_ms = int(frame.get("latency_ms", 10_000))
+            gls_ref = str(frame.get("gls_ref", self.gls_ref))
+            signature = frame.get("signature")
+
+            if gls_ref != self.gls_ref:
+                # Hard reject mismatched GLS reference
+                continue
+
+            if signature is not None and self._is_replay(signature, epoch):
+                # Replay attack guard per epoch
+                continue
             # Use provided CRS if present; otherwise compute from physics
             crs = float(frame.get("crs")) if "crs" in frame else self._compute_crs(
                 headroom_ru=headroom_ru,
@@ -98,6 +115,13 @@ class HolographicSignalingOperator:
                     # Do not overwrite truth-anchored data with plain gossip
                     continue
 
+            # Reject frames with negative latency entirely for unknown nodes; penalize known ones
+            if latency_ms < 0:
+                if existing is None:
+                    continue
+                existing.trust_score = max(existing.trust_score - 0.2, 0.0)
+                continue
+
             trust_score = 0.5
             if existing is not None:
                 # Small trust decay over time for non-truth entries
@@ -109,6 +133,10 @@ class HolographicSignalingOperator:
                     trust_score *= decay_factor
                 # blend in new evidence
                 trust_score = min(1.0, trust_score + 0.1)
+
+            if load_percent > 1.0:
+                # Accept but penalize trust for overloaded reports
+                trust_score *= 0.8
 
             entry = HologramEntry(
                 node_id=node_id,
@@ -123,6 +151,8 @@ class HolographicSignalingOperator:
                 last_update_ts=now_ts,
             )
             self._hologram[node_id] = entry
+            if signature is not None:
+                self._mark_processed(signature, epoch)
 
     def ingest_truth_frames(self, truth_frames: List[Dict[str, Any]]) -> None:
         """
@@ -242,4 +272,22 @@ class HolographicSignalingOperator:
             }
             for node_id, e in self._hologram.items()
         }
+
+    # ---------- Replay Guard Utilities ----------
+
+    def _cleanup_signature_cache(self, current_epoch: int) -> None:
+        # Remove stale epochs to avoid unbounded growth
+        stale_epochs = [epoch for epoch in self._processed_signatures_per_epoch.keys() if epoch != current_epoch]
+        for epoch in stale_epochs:
+            self._processed_signatures_per_epoch.pop(epoch, None)
+
+    def _is_replay(self, signature: str, epoch: int) -> bool:
+        self._cleanup_signature_cache(epoch)
+        seen = self._processed_signatures_per_epoch.setdefault(epoch, set())
+        return signature in seen
+
+    def _mark_processed(self, signature: str, epoch: int) -> None:
+        self._cleanup_signature_cache(epoch)
+        seen = self._processed_signatures_per_epoch.setdefault(epoch, set())
+        seen.add(signature)
 
