@@ -11,11 +11,18 @@
     "dev:ssd-guard": "ts-node src/services/ssd-guard/ssdWorker.ts",
     "dev:scar-index": "ts-node src/services/scar-index/scarIndexWorker.ts",
     "lint": "echo \"lint script not yet configured\"",
-    "test": "echo \"test suite not yet configured\""
+    "test": "echo \"test suite not yet configured\"",
+    "start:afr": "node dist/services/ache-flux-regulator/afrWorker.js",
+    "start:ccc": "node dist/services/constitutional-coupling/cccWorker.js",
+    "start:ccc-worker": "npm run start:ccc",
+    "dev:afr": "ts-node src/services/ache-flux-regulator/afrWorker.ts",
+    "dev:ccc": "ts-node src/services/constitutional-coupling/cccWorker.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",
+    "bullmq": "^5.65.0",
     "dotenv": "^16.4.5",
+    "ioredis": "^5.8.2",
     "pino": "^9.4.0",
     "zod": "^3.23.8"
   },
