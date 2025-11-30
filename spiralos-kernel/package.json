@@ -5,9 +5,13 @@
   "type": "module",
   "description": "SpiralOS v2 kernel workers for SSD Guard and ScarIndex Oracle.",
   "scripts": {
-    "build": "tsc --noEmit",
-    "start:ssd": "ts-node src/services/ssd-guard/index.ts",
-    "start:scar-index": "ts-node src/services/scar-index/index.ts"
+    "build": "tsc -p tsconfig.json",
+    "start:ssd-guard": "node dist/services/ssd-guard/ssdWorker.js",
+    "start:scar-index": "node dist/services/scar-index/scarIndexWorker.js",
+    "dev:ssd-guard": "ts-node src/services/ssd-guard/ssdWorker.ts",
+    "dev:scar-index": "ts-node src/services/scar-index/scarIndexWorker.ts",
+    "lint": "echo \"lint script not yet configured\"",
+    "test": "echo \"test suite not yet configured\""
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",
