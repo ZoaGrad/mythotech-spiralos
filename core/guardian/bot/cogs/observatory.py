@@ -12,11 +12,9 @@ class Observatory(commands.Cog):
         self.supabase = None
 
     async def cog_load(self):
-        witness_cog = self.bot.get_cog("WitnessTerminal")
-        if witness_cog:
-            self.supabase = witness_cog.supabase
-        else:
-            logger.warning("WitnessTerminal Cog not found. Supabase client unavailable for Observatory.")
+        self.supabase = getattr(self.bot, 'supabase', None)
+        if not self.supabase:
+            logger.warning("Supabase client unavailable in Bot.")
 
     @app_commands.command(name="observatory", description="Access the Sovereign Observatory telemetry.")
     @app_commands.describe(action="Action to perform (status)")
@@ -25,6 +23,10 @@ class Observatory(commands.Cog):
     ])
     async def observatory(self, interaction: discord.Interaction, action: str):
         await interaction.response.defer()
+        
+        if not self.supabase:
+            # Try to fetch again just in case
+            self.supabase = getattr(self.bot, 'supabase', None)
         
         if not self.supabase:
             await interaction.followup.send("❌ Database connection unavailable.")

@@ -14,14 +14,9 @@ class Governance(commands.Cog):
         self.supabase = None
 
     async def cog_load(self):
-        # We can access the supabase client from the Witness cog if it's loaded, 
-        # or re-initialize. Accessing via bot instance is cleaner if we stored it there,
-        # but currently it's in WitnessTerminal. Let's try to get it from there.
-        witness_cog = self.bot.get_cog("WitnessTerminal")
-        if witness_cog:
-            self.supabase = witness_cog.supabase
-        else:
-            logger.warning("WitnessTerminal Cog not found. Supabase client unavailable for Governance.")
+        self.supabase = getattr(self.bot, 'supabase', None)
+        if not self.supabase:
+            logger.warning("Supabase client unavailable in Bot.")
 
     def is_admin():
         """Check if the user is an admin."""
