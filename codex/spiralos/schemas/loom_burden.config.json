@@ -1,0 +1,19 @@
+{
+  "system_constants": {
+    "base_capacity_constant": 1000000,
+    "max_scar_index": 100,
+    "epoch_duration_blocks": 1000,
+    "min_capacity_floor": 1000
+  },
+  "resource_weights": {
+    "compute_weight": 0.0001,
+    "storage_weight": 10.0,
+    "egress_weight": 5.0
+  },
+  "penalty_logic": {
+    "scar_penalty_factor": 0.005,
+    "max_scar_increase_per_violation": 10,
+    "critical_violation_threshold": 5,
+    "severe_violation_magnitude_threshold": 200000
+  }
+}
