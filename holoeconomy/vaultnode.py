@@ -250,6 +250,23 @@ class VaultNode:
         # Create genesis block
         self._create_genesis_block()
 
+    def send_heartbeat(self):
+        """Send heartbeat to Supabase registry"""
+        try:
+            from core.db import get_supabase
+            supabase = get_supabase()
+            
+            # Adapt to existing schema: node_identifier, current_status, last_seen
+            supabase.table("vaultnode_registry").upsert({
+                "node_identifier": str(uuid.uuid5(uuid.NAMESPACE_DNS, self.vault_id)),
+                "display_name": f"VaultNode-{self.vault_id[:8]}",
+                "current_status": "ACTIVE",
+                "last_seen": datetime.now(timezone.utc).isoformat(),
+                "heartbeat_count": len(self.blocks) # simplistic metric
+            }, on_conflict="node_identifier").execute()
+        except Exception as e:
+            print(f"Failed to send VaultNode heartbeat: {e}")
+
     def _create_genesis_block(self):
         """Create genesis block"""
         genesis_event = VaultEvent(

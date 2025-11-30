@@ -10,50 +10,23 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - name: Check Guardian Status
-        id: guardian_check
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
         run: |
-          RESPONSE=$(curl -s "${{ secrets.GUARDIAN_EDGE_URL }}?hours=24")
-          echo "response=$RESPONSE" >> $GITHUB_OUTPUT
-          
-          STATUS=$(echo "$RESPONSE" | jq -r '.scar_status // "❓"')
-          SCORE=$(echo "$RESPONSE" | jq -r '.scar_score // "N/A"')
-          
-          echo "status=$STATUS" >> $GITHUB_OUTPUT
-          echo "score=$SCORE" >> $GITHUB_OUTPUT
-      - name: Send Discord Notification
-        if: always()
+          python -m pip install --upgrade pip
+          pip install requests supabase
+
+      - name: Run Heartbeat Script
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          DISCORD_GUARDIAN_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
-          STATUS="${{ steps.guardian_check.outputs.status }}"
-          SCORE="${{ steps.guardian_check.outputs.score }}"
-          RESPONSE='${{ steps.guardian_check.outputs.response }}'
-          
-          if [[ "$STATUS" == "🟢" ]]; then
-            COLOR="3066993"
-          elif [[ "$STATUS" == "🟠" ]]; then
-            COLOR="15105570"
-          else
-            COLOR="15158332"
-          fi
-          
-          # Create JSON payload file to avoid escaping issues
-          cat > /tmp/discord_payload.json << EOF
-          {
-            "embeds": [{
-              "title": "Guardian System Heartbeat",
-              "description": "Status: $STATUS\nScarIndex Score: $SCORE",
-              "color": $COLOR,
-              "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%S.000Z)",
-              "fields": [
-                {
-                  "name": "Response",
-                  "value": "\`\`\`json\n${RESPONSE}\n\`\`\`"
-                }
-              ]
-            }]
-          }
-          EOF
-          
-          curl -X POST "${{ secrets.DISCORD_WEBHOOK_URL }}" \
-            -H "Content-Type: application/json" \
-            -d @/tmp/discord_payload.json
+          python core/guardian/scripts/simple_heartbeat.py

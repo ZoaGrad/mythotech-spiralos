@@ -170,6 +170,26 @@ class AchePIDController:
 
         # Update previous error for next iteration
         self.previous_error = self.error
+        
+        # Persist to Supabase if available
+        try:
+            from core.db import get_supabase
+            supabase = get_supabase()
+            
+            # Record Ache Value
+            supabase.table("ache_values").insert({
+                "source": "pid_controller",
+                "value": self.error, # Using error as a proxy for raw Ache for now
+                "metadata": {
+                    "target": self.target_scarindex,
+                    "current": current_scarindex,
+                    "guidance": self.guidance_scale
+                }
+            }).execute()
+            
+        except Exception as e:
+            # Don't fail controller if persistence fails
+            pass
 
         return self.guidance_scale
 

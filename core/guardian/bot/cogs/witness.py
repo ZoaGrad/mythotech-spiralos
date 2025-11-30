@@ -24,21 +24,12 @@ SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
 class WitnessTerminal(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.supabase: Optional[Client] = None
-        
-        if SUPABASE_URL and SUPABASE_KEY:
-            try:
-                self.supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-                logger.info("Supabase client initialized successfully.")
-            except Exception as e:
-                logger.error(f"Failed to initialize Supabase client: {e}")
-        else:
-            logger.warning("SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing. Backend disabled.")
+        # self.supabase is now accessed via self.bot.supabase
 
     def _get_supabase(self) -> Client:
-        if not self.supabase:
-            raise ConnectionError("Supabase backend not configured.")
-        return self.supabase
+        if not hasattr(self.bot, 'supabase') or not self.bot.supabase:
+            raise ConnectionError("Supabase backend not configured in Bot.")
+        return self.bot.supabase
 
     def _discord_to_uuid(self, discord_id: int) -> str:
         """Deterministic mapping from Discord ID to UUID."""

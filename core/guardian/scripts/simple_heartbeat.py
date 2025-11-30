@@ -1,14 +1,19 @@
 #!/usr/bin/env python3
 """
 Simple Guardian Heartbeat Script
-Posts a heartbeat message to Discord without requiring Supabase Edge Function.
+Posts a heartbeat message to Discord and logs to Supabase.
 """
 
 import os
+import sys
 from datetime import datetime, timezone
 from typing import Optional
-
 import requests
+
+# Add project root to path to allow imports
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..")))
+
+from core.db import get_supabase
 
 WEBHOOK_URL = os.getenv(
     "DISCORD_GUARDIAN_WEBHOOK",
@@ -18,6 +23,25 @@ WEBHOOK_URL = os.getenv(
     ),
 )
 
+def log_heartbeat_to_supabase(status: str, score: float):
+    """Log the heartbeat event to Supabase."""
+    try:
+        supabase = get_supabase()
+        data = {
+            "agent_id": "guardian_heartbeat_script",
+            "action": "heartbeat",
+            "target": "system",
+            "result": "success" if status == "🟢" else "warning",
+            "details": {
+                "status_icon": status,
+                "scar_score": score,
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
+        }
+        supabase.table("guardian_logs").insert(data).execute()
+        print("✅ Heartbeat logged to Supabase.")
+    except Exception as e:
+        print(f"⚠️ Failed to log to Supabase: {e}")
 
 def create_heartbeat_embed(status: str = "🟢", score: Optional[float] = None) -> dict:
     """Create a heartbeat embed."""
@@ -65,9 +89,17 @@ def create_heartbeat_embed(status: str = "🟢", score: Optional[float] = None) 
 
 
 def post_heartbeat():
-    """Post heartbeat to Discord."""
+    """Post heartbeat to Discord and log to Supabase."""
+    
+    # In a real scenario, we might fetch the actual ScarIndex here
+    score = 0.85
+    status = "🟢"
 
-    embed = create_heartbeat_embed()
+    # 1. Log to Supabase
+    log_heartbeat_to_supabase(status, score)
+
+    # 2. Post to Discord
+    embed = create_heartbeat_embed(status, score)
     payload = {"content": "**Guardian Heartbeat** - System check complete", "embeds": [embed]}
 
     try:

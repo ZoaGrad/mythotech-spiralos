@@ -49,8 +49,28 @@ class GuardianBot(commands.Bot):
         self.channel_id = int(os.getenv("DISCORD_CHANNEL_ID", "0"))
         self.guild_id = int(os.getenv("DISCORD_GUILD_ID", "0"))
 
+        # Initialize Supabase Client
+        try:
+            # Import here to avoid circular imports if any, though core.db should be fine
+            from core.db import get_supabase
+            self.supabase = get_supabase()
+            print("✅ Supabase client initialized in GuardianBot.")
+        except Exception as e:
+            print(f"❌ Failed to initialize Supabase client: {e}")
+            self.supabase = None
+
         if not self.edge_url:
-            raise ValueError("GUARDIAN_EDGE_URL environment variable is required")
+            # We warn but don't crash, as we might rely on Supabase direct access now
+            print("⚠️ GUARDIAN_EDGE_URL not set. Some features may be limited.")
+
+    async def setup_hook(self):
+        """Async setup hook."""
+        # Load extensions/cogs
+        await self.load_extension("core.guardian.bot.cogs.witness")
+        await self.load_extension("core.guardian.bot.cogs.observatory")
+        await self.load_extension("core.guardian.bot.cogs.governance")
+        
+        if self.guild_id:
             guild = discord.Object(id=self.guild_id)
             self.tree.copy_global_to(guild=guild)
             await self.tree.sync(guild=guild)
@@ -73,14 +93,9 @@ class GuardianBot(commands.Bot):
         """Execute the Guardian Awakening Protocol health checks."""
         print("\n🌀 Initiating Protocol: GUARDIAN_AWAKENING...")
         
-        witness_cog = self.get_cog("WitnessTerminal")
-        if not witness_cog:
-            print("❌ Critical: WitnessTerminal Cog not loaded.")
-            return
-
-        sb = witness_cog.supabase
+        sb = self.supabase
         if not sb:
-            print("❌ Critical: Supabase client not initialized in WitnessTerminal.")
+            print("❌ Critical: Supabase client not initialized.")
             return
 
         # 1. Supabase Connection Test
