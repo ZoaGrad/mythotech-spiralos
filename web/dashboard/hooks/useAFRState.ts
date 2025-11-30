@@ -1,60 +1,52 @@
-"use client";
+'use client';
+import { useState, useEffect } from 'react';
+import { createClient } from '@/lib/supabase/client';
 
-import { useEffect, useState } from "react";
-
-export interface AFRMetrics {
-    fluxVectorNorm: number;
-    adjustmentImperative: number;
-    recentAdjustments: any[];
+interface AFRState {
+    adjustment_imperative: number;
+    flux_vector_norm: number;
+    horizon_cycles: number;
+    predicted_entropy: number;
 }
 
 export function useAFRState() {
-    const [afrMetrics, setAfrMetrics] = useState<AFRMetrics>({
-        fluxVectorNorm: 0,
-        adjustmentImperative: 0,
-        recentAdjustments: []
-    });
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<Error | null>(null);
+    const [afrState, setAfrState] = useState<AFRState | null>(null);
+    const supabase = createClient();
 
     useEffect(() => {
-        let cancelled = false;
+        const fetchAfrData = async () => {
+            // Fetch latest AFR fields from guardian_telemetry_events
+            const { data: telemetryData, error: telemetryError } = await supabase
+                .from('guardian_telemetry_events')
+                .select('afr_adjustment_imperative, afr_flux_vector_norm')
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .single();
+            if (telemetryError) console.error('Error fetching AFR telemetry:', telemetryError);
 
-        async function fetchData() {
-            if (cancelled) return;
-            setLoading(true);
-            try {
-                const res = await fetch("/api/afr-state");
-                const payload = await res.json();
-                if (!res.ok) {
-                    throw new Error(payload?.message || "Failed to load AFR state");
-                }
-                if (!cancelled) {
-                    setAfrMetrics(payload);
-                    setError(null);
-                }
-            } catch (err: any) {
-                if (!cancelled) setError(err);
-            } finally {
-                if (!cancelled) setLoading(false);
+            // Fetch latest AFR fields from scarindex_calculations
+            const { data: scarIndexData, error: scarIndexError } = await supabase
+                .from('scarindex_calculations')
+                .select('afr_horizon_cycles, afr_predicted_entropy')
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .single();
+            if (scarIndexError) console.error('Error fetching AFR scarindex:', scarIndexError);
+
+            if (telemetryData && scarIndexData) {
+                setAfrState({
+                    adjustment_imperative: telemetryData.afr_adjustment_imperative,
+                    flux_vector_norm: telemetryData.afr_flux_vector_norm,
+                    horizon_cycles: scarIndexData.afr_horizon_cycles,
+                    predicted_entropy: scarIndexData.afr_predicted_entropy,
+                });
             }
-        }
-
-        fetchData();
-        const id = setInterval(fetchData, 5000);
-
-        return () => {
-            cancelled = true;
-            clearInterval(id);
         };
+
+        fetchAfrData();
+        const interval = setInterval(fetchAfrData, 3000); // Poll more frequently for AFR
+        return () => clearInterval(interval);
     }, []);
 
-    return {
-        afrState: { recent_adjustments: afrMetrics.recentAdjustments },
-        adjustmentLevel: afrMetrics.adjustmentImperative,
-        fluxLevel: afrMetrics.fluxVectorNorm,
-        status: error ? 'error' : 'operational',
-        isLoading: loading,
-        error
-    };
+    return afrState;
 }
