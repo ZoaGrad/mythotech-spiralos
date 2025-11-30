@@ -117,3 +117,30 @@ The primary integration point for ΔΩ.LBI.3 is the `HolographicSignalingOperato
 *   **Epoch Manager Reliability:** The `on_epoch_tick` method's timely and consistent invocation by the `EpochManager` is crucial for correct metabolic updates.
 
 This concludes the specification for ΔΩ.LBI.3.
+
+---
+
+## 7. Witness-Voted Metabolic Governance (ΔΩ.LBI.3.GOV)
+
+ΔΩ.LBI.3 parameters, while tunable via the `LoomParameterMesh`, are not meant to be edited arbitrarily. The canonical and secure method to change the Loom's metabolic physics is through a collective decision-making process involving the Witness Network.
+
+Metabolic parameter changes are initiated as `MetabolicGovernanceProposal` objects. Each proposal is uniquely identified by a `proposal_id`, specifies a `target_epoch` for activation, and contains a complete set of desired LBI.3 metabolic parameters (`lbi3_w_heal`, `lbi3_w_truth`, `lbi3_w_rot`, `lbi3_beta`, `lbi3_m_min`, `lbi3_m_max`). Proposals also include a `proposer_witness`, `created_at_epoch`, and a `rationale_hash` (referencing off-chain documentation).
+
+Witnesses cast their votes using `MetabolicVoteFrame` messages, which are broadcast via the Witness protocol. A proposal becomes eligible for activation only when it accumulates a quorum of distinct Witness votes. This quorum (`Q`) is a configurable parameter stored in the `LoomParameterMesh` as `lbi3_gov_quorum`.
+
+### Governance Rules (ΔΩ.LBI.3.GOV – v0)
+
+*   **R1 – Proposal Primitive:** A `MetabolicGovernanceProposal` defines a full set of LBI.3 metabolic parameters, specifies a `target_epoch` (which must be strictly in the future relative to `created_at_epoch`), and includes a `rationale_hash` for auditability.
+*   **R2 – Quorum:** A proposal activates only if it receives votes from at least `lbi3_gov_quorum` distinct Witnesses.
+*   **R3 – Epoch Boundary Activation:** A change to metabolic parameters only becomes active at the precise start of the `target_epoch`. No mid-epoch physics shifts are permitted, ensuring predictability and stability.
+*   **R4 – Single Active Proposal Per Epoch:** For any given `target_epoch`, at most one LBI.3 parameter update can activate. If multiple proposals achieve quorum for the same target epoch, a deterministic selection rule applies: the proposal with the earliest `created_at_epoch` wins. All other competing proposals for that epoch are marked as `superseded`.
+*   **R5 – Safety Envelope (v0):** All proposed metabolic parameters must adhere to predefined sanity bounds. If a proposal violates these bounds, it is rejected, even if it has achieved quorum. These bounds are configured in the `LoomParameterMesh`:
+    *   `lbi3_gov_beta_max`: Maximum value for `lbi3_beta` (default: `1.0`). Must be `0.0 < lbi3_beta <= lbi3_gov_beta_max`.
+    *   `lbi3_gov_weight_max`: Maximum value for `lbi3_w_heal`, `lbi3_w_truth`, `lbi3_w_rot` (default: `10.0`). Must be `0.0 <= weight <= lbi3_gov_weight_max`.
+    *   `lbi3_gov_m_factor_max`: Maximum value for `lbi3_m_max` (default: `3.0`). Also enforces `0.0 < lbi3_m_min <= 1.0` and `lbi3_m_min <= lbi3_m_max`.
+
+### MetabolicGovernanceOperator
+
+The `MetabolicGovernanceOperator` is the core component responsible for executing ΔΩ.LBI.3.GOV. It manages proposals, ingests Witness votes, validates proposals against safety rules, and applies the winning proposal's parameters to the `LoomParameterMesh` at the appropriate epoch boundary. This operator is purely a subscriber, reacting to epoch ticks and Witness votes; it never directly touches core invariants like `ScarIndex`. All activations and rejections are recorded in an internal governance log for auditability.
+
+This mechanism ensures that the Loom's metabolism is a direct reflection of the collective truth attested by the Witness Network, establishing a robust foundation for metabolic politics.
