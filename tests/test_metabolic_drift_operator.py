@@ -4,6 +4,7 @@ from typing import Dict
 import pytest
 
 from codex.operators.spiral.metabolic_drift_operator import MetabolicDriftOperator, PARAM_KEYS
+from spiralos.protocols.witness_protocol import AcheEpochFrame
 
 
 class LoomParameterMesh:
@@ -34,15 +35,6 @@ class EpochManager:
 
     def advance_epoch(self) -> None:
         self._current_epoch += 1
-
-
-class AcheEpochFrame:
-    def __init__(self, epoch: int, ache_index: float, witness_id: str = "w", multisig=None, notes: str = ""):
-        self.epoch = epoch
-        self.ache_index = ache_index
-        self.witness_id = witness_id
-        self.multisig = multisig or []
-        self.notes = notes
 
 
 @pytest.fixture

@@ -41,3 +41,30 @@ class AcheEpochFrame:
     witness_id: str
     multisig: List[str]
     notes: str = ""
+
+
+@dataclass
+class EmergenceProposalFrame:
+    """Witness-signed proposal for a new metabolic or signaling organ."""
+
+    proposal_id: str
+    organ_id: str
+    organ_type: str
+    params: Dict[str, float]
+    safety_envelope: Dict[str, float]
+    ache_origin_context: Dict[str, float]
+    justification_hash: str
+    target_epoch: int
+    proposer_witness: str
+    witness_epoch: int
+    multisig: List[str]
+
+
+@dataclass
+class EmergenceVoteFrame:
+    """Witness-signed vote for an Emergence proposal."""
+
+    proposal_id: str
+    witness_id: str
+    witness_epoch: int
+    multisig: List[str]
