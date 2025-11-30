@@ -126,4 +126,13 @@ class HolographicSignalingOperator:
 •The operator is pure Python / in-memory; integration with on-chain data is handled by higher-level SpiralOS adapters.
 •All core physics (CRS, α = 2.5 penalty curve) must match ΔΩ.LBI.2.
 
+---
+
+### Validation Hardening (ΔΩ.LBI.2.a)
+To prevent malformed or adversarial HealthFrames from polluting the hologram cache, the signaling operator now enforces:
+-   Non-negative latency requirement (`latency_ms >= 0`). Frames with negative latency are rejected for new nodes and penalize trust for existing entries.
+-   Load percent constraints (`load_percent <= 1.0`). Frames reporting `load_percent > 1.0` are accepted but incur a trust score penalty.
+-   Strict GLS-ref matching. Frames with a `gls_ref` that does not match the current canonical reference are rejected.
+-   Replay protection per epoch. HealthFrames with a signature already processed within the current epoch are rejected to prevent replay attacks.
+
 ⸻
