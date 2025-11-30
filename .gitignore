@@ -61,3 +61,15 @@ spiral_data/*.db-*
 # SECURITY: Secrets
 .env
 guardian_logs.txt
+web/dashboard/.env.local
+
+# Next.js & Weaver Artifacts
+.next/
+out/
+build/
+dist/
+node_modules/
+tools/weaver/venv/
+tools/weaver/__pycache__/
+*.pyc
+.DS_Store
