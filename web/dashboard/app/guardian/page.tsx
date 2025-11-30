@@ -2,6 +2,7 @@
 import { AFRGovernorPanel } from '../../components/AFRGovernorPanel';
 import { HolonicAgentPanel } from '../../components/HolonicAgentPanel';
 import { MarketControllerPanel } from '../../components/MarketControllerPanel';
+import { ConstitutionalArbiterPanel } from '../../components/ConstitutionalArbiterPanel';
 import { EffectivenessCard } from '../../components/EffectivenessCard';
 import { CoherencePanel } from '../../components/CoherencePanel';
 import { ScarIndexPanel } from '../../components/ScarIndexPanel';
@@ -16,6 +17,9 @@ export default function GuardianDashboard() {
                 <AFRGovernorPanel />
                 <MarketControllerPanel />
             </div>
+
+            {/* Phase 2.0 Constitutional Intelligence */}
+            <ConstitutionalArbiterPanel />
 
             {/* Holonic Agent Ecosystem */}
             <HolonicAgentPanel />
