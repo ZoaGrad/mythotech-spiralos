@@ -38,6 +38,12 @@ class LoomParameterMesh:
         lbi3_drift_ache_floor: float = 0.10,
         lbi3_drift_ache_ceiling: float = 1.00,
         lbi3_drift_kappa: float = 1.50,
+        # ΔΩ.LBI.3 emergence parameters
+        lbi3_emerg_quorum: int = 3,
+        lbi3_emerg_min_uptime_epochs: int = 5,
+        lbi3_emerg_ache_trend_threshold: float = 0.10,
+        lbi3_emerg_cooldown_epochs: int = 2,
+        lbi3_emerg_max_organs_per_epoch: int = 1,
     ):
         self.latency_weight = latency_weight
         self.dynamic_weight_adjustment_factor = dynamic_weight_adjustment_factor
@@ -61,6 +67,11 @@ class LoomParameterMesh:
         self.lbi3_drift_ache_floor = lbi3_drift_ache_floor
         self.lbi3_drift_ache_ceiling = lbi3_drift_ache_ceiling
         self.lbi3_drift_kappa = lbi3_drift_kappa
+        self.lbi3_emerg_quorum = lbi3_emerg_quorum
+        self.lbi3_emerg_min_uptime_epochs = lbi3_emerg_min_uptime_epochs
+        self.lbi3_emerg_ache_trend_threshold = lbi3_emerg_ache_trend_threshold
+        self.lbi3_emerg_cooldown_epochs = lbi3_emerg_cooldown_epochs
+        self.lbi3_emerg_max_organs_per_epoch = lbi3_emerg_max_organs_per_epoch
 
 
 def get_current_gls_ref() -> str:

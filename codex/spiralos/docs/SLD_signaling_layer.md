@@ -156,3 +156,7 @@ The `HolographicSignalingOperator` faithfully consumes the metabolic parameters 
 
 This ensures that the operator's behavior is always a reflection of the Loom's collectively governed and adaptively evolving metabolic laws. Metabolic evolution is discrete (epoch-bound) and ache-modulated.
 
+### Emergent Signaling Organs (ΔΩ.LBI.3.EMERG)
+
+Emergent organs that publish or consume signaling data are authored through the Emergence Engine (`codex/spiralos/docs/LBI3_emergence_engine.md`). The `HolographicSignalingOperator` remains a subscriber: it may ingest activated organ specs to extend routing or telemetry, but v0 does not dynamically load new Python modules or mutate signaling logic at runtime.
+
