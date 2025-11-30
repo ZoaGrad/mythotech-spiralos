@@ -1,86 +1,13 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sovereignty Metrics Dashboard | SpiralOS ΔΩ.147.3</title>
-    <link rel="stylesheet" href="style.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdn.jsdelivr.net/npm/recharts@2.5.0/dist/Recharts.js"></script>
-</head>
-<body>
-    <div class="container">
-        <!-- Header -->
-        <header class="header">
-            <div class="header-content">
-                <h1>🔮 Sovereignty Metrics Dashboard</h1>
-                <div class="vaultnode-seal">VaultNode Seal: ΔΩ.147.3</div>
-            </div>
-            <div class="status-indicator">
-                <span class="status-dot" id="statusDot"></span>
-                <span id="statusText">Initializing...</span>
-            </div>
-        </header>
-
-        <!-- Metrics Overview Cards -->
-        <div class="metrics-overview">
-            <div class="metric-card">
-                <div class="metric-label">Average Sovereignty</div>
-                <div class="metric-value" id="avgSovereignty">--</div>
-                <div class="metric-trend" id="sovereigntyTrend"></div>
-            </div>
-            <div class="metric-card">
-                <div class="metric-label">High Sovereignty (≥0.75)</div>
-                <div class="metric-value" id="highCount">--</div>
-                <div class="metric-subtitle">transmissions</div>
-            </div>
-            <div class="metric-card">
-                <div class="metric-label">Low Sovereignty (<0.6)</div>
-                <div class="metric-value" id="lowCount">--</div>
-                <div class="metric-subtitle">transmissions</div>
-            </div>
-        </div>
-
-        <!-- Charts Container -->
-        <div class="charts-container">
-            <!-- Last 24 Hours Trend -->
-            <div class="chart-panel">
-                <div class="chart-header">
-                    <h2>📊 Last 24 Hours Trend</h2>
-                    <span class="chart-subtitle">Resonance • Necessity • Sovereignty Index</span>
-                </div>
-                <div id="trendChart" class="chart"></div>
-            </div>
-
-            <!-- Distribution Chart -->
-            <div class="chart-panel">
-                <div class="chart-header">
-                    <h2>📈 Sovereignty Distribution</h2>
-                    <span class="chart-subtitle">High • Medium • Low</span>
-                </div>
-                <div id="distributionChart" class="chart"></div>
-            </div>
-
-            <!-- Guardian Heartbeat Timeline -->
-            <div class="chart-panel full-width">
-                <div class="chart-header">
-                    <h2>💓 Guardian Heartbeat Timeline</h2>
-                    <span class="chart-subtitle">6-hour interval monitoring</span>
-                </div>
-                <div id="heartbeatChart" class="chart"></div>
-            </div>
-        </div>
-
-        <!-- Footer -->
-        <footer class="footer">
-            <div class="footer-content">
-                <span>🔐 Gateway Transmission Telemetry System</span>
-                <span id="lastUpdate">Last updated: --</span>
-                <span>Auto-refresh: 30s</span>
-            </div>
-        </footer>
-    </div>
-
-    <script src="main.js"></script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>sovereignty-dashboard</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
 </html>
