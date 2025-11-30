@@ -1,70 +1,52 @@
 'use client';
-
 import { useAFRState } from '../hooks/useAFRState';
 
 export function AFRGovernorPanel() {
-    const { afrState, adjustmentLevel, fluxLevel, status, isLoading } = useAFRState();
+    const afrState = useAFRState();
 
-    if (isLoading) {
-        return (
-            <div className="p-4 bg-gray-100 rounded-lg">
-                Loading AFR Thermodynamic Governor…
-            </div>
-        );
-    }
-
-    const imperativeColor = (n: number) => {
-        if (n < 0.3) return 'text-green-600';
-        if (n < 0.7) return 'text-yellow-600';
-        return 'text-red-600';
-    };
+    const imperativeZone = afrState?.adjustment_imperative;
+    const zoneColor =
+        imperativeZone === undefined
+            ? 'gray'
+            : imperativeZone >= 0.9
+                ? 'rose' // Proposal Zone
+                : imperativeZone >= 0.7
+                    ? 'orange' // Adjustment Zone
+                    : 'green'; // Stable Zone
 
     return (
-        <div className="bg-white p-6 rounded-xl shadow border-l-4 border-blue-500">
-            <h3 className="text-lg font-semibold mb-4">
-                Ache Flux Regulator (AFR) — Thermodynamic Governor
-            </h3>
+        <div className={`bg-white rounded-lg shadow p-6 border-l-4 border-l-${zoneColor}-500`}>
+            <h3 className="text-lg font-semibold mb-4">Ache-Flux Regulator (AFR)</h3>
 
-            <div className="grid grid-cols-2 gap-4 mb-4">
-                <div>
-                    <div className="text-sm text-gray-500">Adjustment Imperative</div>
-                    <div className={`text-2xl font-mono ${imperativeColor(adjustmentLevel)}`}>
-                        {adjustmentLevel.toFixed(3)}
-                    </div>
+            <div className="space-y-3">
+                <div className="flex justify-between">
+                    <span>Adjustment Imperative:</span>
+                    <span className={`font-mono text-${zoneColor}-600 font-bold`}>
+                        {imperativeZone?.toFixed(4) || '0.0000'}
+                    </span>
                 </div>
-                <div>
-                    <div className="text-sm text-gray-500">Flux Vector Norm</div>
-                    <div className="text-2xl font-mono text-blue-700">
-                        {fluxLevel.toFixed(4)}
-                    </div>
+                <div className="flex justify-between">
+                    <span>Flux Vector Norm:</span>
+                    <span className="font-mono">{afrState?.flux_vector_norm?.toFixed(4) || '0.0000'}</span>
+                </div>
+                <div className="flex justify-between">
+                    <span>Predicted Entropy:</span>
+                    <span className="font-mono">{afrState?.predicted_entropy?.toFixed(4) || '0.0000'}</span>
+                </div>
+                <div className="flex justify-between">
+                    <span>Horizon Cycles:</span>
+                    <span className="font-mono">{afrState?.horizon_cycles || 'N/A'}</span>
                 </div>
             </div>
 
-            <div className="text-sm text-gray-600">
-                Status:{' '}
-                <span className={status === 'operational' ? 'text-green-600' : 'text-red-600'}>
-                    {status.toUpperCase()}
-                </span>
+            <div className="mt-4 text-sm text-gray-600">
+                <p>
+                    Zone: {imperativeZone === undefined ? 'Unknown' :
+                        imperativeZone >= 0.9 ? 'Constitutional Proposal (>=0.9)' :
+                            imperativeZone >= 0.7 ? 'Automatic Adjustment (0.7-0.89)' :
+                                'Stable (<0.7)'}
+                </p>
             </div>
-
-            {afrState?.recent_adjustments?.length > 0 && (
-                <div className="mt-4 space-y-1 max-h-40 overflow-y-auto">
-                    <h4 className="text-sm font-medium">Recent Adjustments</h4>
-                    {afrState.recent_adjustments.map((adj: any, i: number) => (
-                        <div
-                            key={i}
-                            className="text-xs border-l-2 border-amber-500 pl-2"
-                        >
-                            <div className="font-semibold">
-                                {adj.payload?.adjustment_type ?? 'Unknown'}
-                            </div>
-                            <div className="text-gray-500">
-                                {adj.payload?.reason ?? 'No reason provided'}
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            )}
         </div>
     );
 }
