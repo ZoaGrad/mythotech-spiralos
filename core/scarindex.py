@@ -11,63 +11,6 @@ class ScarIndex:
     def __init__(self):
         self.supabase = get_supabase()
 
-# --- Legacy/Integration Support Classes ---
-from dataclasses import dataclass, field
-import uuid
-
-@dataclass
-class AcheMeasurement:
-    before: float
-    after: float
-
-@dataclass
-class CoherenceComponents:
-    narrative: float
-    social: float
-    economic: float
-    technical: float
-
-@dataclass
-class ScarIndexResult:
-    id: str
-    scarindex: float
-    is_valid: bool
-    metadata: Dict[str, Any] = field(default_factory=dict)
-    
-    def to_dict(self):
-        return {
-            "id": self.id,
-            "scarindex": self.scarindex,
-            "is_valid": self.is_valid,
-            "metadata": self.metadata
-        }
-
-class ScarIndexOracle:
-    @staticmethod
-    def calculate(N: int, c_i_list: List[float], p_i_avg: float, decays_count: int, ache: AcheMeasurement) -> ScarIndexResult:
-        """
-        Calculate ScarIndex based on components.
-        This is a placeholder for the full Oracle logic to support legacy integration.
-        """
-        # Simple average for now
-        score = sum(c_i_list) / N if N > 0 else 0.0
-        
-        # Apply Ache penalty (simplified)
-        ache_factor = (ache.before - ache.after) * 0.1
-        score -= ache_factor
-        
-        return ScarIndexResult(
-            id=str(uuid.uuid4()),
-            scarindex=max(0.0, min(1.0, score)),
-            is_valid=True,
-            metadata={
-                "N": N,
-                "p_i_avg": p_i_avg,
-                "decays": decays_count,
-                "ache_delta": ache.before - ache.after
-            }
-        )
-
     def compute_scarindex_for_window(self, minutes: int = 5) -> float:
         """
         Computes ScarIndex based on telemetry events in the last N minutes.
@@ -79,7 +22,7 @@ class ScarIndexOracle:
             # Fetch telemetry events
             resp = self.supabase.table("telemetry_events") \
                 .select("*") \
-                .gte("timestamp", since) \
+                .gte("event_timestamp", since) \
                 .execute()
             
             events = resp.data or []
@@ -90,12 +33,16 @@ class ScarIndexOracle:
             # Determine if Panic Frame is triggered
             panic_triggered = scarindex_value < 0.3
             
+            if panic_triggered:
+                from core.panic_frames import trigger_panic_frames
+                trigger_panic_frames(scarindex=scarindex_value)
+            
             # Persist to coherence_signals
             signal_data = {
                 "timestamp": datetime.utcnow().isoformat(),
                 "scarindex_value": scarindex_value,
                 "panic_frame_triggered": panic_triggered,
-                "control_action_taken": "monitor" if not panic_triggered else "alert",
+                "control_action_taken": "monitor" if not panic_triggered else "PANIC_FRAME_ACTIVATED",
                 "signal_data": {
                     "event_count": len(events),
                     "window_minutes": minutes
@@ -115,15 +62,27 @@ class ScarIndexOracle:
     def _calculate_scarindex(self, events: List[Dict[str, Any]]) -> float:
         """
         Internal logic to calculate ScarIndex from events.
-        Placeholder logic: 1.0 (perfect) minus penalty per event.
+        Weighted decay model based on event types.
         """
         if not events:
             return 1.0
         
-        # Simple decay model: each event reduces coherence slightly
-        # This is a placeholder for the actual complex math
-        penalty = len(events) * 0.01
-        return max(0.0, 1.0 - penalty)
+        # Weights for different event types (lower is better/neutral, higher is disruptive)
+        weights = {
+            "github_webhook": 0.01, # Normal activity
+            "guardian_heartbeat": 0.0, # Healthy
+            "error": 0.1, # System error
+            "security_alert": 0.3 # Security breach
+        }
+        
+        total_penalty = 0.0
+        for event in events:
+            etype = event.get("event_type", "unknown")
+            weight = weights.get(etype, 0.05)
+            total_penalty += weight
+            
+        # Normalize to 0.0 - 1.0
+        return max(0.0, 1.0 - total_penalty)
 
 # Singleton instance
 scar_index = ScarIndex()

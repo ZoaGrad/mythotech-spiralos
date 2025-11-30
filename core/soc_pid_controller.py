@@ -208,6 +208,33 @@ class SOCPIDController(AchePIDController):
 
         self.guidance_scale = final_guidance
 
+        # Persist SOC state to Supabase
+        try:
+            from core.db import get_supabase
+            from datetime import datetime, timezone
+            supabase = get_supabase()
+            
+            soc_status = {
+                "base_guidance": base_guidance,
+                "soc_adjustment": soc_adjustment,
+                "valley_adjustment": valley_adjustment,
+                "final_guidance": final_guidance,
+                "soc_metrics": self.soc_metrics.to_dict(),
+                "valley_state": self.valley_ascent.to_dict(),
+            }
+            
+            supabase.table("coherence_signals").insert({
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "scarindex_value": current_scarindex,
+                "panic_frame_triggered": False, # Managed by ScarIndex/PanicFrameManager
+                "control_action_taken": "SOC_ADJUSTMENT",
+                "signal_data": soc_status
+            }).execute()
+            
+        except Exception as e:
+            # Log but don't fail
+            print(f"Failed to persist SOC state: {e}")
+
         return final_guidance, {
             "base_guidance": base_guidance,
             "soc_adjustment": soc_adjustment,
