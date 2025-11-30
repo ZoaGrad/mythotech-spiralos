@@ -8,8 +8,13 @@ set -e
 REPO="ZoaGrad/mythotech-spiralos"
 
 if [ -z "$1" ]; then
-    echo "Usage: ./add_github_secret.sh <EDGE_FUNCTION_URL>"
-    echo "Example: ./add_github_secret.sh https://abc123.supabase.co/functions/v1/guardian_sync"
+    read -p "Enter EDGE_FUNCTION_URL: " EDGE_URL
+else
+    EDGE_URL="$1"
+fi
+
+if [ -z "$EDGE_URL" ]; then
+    echo "Error: EDGE_FUNCTION_URL cannot be empty."
     exit 1
 fi
 

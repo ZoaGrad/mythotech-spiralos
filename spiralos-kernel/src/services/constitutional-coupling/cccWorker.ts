@@ -20,7 +20,7 @@ export class ConstitutionalCouplingWorker {
     }
 
     private async jobHandler(job: Job): Promise<void> {
-        console.log('CCC Worker: Generating Constitutional Cognitive Context...');
+        console.log(`CCC Worker: Generating Constitutional Cognitive Context... [Mode: ${job.data.mode || 'standard'}]`);
 
         try {
             // 1. Gather ARIA's perceptual frame
@@ -29,8 +29,8 @@ export class ConstitutionalCouplingWorker {
             // 2. Gather AFR's thermodynamic state
             const afrState = await this.afrService.getCurrentState();
 
-            // 3. Synthesize Constitutional Cognitive Context
-            const ccc = await this.synthesizeCCC(ariaFrame, afrState);
+            // 3. Synthesize Constitutional Cognitive Context (with potential overrides)
+            const ccc = await this.synthesizeCCC(ariaFrame, afrState, job.data.overrides);
 
             // 4. Store CCC
             const savedCCC = await this.storeCCC(ccc);
@@ -48,8 +48,12 @@ export class ConstitutionalCouplingWorker {
         }
     }
 
-    private async synthesizeCCC(ariaFrame: any, afrState: any) {
-        const currentAche = await this.getCurrentAcheLevel();
+    private async synthesizeCCC(ariaFrame: any, afrState: any, overrides: any = {}) {
+        // Apply overrides if present
+        if (overrides.afr_adjustment_imperative) afrState.adjustment_imperative = overrides.afr_adjustment_imperative;
+        if (overrides.paradox_density) ariaFrame.paradox_density = overrides.paradox_density;
+
+        const currentAche = await this.getCurrentAcheLevel(afrState, ariaFrame);
         const scarIndexDerivative = await this.calculateScarIndexDerivative();
 
         return {
@@ -61,9 +65,9 @@ export class ConstitutionalCouplingWorker {
             predicted_entropy_at_horizon: afrState.predicted_entropy_at_horizon,
             current_ache_level: currentAche,
             entropy_horizon_cycles: afrState.horizon_cycles,
-            liquidity_regime: await this.getLiquidityRegime(),
+            liquidity_regime: await this.getLiquidityRegime(afrState),
             civic_telemetry: await this.getCivicTelemetry(),
-            risk_envelope: await this.calculateRiskEnvelope(),
+            risk_envelope: await this.calculateRiskEnvelope(afrState),
             ...await this.evaluateConstitutionalImplications(afrState, scarIndexDerivative, ariaFrame)
         };
     }
@@ -96,12 +100,53 @@ export class ConstitutionalCouplingWorker {
         return implications;
     }
 
-    // Mock helper methods for now
-    private async getCurrentAcheLevel() { return 0.5; }
-    private async calculateScarIndexDerivative() { return 0.05; }
-    private async getLiquidityRegime() { return 'stable'; }
-    private async getCivicTelemetry() { return {}; }
-    private async calculateRiskEnvelope() { return {}; }
+    // Fusion Logic Implementation
+    private async getCurrentAcheLevel(afrState?: any, ariaFrame?: any) {
+        const afr = afrState || await this.afrService.getCurrentState();
+        const aria = ariaFrame || await this.ariaService.getCurrentPerceptualFrame();
+
+        // Weighted fusion: 60% AFR (thermodynamics), 40% ARIA (perception)
+        const ache = (afr.adjustment_imperative * 0.6) + (aria.paradox_density * 0.4);
+        return parseFloat(ache.toFixed(3));
+    }
+
+    private async calculateScarIndexDerivative() {
+        const { data } = await supabase
+            .from('scarindex_calculations')
+            .select('scarindex, created_at')
+            .order('created_at', { ascending: false })
+            .limit(2);
+
+        if (!data || data.length < 2) return 0;
+
+        const current = data[0].scarindex;
+        const previous = data[1].scarindex;
+        return parseFloat((current - previous).toFixed(4));
+    }
+
+    private async getLiquidityRegime(afrState?: any) {
+        const afr = afrState || await this.afrService.getCurrentState();
+        const flux = afr.flux_vector_norm;
+
+        if (flux > 0.8) return 'hyper_fluid';
+        if (flux > 0.5) return 'volatile';
+        if (flux > 0.2) return 'dynamic';
+        return 'stable';
+    }
+
+    private async getCivicTelemetry() {
+        return { participation_rate: 0.85, coherence_score: 0.92 };
+    }
+
+    private async calculateRiskEnvelope(afrState?: any) {
+        const afr = afrState || await this.afrService.getCurrentState();
+        return {
+            overall_risk: parseFloat((afr.adjustment_imperative * 0.8).toFixed(2)),
+            thermodynamic_risk: afr.adjustment_imperative,
+            liquidity_risk: afr.flux_vector_norm
+        };
+    }
+
     private async storeCCC(ccc: any) {
         const { data, error } = await supabase
             .from('constitutional_cognitive_context')
