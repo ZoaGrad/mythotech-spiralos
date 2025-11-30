@@ -148,4 +148,11 @@ The metabolic factor parameters (`w_heal`, `w_truth`, `w_rot`, `β`, `M_min`, `M
 
 ### Governance of Metabolic Parameters
 
-The `HolographicSignalingOperator` faithfully consumes the metabolic parameters provided by the `LoomParameterMesh`. It does not, however, participate in or directly alter these parameters. Changes to the metabolic parameters can only occur through the Witness-voted governance process defined by ΔΩ.LBI.3.GOV, ensuring that the operator's behavior is always a reflection of the Loom's collective will.
+The `HolographicSignalingOperator` faithfully consumes the metabolic parameters provided by the `LoomParameterMesh`. It does not, however, participate in or directly alter these parameters. Changes to the metabolic parameters can only occur through a multi-gated governance process:
+
+1.  **Witness Quorum (ΔΩ.LBI.3.GOV):** Ensures collective agreement.
+2.  **Safety Envelope (ΔΩ.LBI.3.GOV):** Enforces absolute sanity bounds on parameter values.
+3.  **Drift Envelope (ΔΩ.LBI.3.DRIFT):** Limits the rate of change per epoch based on constitutional caps and the network's current collective "ache."
+
+This ensures that the operator's behavior is always a reflection of the Loom's collectively governed and adaptively evolving metabolic laws. Metabolic evolution is discrete (epoch-bound) and ache-modulated.
+

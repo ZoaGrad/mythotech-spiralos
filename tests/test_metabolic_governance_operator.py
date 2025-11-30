@@ -3,6 +3,8 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 from uuid import uuid4
 
+from spiralos.protocols.witness_protocol import AcheEpochFrame
+
 
 class LoomParameterMesh:
     def __init__(self):
@@ -16,6 +18,15 @@ class LoomParameterMesh:
         self.lbi3_gov_beta_max = 1.0
         self.lbi3_gov_weight_max = 10.0
         self.lbi3_gov_m_factor_max = 3.0
+        self.lbi3_drift_cap_w_heal = 0.10
+        self.lbi3_drift_cap_w_truth = 0.10
+        self.lbi3_drift_cap_w_rot = 0.10
+        self.lbi3_drift_cap_beta = 0.02
+        self.lbi3_drift_cap_m_min = 0.10
+        self.lbi3_drift_cap_m_max = 0.10
+        self.lbi3_drift_ache_floor = 0.10
+        self.lbi3_drift_ache_ceiling = 1.00
+        self.lbi3_drift_kappa = 1.5
 
 
 class EpochManager:
@@ -40,6 +51,7 @@ class MetabolicVoteFrame:
     multisig: List[str] = field(default_factory=list)
 
 
+from codex.operators.spiral.metabolic_drift_operator import MetabolicDriftOperator
 from codex.operators.spiral.metabolic_governance_operator import (
     MetabolicGovernanceOperator,
     MetabolicGovernanceProposal,
@@ -51,7 +63,8 @@ def setup_governance_operator():
     loom_params = LoomParameterMesh()
     epoch_manager = EpochManager(current_epoch=10)
     operator = MetabolicGovernanceOperator(epoch_manager, loom_params)
-    return operator, epoch_manager, loom_params
+    drift_operator = MetabolicDriftOperator(epoch_manager, loom_params)
+    return operator, epoch_manager, loom_params, drift_operator
 
 
 def create_test_proposal(
@@ -94,7 +107,7 @@ def create_test_vote(
 
 
 def test_quorum_requirement(setup_governance_operator):
-    operator, epoch_manager, loom_params = setup_governance_operator
+    operator, epoch_manager, loom_params, _ = setup_governance_operator
     target_epoch = epoch_manager.get_current_epoch() + 1
 
     new_params = {
@@ -128,7 +141,7 @@ def test_quorum_requirement(setup_governance_operator):
 
 
 def test_application_at_target_epoch_only(setup_governance_operator):
-    operator, epoch_manager, loom_params = setup_governance_operator
+    operator, epoch_manager, loom_params, _ = setup_governance_operator
     initial_epoch = epoch_manager.get_current_epoch()
     target_epoch = initial_epoch + 2
     new_params = {
@@ -160,7 +173,7 @@ def test_application_at_target_epoch_only(setup_governance_operator):
 
 
 def test_rejection_of_unsafe_proposal(setup_governance_operator):
-    operator, epoch_manager, loom_params = setup_governance_operator
+    operator, epoch_manager, loom_params, _ = setup_governance_operator
     target_epoch = epoch_manager.get_current_epoch() + 1
 
     unsafe_params = {
@@ -186,7 +199,7 @@ def test_rejection_of_unsafe_proposal(setup_governance_operator):
 
 
 def test_deterministic_selection_for_multiple_proposals(setup_governance_operator):
-    operator, epoch_manager, loom_params = setup_governance_operator
+    operator, epoch_manager, loom_params, _ = setup_governance_operator
     target_epoch = epoch_manager.get_current_epoch() + 2
 
     params_a = {
@@ -240,7 +253,7 @@ def test_deterministic_selection_for_multiple_proposals(setup_governance_operato
 
 
 def test_loom_parameter_mesh_invariance_without_quorum(setup_governance_operator):
-    operator, epoch_manager, loom_params = setup_governance_operator
+    operator, epoch_manager, loom_params, _ = setup_governance_operator
     target_epoch = epoch_manager.get_current_epoch() + 1
     new_params = {
         "lbi3_w_heal": 0.6,
@@ -266,7 +279,7 @@ def test_loom_parameter_mesh_invariance_without_quorum(setup_governance_operator
 
 
 def test_proposal_submission_validation(setup_governance_operator):
-    operator, epoch_manager, loom_params = setup_governance_operator
+    operator, epoch_manager, loom_params, _ = setup_governance_operator
     current_epoch = epoch_manager.get_current_epoch()
     valid_params = {
         "lbi3_w_heal": 0.6,
@@ -289,7 +302,7 @@ def test_proposal_submission_validation(setup_governance_operator):
 
 
 def test_ingest_metabolic_vote_mismatched_details(setup_governance_operator):
-    operator, epoch_manager, loom_params = setup_governance_operator
+    operator, epoch_manager, loom_params, _ = setup_governance_operator
     target_epoch = epoch_manager.get_current_epoch() + 1
     params = {
         "lbi3_w_heal": 0.6,
@@ -329,7 +342,7 @@ def test_ingest_metabolic_vote_mismatched_details(setup_governance_operator):
 
 
 def test_on_epoch_tick_only_once_per_epoch(setup_governance_operator):
-    operator, epoch_manager, loom_params = setup_governance_operator
+    operator, epoch_manager, loom_params, _ = setup_governance_operator
     target_epoch = epoch_manager.get_current_epoch() + 1
     new_params = {
         "lbi3_w_heal": 0.6,
@@ -357,3 +370,66 @@ def test_on_epoch_tick_only_once_per_epoch(setup_governance_operator):
         len([log for log in operator.governance_log if log["event"] == "proposal_activated"])
         == 1
     )
+
+
+def test_governance_rejects_proposal_outside_drift_envelope():
+    loom_params = LoomParameterMesh()
+    epoch_manager = EpochManager(current_epoch=10)
+    drift_operator = MetabolicDriftOperator(epoch_manager, loom_params)
+
+    operator = MetabolicGovernanceOperator(epoch_manager, loom_params, drift_operator=drift_operator)
+    target_epoch = epoch_manager.get_current_epoch() + 1
+    drift_operator.ingest_ache_epoch_frame(
+        AcheEpochFrame(epoch=target_epoch, ache_index=1.0, witness_id="w_test", multisig=[])
+    )
+
+    unsafe_params = {
+        "lbi3_w_heal": loom_params.lbi3_w_heal + 0.5,
+        "lbi3_beta": loom_params.lbi3_beta,
+        "lbi3_w_truth": loom_params.lbi3_w_truth,
+        "lbi3_w_rot": loom_params.lbi3_w_rot,
+        "lbi3_m_min": loom_params.lbi3_m_min,
+        "lbi3_m_max": loom_params.lbi3_m_max,
+    }
+
+    proposal = create_test_proposal(operator, target_epoch, unsafe_params, proposal_id="drift_fail")
+    for i in range(1, loom_params.lbi3_gov_quorum + 1):
+        operator.ingest_metabolic_vote(create_test_vote(proposal, f"witness_{i}"))
+
+    epoch_manager.advance_epoch()
+    operator.on_epoch_tick()
+    assert not proposal.activated
+    assert any(e["event"] == "proposal_rejected_drift_envelope" for e in operator.governance_log)
+    assert any(e["event"] == "drift_violation" for e in drift_operator.drift_log)
+
+
+def test_governance_accepts_proposal_within_drift_envelope(setup_governance_operator):
+    _operator_gov, epoch_manager, loom_params, drift_operator = setup_governance_operator
+
+    operator = MetabolicGovernanceOperator(epoch_manager, loom_params, drift_operator=drift_operator)
+
+    target_epoch = epoch_manager.get_current_epoch() + 1
+    drift_operator.ingest_ache_epoch_frame(
+        AcheEpochFrame(epoch=target_epoch, ache_index=1.0, witness_id="w_test", multisig=[])
+    )
+
+    safe_params = {
+        "lbi3_w_heal": loom_params.lbi3_w_heal + 0.05,
+        "lbi3_beta": loom_params.lbi3_beta,
+        "lbi3_w_truth": loom_params.lbi3_w_truth,
+        "lbi3_w_rot": loom_params.lbi3_w_rot,
+        "lbi3_m_min": loom_params.lbi3_m_min,
+        "lbi3_m_max": loom_params.lbi3_m_max,
+    }
+
+    proposal = create_test_proposal(operator, target_epoch, safe_params, proposal_id="drift_pass")
+    for i in range(1, loom_params.lbi3_gov_quorum + 1):
+        operator.ingest_metabolic_vote(create_test_vote(proposal, f"witness_{i}"))
+
+    epoch_manager.advance_epoch()
+    operator.on_epoch_tick()
+
+    assert proposal.activated
+    assert loom_params.lbi3_w_heal == safe_params["lbi3_w_heal"]
+    assert any(e["event"] == "proposal_activated" for e in operator.governance_log)
+    assert any(e["event"] == "drift_accepted" for e in drift_operator.drift_log)
