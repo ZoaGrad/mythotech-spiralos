@@ -49,5 +49,12 @@ export function useAFRState() {
         };
     }, []);
 
-    return { afrMetrics, loading, error };
+    return {
+        afrState: { recent_adjustments: afrMetrics.recentAdjustments },
+        adjustmentLevel: afrMetrics.adjustmentImperative,
+        fluxLevel: afrMetrics.fluxVectorNorm,
+        status: error ? 'error' : 'operational',
+        isLoading: loading,
+        error
+    };
 }
