@@ -7,6 +7,62 @@ from core.logging_config import setup_logging
 # Setup logging
 logger = setup_logging()
 
+from dataclasses import dataclass
+import uuid
+
+@dataclass
+class AcheMeasurement:
+    before: float
+    after: float
+
+@dataclass
+class CoherenceComponents:
+    narrative: float
+    social: float
+    economic: float
+    technical: float
+
+@dataclass
+class ScarIndexResult:
+    id: str
+    scarindex: float
+    is_valid: bool
+    metadata: Dict[str, Any] = None
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "scarindex": self.scarindex,
+            "is_valid": self.is_valid,
+            "metadata": self.metadata or {}
+        }
+
+class ScarIndexOracle:
+    @staticmethod
+    def calculate(N: int, c_i_list: List[float], p_i_avg: float, decays_count: int, ache: AcheMeasurement) -> ScarIndexResult:
+        """
+        Calculates the ScarIndex based on coherence components and Ache measurement.
+        """
+        # Simplified calculation for restoration
+        base_score = sum(c_i_list) / N if N > 0 else 0.0
+        decay_penalty = decays_count * 0.05
+        ache_factor = (ache.before - ache.after) * 0.1
+        
+        final_score = max(0.0, min(1.0, base_score - decay_penalty + ache_factor))
+        
+        return ScarIndexResult(
+            id=str(uuid.uuid4()),
+            scarindex=final_score,
+            is_valid=True,
+            metadata={
+                "N": N,
+                "p_i_avg": p_i_avg,
+                "decays_count": decays_count,
+                "ache_before": ache.before,
+                "ache_after": ache.after
+            }
+        )
+
 class ScarIndex:
     def __init__(self):
         self.supabase = get_supabase()
