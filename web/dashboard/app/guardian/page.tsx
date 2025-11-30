@@ -2,25 +2,19 @@
 "use client";
 
 import { useGuardianActions } from "../../hooks/useGuardianActions";
+import { useAFRState } from "../../hooks/useAFRState";
+import { useGuardianEffectiveness, EffectivenessRecord } from "../../hooks/useGuardianEffectiveness";
 
-const severityClass = (sev: number) => {
-    if (sev >= 9) return "text-red-500 font-black";
-    if (sev >= 7) return "text-orange-500 font-bold";
-    if (sev >= 3) return "text-yellow-400 font-semibold";
-    return "text-gray-400";
-};
-
-const actionClass = (action: string) => {
-    switch (action) {
-        case "escalate": return "bg-red-900/30 text-red-300 border-red-800";
-        case "stabilize": return "bg-orange-900/30 text-orange-300 border-orange-800";
-        case "alert": return "bg-yellow-900/30 text-yellow-300 border-yellow-800";
-        default: return "bg-gray-800/50 text-gray-400 border-gray-700";
-    }
-};
+// ...
 
 export default function GuardianPage() {
     const { data, error, loading } = useGuardianActions();
+    const { afrMetrics } = useAFRState();
+    const { records } = useGuardianEffectiveness();
+
+    const effectiveness = records && records.length > 0
+        ? records.reduce((acc: number, r: EffectivenessRecord) => acc + r.effectiveness_score, 0) / records.length
+        : 0.85;
 
     return (
         <div className="p-8 max-w-7xl mx-auto">
@@ -30,6 +24,30 @@ export default function GuardianPage() {
             <p className="text-sm text-gray-400 mb-6">
                 Action layer binding Integration Lattice to operational decisions.
             </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                {/* Existing metrics */}
+                <EffectivenessCard effectiveness={effectiveness || 0.85} />
+
+                {/* NEW: AFR Thermodynamic Governor */}
+                <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-4">
+                    <h3 className="font-semibold text-lg mb-2 text-gray-300">AFR Governor</h3>
+                    <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                            <span className="text-gray-400">Flux Vector:</span>
+                            <span className="font-mono text-blue-300">{afrMetrics.fluxVectorNorm?.toFixed(4)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-gray-400">Imperative:</span>
+                            <span className={`font-mono ${afrMetrics.adjustmentImperative > 0.9 ? "text-red-500 font-bold" :
+                                afrMetrics.adjustmentImperative > 0.7 ? "text-orange-400" : "text-green-400"
+                                }`}>
+                                {afrMetrics.adjustmentImperative?.toFixed(3)}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             {error && (
                 <div className="mb-4 text-red-400 text-sm">

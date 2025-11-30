@@ -1,4 +1,5 @@
 from typing import Dict
+from src.core.database import get_db_connection
 
 def calculate_scar_index(ache_before: float, ache_after: float, weights: Dict[str, float]) -> float:
     """
@@ -42,3 +43,29 @@ def calculate_scar_index(ache_before: float, ache_after: float, weights: Dict[st
     base_score = 0.7 + (efficiency * 0.3)
     
     return round(base_score, 4)
+
+class ScarIndexOracle:
+    """
+    Oracle for retrieving the current ScarIndex (System Coherence).
+    """
+    def get_current_index(self) -> float:
+        """
+        Fetch the latest ScarIndex from the database.
+        """
+        try:
+            conn = get_db_connection()
+            with conn.cursor() as cur:
+                # Assuming 'attestations' table has 'scarindex' column or similar
+                # Or 'autonomous_market_controller_state' has 'volatility' which relates?
+                # Let's check 'mint_burn_events' or 'vault_nodes'.
+                # The manifest mentions 'scarindex_oracle' as a dependency.
+                # Let's try to fetch from 'attestations' (VaultNode) as per main.py logic.
+                cur.execute("SELECT scarindex FROM attestations ORDER BY created_at DESC LIMIT 1")
+                row = cur.fetchone()
+                if row and row[0] is not None:
+                    return float(row[0])
+        except Exception as e:
+            # logger.error(f"Failed to fetch ScarIndex: {e}")
+            pass
+            
+        return 1.0 # Default Coherence

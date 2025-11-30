@@ -32,5 +32,19 @@ module.exports = {
         NODE_ENV: "production",
       },
     },
+    {
+      name: "ache-flux-regulator",
+      script: "npm",
+      args: "run start:afr",
+      cwd: "./spiralos-kernel",
+      exec_mode: "fork",
+      instances: 1,
+      autorestart: true,
+      watch: false,
+      max_memory_restart: "300M",
+      env: {
+        NODE_ENV: "production",
+      },
+    },
   ],
 };

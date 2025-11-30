@@ -14,6 +14,7 @@ from system.api.ui_governance import router as governance_ui_router
 from system.api.system import system_router
 from system.core.database import SupabaseManager
 from system.nerves.discord_pulse import send_pulse
+from src.api.v1_5.router import router as v1_5_router
 import asyncio
 
 
@@ -23,6 +24,7 @@ app = FastAPI(title="SpiralOS Spinal Cord")
 app.include_router(governance_router)
 app.include_router(governance_ui_router)
 app.include_router(system_router)
+app.include_router(v1_5_router)
 
 
 @app.on_event("startup")
