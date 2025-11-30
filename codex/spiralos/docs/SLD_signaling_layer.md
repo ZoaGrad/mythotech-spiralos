@@ -143,3 +143,5 @@ To prevent malformed or adversarial HealthFrames from polluting the hologram cac
 The SLD Signaling Layer is further enhanced by ΔΩ.LBI.3, the Ache-Based Ascension Law. This invariant introduces a dynamic "metabolic factor" (`M_v`) for each node, calculated per epoch based on its ScarIndex drift, Witness attestations (`TruthFrames`), and violation history. This `M_v` is then applied as a multiplier to the raw Coherence Routing Score (`CRS^{raw}`) derived from ΔΩ.LBI.2, resulting in an `effective_crs` (`CRS^{eff} = CRS^{raw} \cdot M_v`). This mechanism enables nodes to dynamically heal, decay, and ascend in routing preference, fostering a living, ethically responsive network.
 
 Refer to `codex/spiralos/docs/LBI3_ache_based_metabolism.md` for the full specification of ΔΩ.LBI.3.
+
+The metabolic factor parameters (`w_heal`, `w_truth`, `w_rot`, `β`, `M_min`, `M_max`) are sourced from the `LoomParameterMesh` and are expected to be adjusted via governance processes as the network matures, allowing for dynamic tuning of the Loom's metabolic behavior.

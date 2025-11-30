@@ -12,8 +12,8 @@ from codex.operators.spiral.holographic_signaling_operator import (
     NodeID,
     sign_data,
     verify_signature,
-    get_current_gls_ref,
 )
+from spiralos.core.config import DEFAULT_GLS_REF, LoomParameterMesh, get_current_gls_ref
 
 
 class TransactionRequest:
@@ -46,13 +46,6 @@ class MessageType:
     HEALTH_FRAME_RESPONSE = "HEALTH_FRAME_RESPONSE"
 
 
-class LoomParameterMesh:
-    def __init__(self):
-        self.latency_weight = 0.2
-        self.dynamic_weight_adjustment_factor = 0.01
-        self.min_headroom_buffer = 100
-
-
 # Mock external functions for cryptographic operations
 
 def verify_signature(node_id: str, payload: bytes, signature: str) -> bool:
@@ -64,11 +57,7 @@ def sign_data(node_id: str, payload: bytes) -> str:
     return f"mock_sig_of_{hashlib.sha256(payload).hexdigest()}"
 
 
-MOCK_GLS_REF = "0xGLS1REF_TEST_HARNESS"
-
-
-def get_current_gls_ref():
-    return MOCK_GLS_REF
+MOCK_GLS_REF = DEFAULT_GLS_REF
 
 
 class MockP2PClient:
@@ -484,3 +473,51 @@ def test_metabolic_factor_bounds(setup_operator):
         asyncio.run(operator.report_node_violation(node_id, "Fraud", 1))
     asyncio.run(operator.on_epoch_tick(current_epoch))
     assert entry.metabolic_factor == operator.M_MIN
+
+
+def test_metabolic_parameters_respect_loom_mesh():
+    node_id = NodeID("custom_mesh_node")
+
+    custom_loom_params = LoomParameterMesh(lbi3_beta=0.5, lbi3_w_heal=10.0)
+
+    p2p_client = MockP2PClient(node_id)
+    scar_index_oracle = MockScarIndexOracle()
+    loom_burden_manager = MockLoomBurdenManager()
+    epoch_manager = MockEpochManager()
+    vault_node_registry = MockVaultNodeRegistry()
+    witness_client = MockWitnessClient()
+
+    operator_custom = HolographicSignalingOperator(
+        node_id=node_id,
+        p2p_client=p2p_client,
+        scar_index_oracle=scar_index_oracle,
+        loom_burden_manager=loom_burden_manager,
+        epoch_manager=epoch_manager,
+        vault_node_registry=vault_node_registry,
+        witness_client=witness_client,
+        loom_params=custom_loom_params,
+    )
+
+    hf_initial = HealthFrame(
+        node_id=node_id,
+        epoch=epoch_manager.get_current_epoch(),
+        scar_index=30,
+        load_percent=0.5,
+        headroom_ru=5000,
+        latency_ms=50,
+        lbi2_crs=100.0,
+        gls_ref=MOCK_GLS_REF,
+    )
+    hf_initial.signature = sign_data(node_id, hf_initial.get_signed_payload())
+
+    asyncio.run(operator_custom.update_local_hologram([hf_initial]))
+    scar_index_oracle.scar_indices[node_id] = 20
+
+    epoch_manager.advance_epoch()
+    current_epoch = epoch_manager.get_current_epoch()
+    asyncio.run(operator_custom.on_epoch_tick(current_epoch))
+
+    entry = operator_custom.local_hologram[node_id]
+    assert entry.metabolic_factor == operator_custom.M_MAX
+    assert operator_custom.BETA == pytest.approx(0.5)
+    assert operator_custom.W_HEAL == pytest.approx(10.0)
