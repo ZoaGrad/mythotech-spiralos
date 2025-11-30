@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "HealthFrame",
+  "type": "object",
+  "required": [
+    "node_id",
+    "epoch",
+    "scar_index",
+    "load_percent",
+    "headroom_ru",
+    "latency_ms",
+    "crs",
+    "gls_ref",
+    "signature"
+  ],
+  "properties": {
+    "node_id": { "type": "string" },
+    "epoch": { "type": "integer", "minimum": 0 },
+    "scar_index": { "type": "integer", "minimum": 0, "maximum": 100 },
+    "load_percent": { "type": "number", "minimum": 0.0 },
+    "headroom_ru": { "type": "integer" },
+    "latency_ms": { "type": "integer", "minimum": 0 },
+    "crs": { "type": "number" },
+    "gls_ref": { "type": "string" },
+    "signature": { "type": "string" }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TruthFrame",
+  "type": "object",
+  "required": ["health_frame", "witness_multisig"],
+  "properties": {
+    "health_frame": { "$ref": "health_frame.schema.json" },
+    "witness_multisig": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    }
+  },
+  "additionalProperties": true
+}
