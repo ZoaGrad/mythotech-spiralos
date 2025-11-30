@@ -1,7 +1,7 @@
 # ΔΩ.LBI.1 — Loom Burden Invariant: Formal Specification
 **Version:** 1.0.0  
 **Class:** Foundational Invariant (Constitution Layer)  
-**Author:** ZoaGrad Systems / C. Willis
+**Author:** ZoaGrad Systems
 
 ## 1. Purpose
 To prevent the “Tragedy of the Commons” in a decentralized computational network by mathematically bounding node capacity through ScarIndex integrity and global network health.
