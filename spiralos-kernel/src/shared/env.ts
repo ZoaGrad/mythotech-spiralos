@@ -1,7 +1,11 @@
 import { config } from 'dotenv';
 import { z } from 'zod';
+import path from 'path';
 
+// Load local .env
 config();
+// Load root .env (fallback)
+config({ path: path.resolve(process.cwd(), '../.env') });
 
 const envSchema = z.object({
   SUPABASE_URL: z.string().url(),

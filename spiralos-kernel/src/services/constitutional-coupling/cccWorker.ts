@@ -1,7 +1,8 @@
 import { Worker, Job } from 'bullmq';
-import { connection } from '../../../shared/supabaseClient';
-import { ARIAService } from '../../aria/ariaService';
-import { AFRService } from '../ache-flux-regulator/afrService';
+import { supabase } from '../../shared/supabaseClient.js';
+import { connection } from '../../shared/redisClient.js';
+import { ARIAService } from '../../aria/ariaService.js';
+import { AFRService } from '../ache-flux-regulator/afrService.js';
 
 export class ConstitutionalCouplingWorker {
     private worker: Worker;
@@ -113,3 +114,9 @@ export class ConstitutionalCouplingWorker {
         await this.worker.close();
     }
 }
+
+// Start the worker if this file is run directly
+new ConstitutionalCouplingWorker().start().catch(err => {
+    console.error('Failed to start CCC Worker:', err);
+    process.exit(1);
+});
