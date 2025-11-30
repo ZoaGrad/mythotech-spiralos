@@ -102,8 +102,50 @@ export class ConstitutionalCouplingWorker {
     private async getLiquidityRegime() { return 'stable'; }
     private async getCivicTelemetry() { return {}; }
     private async calculateRiskEnvelope() { return {}; }
-    private async storeCCC(ccc: any) { return { ...ccc, id: 'mock-ccc-id' }; }
-    private async draftAmendment(ccc: any) { console.log('Drafting amendment for', ccc.proposed_amendment_type); }
+    private async storeCCC(ccc: any) {
+        const { data, error } = await supabase
+            .from('constitutional_cognitive_context')
+            .insert({
+                timestamp: new Date().toISOString(),
+                afr_adjustment_imperative: ccc.afr_adjustment_imperative,
+                afr_flux_vector_norm: ccc.afr_flux_vector_norm,
+                predicted_entropy_at_horizon: ccc.predicted_entropy_at_horizon,
+                current_ache_level: ccc.current_ache_level,
+                liquidity_regime: ccc.liquidity_regime,
+                risk_envelope: ccc.risk_envelope,
+                proposed_amendment_type: ccc.proposed_amendment_type,
+                constitutional_rationale: ccc.constitutional_rationale
+            })
+            .select()
+            .single();
+
+        if (error) {
+            throw new Error(`Supabase insert failed: ${error.message}`);
+        }
+
+        return data;
+    }
+
+    private async draftAmendment(ccc: any) {
+        const amendment = {
+            title: `Constitutional Amendment: ${ccc.proposed_amendment_type}`,
+            description: ccc.constitutional_rationale,
+            rationale: ccc.constitutional_rationale,
+            trigger_event_id: ccc.id,
+            status: 'proposed',
+            impact_analysis: ccc.impact_projection
+        };
+
+        const { error } = await supabase
+            .from('constitutional_amendments')
+            .insert(amendment);
+
+        if (error) {
+            console.error('Failed to draft amendment:', error);
+        } else {
+            console.log('Drafted amendment for', ccc.proposed_amendment_type);
+        }
+    }
 
     async start(): Promise<void> {
         await this.worker.run();
