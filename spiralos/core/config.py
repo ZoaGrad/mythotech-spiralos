@@ -26,6 +26,18 @@ class LoomParameterMesh:
         lbi3_gov_beta_max: float = 1.0,
         lbi3_gov_weight_max: float = 10.0,
         lbi3_gov_m_factor_max: float = 3.0,
+        # ΔΩ.LBI.3 drift parameters (Hybrid model)
+        # Per-epoch absolute caps on parameter drift
+        lbi3_drift_cap_w_heal: float = 0.10,
+        lbi3_drift_cap_w_truth: float = 0.10,
+        lbi3_drift_cap_w_rot: float = 0.10,
+        lbi3_drift_cap_beta: float = 0.02,
+        lbi3_drift_cap_m_min: float = 0.10,
+        lbi3_drift_cap_m_max: float = 0.10,
+        # Ache curve & activation parameters
+        lbi3_drift_ache_floor: float = 0.10,
+        lbi3_drift_ache_ceiling: float = 1.00,
+        lbi3_drift_kappa: float = 1.50,
     ):
         self.latency_weight = latency_weight
         self.dynamic_weight_adjustment_factor = dynamic_weight_adjustment_factor
@@ -40,6 +52,15 @@ class LoomParameterMesh:
         self.lbi3_gov_beta_max = lbi3_gov_beta_max
         self.lbi3_gov_weight_max = lbi3_gov_weight_max
         self.lbi3_gov_m_factor_max = lbi3_gov_m_factor_max
+        self.lbi3_drift_cap_w_heal = lbi3_drift_cap_w_heal
+        self.lbi3_drift_cap_w_truth = lbi3_drift_cap_w_truth
+        self.lbi3_drift_cap_w_rot = lbi3_drift_cap_w_rot
+        self.lbi3_drift_cap_beta = lbi3_drift_cap_beta
+        self.lbi3_drift_cap_m_min = lbi3_drift_cap_m_min
+        self.lbi3_drift_cap_m_max = lbi3_drift_cap_m_max
+        self.lbi3_drift_ache_floor = lbi3_drift_ache_floor
+        self.lbi3_drift_ache_ceiling = lbi3_drift_ache_ceiling
+        self.lbi3_drift_kappa = lbi3_drift_kappa
 
 
 def get_current_gls_ref() -> str:

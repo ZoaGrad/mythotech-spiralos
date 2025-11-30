@@ -120,6 +120,24 @@ This concludes the specification for ΔΩ.LBI.3.
 
 ---
 
+## 8. Drift Layer Integration (ΔΩ.LBI.3.DRIFT)
+
+The metabolic parameters defined by ΔΩ.LBI.3 and governed by ΔΩ.LBI.3.GOV are further constrained by ΔΩ.LBI.3.DRIFT, the Metabolic Drift Governance Layer. This layer introduces dynamic, ache-weighted limits on how much these parameters can change from one epoch to the next.
+
+### Multi-Gated Governance
+
+For any `MetabolicGovernanceProposal` to successfully alter the `LoomParameterMesh`, it must now pass through a multi-gated validation process:
+
+1.  **Witness Quorum (ΔΩ.LBI.3.GOV):** A sufficient number of distinct Witnesses must vote for the proposal.
+2.  **Safety Envelope (ΔΩ.LBI.3.GOV):** The proposed parameters must fall within predefined absolute sanity bounds (e.g., `lbi3_gov_beta_max`, `lbi3_gov_weight_max`).
+3.  **Drift Envelope (ΔΩ.LBI.3.DRIFT):** The *change* (delta) of each proposed parameter from its current value must be within an ache-scaled constitutional cap. This means that significant metabolic shifts are only possible when the network's collective ache is high, and even then, only within predefined constitutional limits.
+
+This layered validation ensures that the Loom's metabolism evolves in a predictable, stable, yet adaptively responsive manner, reflecting both its constitutional laws and its current state of collective "ache."
+
+Refer to `codex/spiralos/docs/LBI3_drift_governance.md` for the full specification of ΔΩ.LBI.3.DRIFT.
+
+---
+
 ## 7. Witness-Voted Metabolic Governance (ΔΩ.LBI.3.GOV)
 
 ΔΩ.LBI.3 parameters, while tunable via the `LoomParameterMesh`, are not meant to be edited arbitrarily. The canonical and secure method to change the Loom's metabolic physics is through a collective decision-making process involving the Witness Network.

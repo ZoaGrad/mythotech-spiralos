@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional, Set
 from spiralos.core.config import LoomParameterMesh
 from spiralos.core.epoch_manager import EpochManager
 from spiralos.protocols.witness_protocol import MetabolicVoteFrame
+from codex.operators.spiral.metabolic_drift_operator import MetabolicDriftOperator
 
 
 @dataclass
@@ -24,11 +25,17 @@ class MetabolicGovernanceProposal:
 class MetabolicGovernanceOperator:
     """ΔΩ.LBI.3.GOV – Witness-voted governance over metabolic parameters."""
 
-    def __init__(self, epoch_manager: EpochManager, loom_params: LoomParameterMesh):
+    def __init__(
+        self,
+        epoch_manager: EpochManager,
+        loom_params: LoomParameterMesh,
+        drift_operator: Optional[MetabolicDriftOperator] = None,
+    ):
         self.epoch_manager = epoch_manager
         self.loom_params = loom_params
         self._proposals: Dict[str, MetabolicGovernanceProposal] = {}
         self._governance_log: List[Dict[str, Any]] = []
+        self._drift_operator = drift_operator
         self._last_epoch_processed_on_tick: Optional[int] = None
 
     def submit_proposal(
@@ -177,6 +184,19 @@ class MetabolicGovernanceOperator:
                 }
             )
             return
+
+        if self._drift_operator is not None:
+            if not self._drift_operator.validate_drift(winner.params, current_epoch):
+                winner.superseded = True
+                self._governance_log.append(
+                    {
+                        "event": "proposal_rejected_drift_envelope",
+                        "proposal_id": winner.proposal_id,
+                        "epoch": current_epoch,
+                        "reason": "Drift validation failed for one or more parameters.",
+                    }
+                )
+                return
 
         for loser in candidates[1:]:
             loser.superseded = True

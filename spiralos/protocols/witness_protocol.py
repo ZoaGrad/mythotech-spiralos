@@ -25,3 +25,19 @@ class MetabolicVoteFrame:
     witness_id: str
     witness_epoch: int
     multisig: List[str]
+
+
+@dataclass
+class AcheEpochFrame:
+    """
+    Witness-signed ache summary for a given epoch.
+    The ache_index is normalized to [0.0, 1.0] and represents
+    the intensity of collective ache felt across the Loom.
+    This frame is the canonical input for the MetabolicDriftOperator.
+    """
+
+    epoch: int
+    ache_index: float
+    witness_id: str
+    multisig: List[str]
+    notes: str = ""
