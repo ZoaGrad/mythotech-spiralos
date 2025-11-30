@@ -145,3 +145,7 @@ The SLD Signaling Layer is further enhanced by ΔΩ.LBI.3, the Ache-Based Ascens
 Refer to `codex/spiralos/docs/LBI3_ache_based_metabolism.md` for the full specification of ΔΩ.LBI.3.
 
 The metabolic factor parameters (`w_heal`, `w_truth`, `w_rot`, `β`, `M_min`, `M_max`) are sourced from the `LoomParameterMesh` and are expected to be adjusted via governance processes as the network matures, allowing for dynamic tuning of the Loom's metabolic behavior.
+
+### Governance of Metabolic Parameters
+
+The `HolographicSignalingOperator` faithfully consumes the metabolic parameters provided by the `LoomParameterMesh`. It does not, however, participate in or directly alter these parameters. Changes to the metabolic parameters can only occur through the Witness-voted governance process defined by ΔΩ.LBI.3.GOV, ensuring that the operator's behavior is always a reflection of the Loom's collective will.

@@ -21,6 +21,11 @@ class LoomParameterMesh:
         lbi3_beta: float = 0.05,
         lbi3_m_min: float = 0.5,
         lbi3_m_max: float = 1.5,
+        # ΔΩ.LBI.3 governance parameters
+        lbi3_gov_quorum: int = 3,
+        lbi3_gov_beta_max: float = 1.0,
+        lbi3_gov_weight_max: float = 10.0,
+        lbi3_gov_m_factor_max: float = 3.0,
     ):
         self.latency_weight = latency_weight
         self.dynamic_weight_adjustment_factor = dynamic_weight_adjustment_factor
@@ -31,6 +36,10 @@ class LoomParameterMesh:
         self.lbi3_beta = lbi3_beta
         self.lbi3_m_min = lbi3_m_min
         self.lbi3_m_max = lbi3_m_max
+        self.lbi3_gov_quorum = lbi3_gov_quorum
+        self.lbi3_gov_beta_max = lbi3_gov_beta_max
+        self.lbi3_gov_weight_max = lbi3_gov_weight_max
+        self.lbi3_gov_m_factor_max = lbi3_gov_m_factor_max
 
 
 def get_current_gls_ref() -> str:
