@@ -192,5 +192,42 @@ class Governance(commands.Cog):
             logger.error(f"Error in reject_proposal: {e}")
             await interaction.followup.send(f"❌ Error rejecting proposal: {e}", ephemeral=True)
 
+    @app_commands.command(name="attest_witness", description="Submit a witness attestation.")
+    @app_commands.describe(narrative="Your witness statement", evidence_json="JSON string of evidence")
+    async def attest_witness(self, interaction: discord.Interaction, narrative: str, evidence_json: str = "{}"):
+        await interaction.response.defer(ephemeral=True)
+        
+        try:
+            evidence = json.loads(evidence_json)
+        except json.JSONDecodeError:
+            await interaction.followup.send("❌ Invalid JSON for evidence.", ephemeral=True)
+            return
+
+        from core.governance.attestation_manager import attestation_manager
+        
+        witness_id = str(interaction.user.id)
+        result = attestation_manager.create_attestation(witness_id, narrative, evidence)
+        
+        if result:
+            await interaction.followup.send(f"✅ Attestation submitted! ID: `{result['id']}`\nHash: `{result['attestation_hash']}`", ephemeral=True)
+        else:
+            await interaction.followup.send("❌ Failed to submit attestation.", ephemeral=True)
+
+    @app_commands.command(name="verify_attestation", description="Verify a pending attestation (Admin only).")
+    @app_commands.describe(attestation_id="ID of the attestation", status="New status (attested/challenged)")
+    @is_admin()
+    async def verify_attestation(self, interaction: discord.Interaction, attestation_id: str, status: str = "attested"):
+        await interaction.response.defer(ephemeral=True)
+        
+        from core.governance.attestation_manager import attestation_manager
+        
+        verifier_id = str(interaction.user.id)
+        success = attestation_manager.verify_attestation(attestation_id, verifier_id, status)
+        
+        if success:
+            await interaction.followup.send(f"✅ Attestation `{attestation_id}` verified as `{status}`.", ephemeral=True)
+        else:
+            await interaction.followup.send("❌ Failed to verify attestation.", ephemeral=True)
+
 async def setup(bot):
     await bot.add_cog(Governance(bot))

@@ -22,7 +22,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Tuple
 
 import numpy as np
-from ache_pid_controller import AchePIDController
+from core.ache_pid_controller import AchePIDController
 
 
 @dataclass
