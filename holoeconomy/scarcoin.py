@@ -393,7 +393,27 @@ class ScarCoinMintingEngine:
         self.total_minted += coin.coin_value
         self.minting_count += 1
 
+        # Record to Supabase
+        self.record_mint_event(coin)
+
         return coin
+
+    def record_mint_event(self, coin: ScarCoin):
+        """Record mint event to Supabase"""
+        try:
+            from core.db import get_supabase
+            supabase = get_supabase()
+            
+            supabase.table("scarcoin_mints").insert({
+                "id": coin.id,
+                "recipient_address": coin.owner,
+                "amount": float(coin.coin_value),
+                "ache_event_id": coin.transmutation_id if coin.transmutation_id else None,
+                "tx_hash": hashlib.sha256(f"{coin.id}{coin.minted_at}".encode()).hexdigest(),
+                "metadata": coin.metadata
+            }).execute()
+        except Exception as e:
+            print(f"Failed to record mint event: {e}")
 
     def burn_scarcoin(self, coin_id: str, reason: str = "Failed transmutation") -> bool:
         """

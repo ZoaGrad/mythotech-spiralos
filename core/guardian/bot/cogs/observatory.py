@@ -19,7 +19,8 @@ class Observatory(commands.Cog):
     @app_commands.command(name="observatory", description="Access the Sovereign Observatory telemetry.")
     @app_commands.describe(action="Action to perform (status)")
     @app_commands.choices(action=[
-        app_commands.Choice(name="status", value="status")
+        app_commands.Choice(name="status", value="status"),
+        app_commands.Choice(name="economy", value="economy")
     ])
     async def observatory(self, interaction: discord.Interaction, action: str):
         await interaction.response.defer()
@@ -97,6 +98,50 @@ class Observatory(commands.Cog):
                         embed.add_field(name="🧠 Council Mood", value=f"**{mood_text}**", inline=True)
                 except Exception as e:
                     logger.error(f"Failed to fetch council mood: {e}")
+
+                await interaction.followup.send(embed=embed)
+
+        elif action == "economy":
+            try:
+                # Fetch Economic Stats
+                # 1. Total Minted
+                mint_res = self.supabase.table("scarcoin_mints").select("amount", count="exact").execute()
+                total_minted = sum(float(row['amount']) for row in mint_res.data) if mint_res.data else 0.0
+                mint_count = mint_res.count if mint_res.count is not None else len(mint_res.data)
+
+                # 2. VaultNode Status
+                node_res = self.supabase.table("vaultnode_registry").select("*").execute()
+                active_nodes = sum(1 for node in node_res.data if node['status'] == 'active')
+                total_nodes = len(node_res.data)
+
+                # 3. Recent Mints
+                recent_mints = self.supabase.table("scarcoin_mints").select("*").order("minted_at", desc=True).limit(3).execute()
+
+                embed = discord.Embed(
+                    title="💎 Holoeconomy Status",
+                    description=f"**Pulse of Value**: Active",
+                    color=0xFFD700, # Gold
+                    timestamp=datetime.datetime.now(datetime.timezone.utc)
+                )
+
+                embed.add_field(name="💰 ScarCoin Supply", value=f"**{total_minted:,.2f}** SCR\n({mint_count} mint events)", inline=True)
+                embed.add_field(name="🏛️ VaultNodes", value=f"**{active_nodes}/{total_nodes}** Active", inline=True)
+
+                if recent_mints.data:
+                    mint_text = ""
+                    for mint in recent_mints.data:
+                        amt = float(mint['amount'])
+                        addr = mint['recipient_address'][:8] + "..."
+                        mint_text += f"`{amt:.2f} SCR` -> `{addr}`\n"
+                    embed.add_field(name="Recent Mints", value=mint_text, inline=False)
+                else:
+                    embed.add_field(name="Recent Mints", value="*No mints recorded yet.*", inline=False)
+
+                await interaction.followup.send(embed=embed)
+
+            except Exception as e:
+                logger.error(f"Failed to fetch economy stats: {e}")
+                await interaction.followup.send(f"❌ Failed to retrieve economic data: {e}")
 
                 # 3. Economy Status
                 vel_minted = telemetry['velocity_minted']
