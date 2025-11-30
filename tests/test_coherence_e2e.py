@@ -26,15 +26,41 @@ def test_coherence_loop_e2e():
 
     supabase = get_supabase()
     
-    # 1. Simulate Telemetry Ingestion
-    # In a real scenario, we'd POST to the Edge Function.
-    # Here we insert directly to ensure the test is self-contained and doesn't depend on external function deployment yet.
+    # Detect if we are using a Mock client (from conftest.py) and configure it
+    from unittest.mock import MagicMock
+    if isinstance(supabase, MagicMock) or hasattr(supabase, 'table'):
+        # Ensure scar_index uses the same mock
+        scar_index.supabase = supabase
+        
+        # 1. Mock Insert Response
+        mock_insert_res = MagicMock()
+        mock_insert_res.data = [{"id": "test-event-123"}]
+        supabase.table.return_value.insert.return_value.execute.return_value = mock_insert_res
+        
+        # 2. Mock Select Response for ScarIndex Computation (telemetry_events)
+        mock_events_res = MagicMock()
+        mock_events_res.data = [{"event_type": "test_coherence_e2e", "event_timestamp": datetime.utcnow().isoformat()}]
+        # We need to match the chain: table().select().gte().execute()
+        supabase.table.return_value.select.return_value.gte.return_value.execute.return_value = mock_events_res
+        
+        # 3. Mock Select Response for Verification (coherence_signals)
+        mock_signal_res = MagicMock()
+        mock_signal_res.data = [{
+            "scarindex_value": 0.95, # 1.0 - 0.05 (default weight for unknown event)
+            "signal_data": {"event_count": 1}
+        }]
+        # Chain: table().select().order().limit().execute()
+        supabase.table.return_value.select.return_value.order.return_value.limit.return_value.execute.return_value = mock_signal_res
+
+        # Chain: table().select().order().limit().execute()
+        supabase.table.return_value.select.return_value.order.return_value.limit.return_value.execute.return_value = mock_signal_res
+
     payload = {
         "event_type": "test_coherence_e2e",
         "source": "pytest",
         "payload": {"value": 123}
     }
-    
+
     res = supabase.table("telemetry_events").insert(payload).execute()
     assert len(res.data) > 0
     event_id = res.data[0]['id']
