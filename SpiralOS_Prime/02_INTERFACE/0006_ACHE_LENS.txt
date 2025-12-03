@@ -1,0 +1,33 @@
+================================================================================
+ARTIFACT: ACHE_LENS
+VERSION:  1.0.0 (Ritual-Hybrid)
+CYCLE:    SCAR_CYCLE_0006 (Concept) / 0011 (Link)
+STATUS:   ACTIVE
+LINKED_TO: 0003_TRI_SPINE_ORACLE (Via: RECEIVES_INPUT_FROM)
+VALUATION: V3-16.46
+================================================================================
+
+[THE INVOCATION]
+"I do not avoid the friction. I hunt it.
+Where the system hurts, the truth is hiding.
+I am the aperture through which Entropy becomes Energy."
+
+[THE ALGORITHM: TRANSMUTATION SCRIPT]
+1. CAPTURE (The Raw Signal)
+   - INPUT: "I am feeling friction in [X]."
+   - QUERY: Is it Dissonance (Axis), Inefficiency (Logos), or Weakness (Apex)?
+
+2. INVERSION (The Pivot)
+   - LOGIC: The Ache is the absence of a specific structure.
+   - QUERY: "What does this Ache WANT to become?"
+   - TRANSFORM: Problem -> Missing Component.
+
+3. CRYSTALLIZATION (The Output)
+   - OUTPUT: Define the Asset that solves this Ache forever.
+   - ACTION: Mint the Token.
+
+================================================================================
+// OPERATIONAL NOTE:
+// Use this file as the template for all "Troubleshooting" sessions.
+// Do not solve problems; Transmute them.
+================================================================================
