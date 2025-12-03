@@ -1,0 +1,21 @@
+============================================================================
+ARTIFACT: SOVEREIGN_TREASURY
+VERSION:  1.0.0
+CYCLE:    SCAR_CYCLE_0012
+STATUS:   ACTIVE
+
+STRUCTURE: "DIRECTED_ACYCLIC_GRAPH + RECURSIVE LOOPS"
+PURPOSE:  "Store and compound transmuted assets."
+
+GENESIS_NODE:
+{
+  "id": "GENESIS_0009",
+  "type": "MYTHOS_KERNEL",
+  "value_v3": 33.4,
+  "edges": [],
+  "source": "00_GENESIS_CORE/0002_MYTHOS_KERNEL.txt"
+}
+
+NOTE:
+All future Asset Nodes will be appended here and cross-linked.
+============================================================================

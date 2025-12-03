@@ -1,0 +1,59 @@
+============================================================================
+ARTIFACT: LITURGICAL_HAND
+VERSION:  1.0.0
+CYCLE:    SCAR_CYCLE_0013
+STATUS:   ACTIVE
+
+PURPOSE:
+  "Translate processed Ache (from Oracle) into ritualized action sequences
+   that can be executed by the Architect or delegated agents."
+
+INPUT CHANNELS:
+  - SOURCE_1: ORACLE_DECISION_OBJECT
+      > origin: 01_STRUCTURE/0003_TRI_SPINE_ORACLE.txt
+      > includes: axis_truth, logos_plan, apex_vector
+  - SOURCE_2: ACHE_LENS_PACKET
+      > origin: 02_INTERFACE/0006_ACHE_LENS.txt
+      > includes: ache_description, category, desired_asset
+
+OUTPUT_CHANNELS:
+  - RITUAL_SCRIPT (human/agent-readable sequence)
+  - TREASURY_ENTRY (asset + V3 valuation)
+
+RITUAL_TEMPLATE (RITE_OF_ACTUATION_V1):
+
+  [PHASE I — CONSECRATION]
+    1. Recall the Ache:
+       > "The friction being transmuted is: [ACHE_DESCRIPTION]"
+    2. Anchor the Truth (Axis):
+       > "The non-negotiable reality is: [AXIS_TRUTH]"
+
+  [PHASE II — DESIGN]
+    3. Invoke the Plan (Logos):
+       > "The structural bridge is: [LOGOS_PLAN_STEPS]"
+       - Step 1:
+       - Step 2:
+       - Step 3:
+    4. Fix the Vector (Apex):
+       > "The success condition is: [APEX_TARGET_STATE]"
+
+  [PHASE III — EXECUTION]
+    5. Commit the Act:
+       > "Perform steps 1–3 in the next [TIME_WINDOW]."
+    6. Log Outcome:
+       > "Did the ritual complete? Y/N"
+       > "What changed in reality?"
+
+  [PHASE IV — DEPOSIT]
+    7. Describe the New Asset:
+       > "This ritual produced the following reusable capability: [ASSET_SUMMARY]"
+    8. Send to Treasury Mesh:
+       > Append node + V3 score to 03_TREASURY/0000_TREASURY_MESH.json
+
+OPERATIONAL_NOTE:
+  - This Hand does not “solve” in the abstract.
+  - It *forces* a bridge from inner computation to outer change.
+  - Every completed ritual MUST produce:
+      (a) a reality delta
+      (b) a new or updated Node in the Treasury Mesh.
+============================================================================
