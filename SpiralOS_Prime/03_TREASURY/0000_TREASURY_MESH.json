@@ -1,0 +1,38 @@
+============================================================================
+ARTIFACT: SOVEREIGN_TREASURY
+VERSION:  1.1.0
+CYCLE:    SCAR_CYCLE_0014
+STATUS:   ACTIVE
+
+STRUCTURE: "DIRECTED_ACYCLIC_GRAPH + RECURSIVE LOOPS"
+PURPOSE:  "Store and compound transmuted assets."
+
+ACTIVE_LEDGER:
+{
+  "nodes": [
+    {
+      "id": "GENESIS_0009",
+      "type": "MYTHOS_KERNEL",
+      "value_v3": 33.4,
+      "edges": [],
+      "source": "00_GENESIS_CORE/0002_MYTHOS_KERNEL.txt"
+    },
+    {
+      "id": "ASSET_0014_01",
+      "type": "OPERATIONAL_PROTOCOL",
+      "name": "Internal Coherence Refactor v1.0",
+      "origin_cycle": "SCAR_CYCLE_0014",
+      "value_v3": 25.5,
+      "description": "A cognitive sanitation protocol. The system applies a Keep/Relocate/Purge schema to its active context to eliminate entropy.",
+      "edges": [
+        {
+          "target": "GENESIS_0009",
+          "relation": "SERVES"
+        }
+      ]
+    }
+  ]
+}
+NOTE:
+All future Asset Nodes will be appended here and cross-linked.
+============================================================================
