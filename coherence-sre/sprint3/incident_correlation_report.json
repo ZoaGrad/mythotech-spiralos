@@ -1,0 +1,283 @@
+[
+  {
+    "incident_id": "3e0f0192-9a4e-4b11-94d9-6c2bc9ead376",
+    "host": "host-stressed",
+    "timestamp": "2025-12-11T22:10:22.465894+00:00",
+    "error_count": 6,
+    "duration_minutes": 25.0,
+    "hypotheses": [
+      {
+        "detector": "Spike",
+        "metric": "cpu",
+        "relevance": 5.04,
+        "lead_time_hours": 0.0,
+        "risk_score": 0.5,
+        "summary": "Spike to 87.58 (baseline: 28.99)"
+      },
+      {
+        "detector": "Variance Escalation",
+        "metric": "cpu",
+        "relevance": 0.44,
+        "lead_time_hours": 2.2,
+        "risk_score": 1.0,
+        "summary": "Variance escalated 14.54x"
+      }
+    ]
+  },
+  {
+    "incident_id": "33ce623f-42e4-4684-ad54-4ac6baa50ffc",
+    "host": "host-stressed",
+    "timestamp": "2025-12-12T04:10:22.465894+00:00",
+    "error_count": 6,
+    "duration_minutes": 25.0,
+    "hypotheses": [
+      {
+        "detector": "Variance Escalation",
+        "metric": "cpu",
+        "relevance": 3.66,
+        "lead_time_hours": 0.2,
+        "risk_score": 1.0,
+        "summary": "Variance escalated 14.87x"
+      },
+      {
+        "detector": "Spike",
+        "metric": "cpu",
+        "relevance": 0.09,
+        "lead_time_hours": 5.7,
+        "risk_score": 0.51,
+        "summary": "Spike to 92.44 (baseline: 30.17)"
+      },
+      {
+        "detector": "Spike",
+        "metric": "cpu",
+        "relevance": 0.08,
+        "lead_time_hours": 6.0,
+        "risk_score": 0.5,
+        "summary": "Spike to 87.58 (baseline: 28.99)"
+      }
+    ]
+  },
+  {
+    "incident_id": "8422696a-b7e9-44b0-a09f-e9e7de285ca5",
+    "host": "host-stressed",
+    "timestamp": "2025-12-12T10:10:22.465894+00:00",
+    "error_count": 6,
+    "duration_minutes": 25.0,
+    "hypotheses": [
+      {
+        "detector": "Spike",
+        "metric": "cpu",
+        "relevance": 5.38,
+        "lead_time_hours": 0.0,
+        "risk_score": 0.54,
+        "summary": "Spike to 86.60 (baseline: 26.80)"
+      },
+      {
+        "detector": "Variance Escalation",
+        "metric": "cpu",
+        "relevance": 0.44,
+        "lead_time_hours": 2.2,
+        "risk_score": 1.0,
+        "summary": "Variance escalated 14.33x"
+      }
+    ]
+  },
+  {
+    "incident_id": "816e1bcd-1ba5-40d0-af20-5800e06717ae",
+    "host": "host-stressed",
+    "timestamp": "2025-12-12T16:10:22.465894+00:00",
+    "error_count": 6,
+    "duration_minutes": 25.0,
+    "hypotheses": [
+      {
+        "detector": "Spike",
+        "metric": "cpu",
+        "relevance": 5.53,
+        "lead_time_hours": 0.0,
+        "risk_score": 0.55,
+        "summary": "Spike to 90.45 (baseline: 27.25)"
+      },
+      {
+        "detector": "Variance Escalation",
+        "metric": "cpu",
+        "relevance": 3.66,
+        "lead_time_hours": 0.2,
+        "risk_score": 1.0,
+        "summary": "Variance escalated 15.04x"
+      },
+      {
+        "detector": "Spike",
+        "metric": "cpu",
+        "relevance": 0.1,
+        "lead_time_hours": 5.9,
+        "risk_score": 0.58,
+        "summary": "Spike to 94.79 (baseline: 27.05)"
+      }
+    ]
+  },
+  {
+    "incident_id": "5b824fea-e300-496a-a00e-a81d45b84bb6",
+    "host": "host-stressed",
+    "timestamp": "2025-12-12T22:10:22.465894+00:00",
+    "error_count": 6,
+    "duration_minutes": 25.0,
+    "hypotheses": [
+      {
+        "detector": "Spike",
+        "metric": "cpu",
+        "relevance": 5.56,
+        "lead_time_hours": 0.0,
+        "risk_score": 0.56,
+        "summary": "Spike to 88.86 (baseline: 26.63)"
+      },
+      {
+        "detector": "Variance Escalation",
+        "metric": "cpu",
+        "relevance": 0.44,
+        "lead_time_hours": 2.2,
+        "risk_score": 1.0,
+        "summary": "Variance escalated 14.37x"
+      },
+      {
+        "detector": "Spike",
+        "metric": "cpu",
+        "relevance": 0.09,
+        "lead_time_hours": 6.0,
+        "risk_score": 0.55,
+        "summary": "Spike to 90.45 (baseline: 27.25)"
+      }
+    ]
+  },
+  {
+    "incident_id": "7fe4ff94-8752-4db3-93c2-9eb1f0fc5770",
+    "host": "host-stressed",
+    "timestamp": "2025-12-13T02:00:22.465894+00:00",
+    "error_count": 1,
+    "duration_minutes": 0.0,
+    "hypotheses": [
+      {
+        "detector": "Spike",
+        "metric": "cpu",
+        "relevance": 0.15,
+        "lead_time_hours": 3.7,
+        "risk_score": 0.55,
+        "summary": "Spike to 93.70 (baseline: 28.32)"
+      },
+      {
+        "detector": "Spike",
+        "metric": "cpu",
+        "relevance": 0.14,
+        "lead_time_hours": 3.8,
+        "risk_score": 0.56,
+        "summary": "Spike to 88.86 (baseline: 26.63)"
+      },
+      {
+        "detector": "Spike",
+        "metric": "cpu",
+        "relevance": 0.14,
+        "lead_time_hours": 3.5,
+        "risk_score": 0.51,
+        "summary": "Spike to 88.01 (baseline: 28.98)"
+      }
+    ]
+  },
+  {
+    "incident_id": "f2d81f83-e674-4d6f-9ecb-e944af504130",
+    "host": "host-stressed",
+    "timestamp": "2025-12-13T02:15:22.465894+00:00",
+    "error_count": 3,
+    "duration_minutes": 10.0,
+    "hypotheses": [
+      {
+        "detector": "Spike",
+        "metric": "cpu",
+        "relevance": 0.14,
+        "lead_time_hours": 3.9,
+        "risk_score": 0.55,
+        "summary": "Spike to 93.70 (baseline: 28.32)"
+      },
+      {
+        "detector": "Spike",
+        "metric": "cpu",
+        "relevance": 0.13,
+        "lead_time_hours": 4.1,
+        "risk_score": 0.56,
+        "summary": "Spike to 88.86 (baseline: 26.63)"
+      },
+      {
+        "detector": "Spike",
+        "metric": "cpu",
+        "relevance": 0.13,
+        "lead_time_hours": 4.0,
+        "risk_score": 0.52,
+        "summary": "Spike to 86.43 (baseline: 27.95)"
+      }
+    ]
+  },
+  {
+    "incident_id": "61ac9e5e-ce3f-4fe6-87ea-8c7182d792e9",
+    "host": "host-stressed",
+    "timestamp": "2025-12-13T02:50:22.465894+00:00",
+    "error_count": 7,
+    "duration_minutes": 45.0,
+    "hypotheses": [
+      {
+        "detector": "Spike",
+        "metric": "cpu",
+        "relevance": 0.12,
+        "lead_time_hours": 4.7,
+        "risk_score": 0.56,
+        "summary": "Spike to 88.86 (baseline: 26.63)"
+      },
+      {
+        "detector": "Spike",
+        "metric": "cpu",
+        "relevance": 0.12,
+        "lead_time_hours": 4.5,
+        "risk_score": 0.55,
+        "summary": "Spike to 93.70 (baseline: 28.32)"
+      },
+      {
+        "detector": "Spike",
+        "metric": "cpu",
+        "relevance": 0.12,
+        "lead_time_hours": 4.2,
+        "risk_score": 0.5,
+        "summary": "Spike to 87.59 (baseline: 28.98)"
+      }
+    ]
+  },
+  {
+    "incident_id": "495a6ca5-ebe1-426e-b612-6de5c36656dc",
+    "host": "host-stressed",
+    "timestamp": "2025-12-13T04:00:22.465894+00:00",
+    "error_count": 171,
+    "duration_minutes": 730.0,
+    "hypotheses": [
+      {
+        "detector": "Variance Escalation",
+        "metric": "cpu",
+        "relevance": 9.41,
+        "lead_time_hours": 0.0,
+        "risk_score": 1.0,
+        "summary": "Variance escalated 16.15x"
+      },
+      {
+        "detector": "Spike",
+        "metric": "cpu",
+        "relevance": 0.1,
+        "lead_time_hours": 5.7,
+        "risk_score": 0.55,
+        "summary": "Spike to 93.70 (baseline: 28.32)"
+      },
+      {
+        "detector": "Spike",
+        "metric": "cpu",
+        "relevance": 0.09,
+        "lead_time_hours": 5.8,
+        "risk_score": 0.56,
+        "summary": "Spike to 88.86 (baseline: 26.63)"
+      }
+    ]
+  }
+]
