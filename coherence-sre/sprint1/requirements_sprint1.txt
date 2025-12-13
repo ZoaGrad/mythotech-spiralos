@@ -1,0 +1,11 @@
+# Sprint 1: Data Ingestion Engine Dependencies
+# Python 3.x required
+
+# Datadog API client for fetching metrics
+datadog-api-client==2.30.0
+
+# Supabase client for PostgreSQL database operations
+supabase==2.9.0
+
+# Python-dotenv for loading environment variables from .env file
+python-dotenv==1.0.1
